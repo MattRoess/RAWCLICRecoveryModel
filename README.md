@@ -8,7 +8,7 @@ processes by transfer coefficients (TCs).
 ## Repository layout
 
 - `src/` — the two model engines
-- `data_folder/` — input data, one folder per case (`basic_test` is the mock reference case)
+- `data_folder/` — input data, one folder per case (`basic_test` is the mock reference case, `template` shows the proposed schema)
 - `documentation/` — how the model works, known defects, and the Monte Carlo design
 - `doc/User guide.docx` — input data format specification
 - `run_model.py` — entry point

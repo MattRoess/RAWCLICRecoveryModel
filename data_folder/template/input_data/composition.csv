@@ -1,0 +1,9 @@
+Stock/ID,Layer 1,Layer 2,Layer 3,Layer 4,Value,parameterCode
+F1_collected,BEV,Harness,,,0.6,c-p
+F1_collected,BEV,PCB,,,0.4,c-p
+F1_collected,BEV,Harness,CuAlloy,,1.0,m-c
+F1_collected,BEV,PCB,Laminate,,1.0,m-c
+F1_collected,BEV,Harness,CuAlloy,Cu,0.98,e-m
+F1_collected,BEV,Harness,CuAlloy,Au,0.02,e-m
+F1_collected,BEV,PCB,Laminate,Cu,0.85,e-m
+F1_collected,BEV,PCB,Laminate,Au,0.15,e-m

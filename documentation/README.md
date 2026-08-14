@@ -8,7 +8,8 @@ rather than from anyone's recollection.
 |---|---|
 | [MODEL_MECHANICS.md](MODEL_MECHANICS.md) | How the model actually computes a result. The nesting rule, how composition and TCs are applied, what the two engines do differently by design. Read this first. |
 | [DEFECTS.md](DEFECTS.md) | Every defect and engine divergence found, each with a measurement and a one-command reproduction. |
-| [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | The design problem for the Monte Carlo version: architecture, the compute budget, sampling asymmetric triangulars, and how much a sum-to-1 rule really constrains (less than it looks). Not yet built. |
+| [DESIGN_tc_table.md](DESIGN_tc_table.md) | How to build the TC table so that sum-to-1 holds by construction. Proposal, with a worked example in `data_folder/template`. The real table does not exist yet, so read this before collecting data. |
+| [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | The design problem for the Monte Carlo version: architecture, the compute budget, sampling asymmetric triangulars, and how to sample under the sum-to-1 constraint. Not yet built. |
 | [HANDOVER.md](HANDOVER.md) | Current state, decisions taken and why, open questions, and the recommended order of work. |
 
 The input file format is specified in `../doc/User guide.docx` (Harmjan de

@@ -57,25 +57,26 @@ it is recoverable from commit `cc82a0a` if ever needed.
 |---|---|
 | `cc82a0a` | The code exactly as inherited. Baseline for reviewing every later diff. |
 | `ee3fc6b` | Environment setup and the three pandas-3 fixes. |
+| `902b04c` | This documentation set, `compare_engines.py`, and the defect cases. |
+| `9cbbe8d` | Corrected the TC mass-balance grouping; added `check_mass_balance.py`. |
+| `f082c7b` | Positron terminal auto-activation. |
 
 ## 4. Open questions — these need answers, not code
 
 These are method decisions. They are listed in DESIGN_monte_carlo.md §6 with
 context; repeated here because they gate the work.
 
-0. **How much does "everything sums to 1" actually constrain?** Answer this
-   first, empirically: `./.venv/bin/python check_mass_balance.py <your data>`.
-   A TC is a retention fraction for one resource into one destination, so the
-   only meaningful total is per resource over its output flows. In `basic_test`
-   **22 of 24 resources reach exactly one output flow** — nothing to sum, and
-   the simplex machinery in DESIGN_monte_carlo.md §4 would be a corner case.
-   Real separation processes may well split much more, which is why this needs
-   measuring against the real TC table rather than assuming either way.
-1. **Do losses get explicit flows**, for the sets that do split? Sum-to-1
-   cannot be enforced without them: `basic_test`'s two split sets total 0.08
-   and 0.66, so normalising as-is would inflate those routes 12x and 1.5x.
-   A weaker rule — a resource's total must never *exceed* 1 — needs no new data
-   and should be enforced immediately.
+0. **What is the flow network?** Which processes exist, and what output flows
+   each one has. The real TC table does not exist yet (confirmed 2026-08-14),
+   so this is the gating question and it is entirely a method decision.
+   DESIGN_tc_table.md proposes the schema and the four rules; the network
+   itself is domain knowledge.
+1. **Do losses get explicit flows?** Recommended yes — it is the only thing
+   that makes "everything sums to 1" true rather than aspirational, and it
+   turns mass balance into something assertable on every draw. The cost is
+   real and should be accepted knowingly: every resource then becomes a split
+   set, so the joint-constraint sampling in DESIGN_monte_carlo.md §4 becomes
+   the core of the design rather than a corner case.
 2. **How should overlapping TC specificity resolve?** The two engines disagree
    by a factor of two and the user guide is silent. This must be settled
    *before* element-layer TCs are layered over component-layer ones — which is
@@ -89,6 +90,9 @@ context; repeated here because they gate the work.
 
 ## 5. Recommended order of work
 
+0. **Settle the TC table schema** (DESIGN_tc_table.md) and start collecting
+   into it. This is the long pole — it is data collection, it gates the Monte
+   Carlo entirely, and it can run in parallel with all the engineering below.
 1. **Regression test pinning `basic_test`.** Cheap, and the justification is
    concrete: defect 1.3 was a 300,000x blow-up that stayed invisible for months
    *because the output remained correct*. Without a pinned test, the Monte
@@ -98,13 +102,16 @@ context; repeated here because they gate the work.
 2. **Fix the engine divergences** (DEFECTS.md §2.1, §2.2), and settle §2.3 with
    whoever owns the method. Write the resolved semantics down — their absence
    is why §2.3 exists at all.
-3. **Add residual/loss flows and a mass balance assertion on load.** Open
-   question 1. Everything downstream depends on it.
+3. **Add the mass balance assertion on load**, once the table has loss flows.
+   `check_mass_balance.py` already computes everything it needs; this is
+   promoting a report into a hard failure.
 4. **Then restructure for Monte Carlo** (DESIGN_monte_carlo.md §2): hoist the
    join structure out, carry `Value` as `(n_rows x n_draws)`, chunk over draws.
 
-Steps 1 and 2 are ordinary engineering and can proceed immediately. Step 3 is
-blocked on a data decision. Step 4 should not start before step 1 exists.
+Steps 1 and 2 are ordinary engineering and can start today. Step 0 is the long
+pole and is not engineering at all — it is a method decision followed by data
+collection, and nothing in step 4 can be finished without it. Step 4 should not
+start before step 1 exists.
 
 ## 6. Upstream context
 

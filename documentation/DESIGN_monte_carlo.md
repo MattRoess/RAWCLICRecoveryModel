@@ -122,6 +122,14 @@ several output flows. In that data, split sets could be the majority.
 > constraint handling.** The ratio of split sets to single-destination sets
 > determines how much of §4 you actually need.
 
+**Update, 2026-08-14: the real TC table does not exist yet.** So this is a
+design choice, not a measurement. If it is built as DESIGN_tc_table.md
+proposes — with explicit per-process loss flows, so mass balance holds by
+construction — then *every* resource becomes a split set and §4 becomes the
+core of the sampling design rather than a corner case. That is the deliberate
+trade: mass balance you can assert, in exchange for a joint constraint
+everywhere.
+
 ### Where splits do exist, sum-to-1 still needs loss flows
 
 For a split set, enforcing "sums to 1" is only correct if the set is complete.

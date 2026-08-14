@@ -1,5 +1,6 @@
 """
-Report what the transfer coefficients in a data folder actually sum to.
+Report what the transfer coefficients in a data folder actually sum to, and
+check the structural rules a TC table has to obey.
 
 A TC is applied by joining on BOTH layer columns, so the resource it transfers
 is identified by the *pair* (Input_layer_key, TC_target_key) -- "component C1
@@ -7,10 +8,11 @@ within product P1" -- not by the input key alone. The only sum that means
 anything is therefore: for one such resource, the total over all the output
 flows it can reach.
 
-    ./.venv/bin/python check_mass_balance.py data_folder/basic_test
+    ./.venv/bin/python check_mass_balance.py data_folder/template
 
-Composition is checked too: shares must sum to 1 within each parent, or the
-inflow expansion silently creates or destroys mass.
+Also checks composition closure, the single-target-layer rule (see
+documentation/DESIGN_tc_table.md), and the optional value_min/value_max
+uncertainty columns if they are present.
 """
 import os
 import sys
@@ -24,9 +26,8 @@ TOLERANCE = 1e-9
 RESOURCE = ['Input_FlowID', 'Input_layer', 'Input_layer_key', 'TC_target_layer', 'TC_target_key']
 
 
-def check_transfer_coefficients(folder: str) -> pd.DataFrame:
+def check_transfer_coefficients(tcs: pd.DataFrame) -> pd.DataFrame:
     """Total each transferred resource's TCs over the output flows it reaches."""
-    tcs = pd.read_csv(f"{folder}/input_data/TCs.csv", keep_default_na=False, na_values=[])
     totals = tcs.groupby(RESOURCE).agg(
         total=('value', 'sum'),
         destinations=('Output_FlowID', 'nunique'),
@@ -39,10 +40,32 @@ def check_transfer_coefficients(folder: str) -> pd.DataFrame:
     return totals
 
 
-def check_composition(folder: str) -> pd.DataFrame:
+def check_single_target_layer(tcs: pd.DataFrame) -> pd.DataFrame:
+    """
+    Find output flows written by TCs that target different layers.
+
+    A TC targeting a coarse layer carries the resource's whole subtree with it,
+    producing rows at every depth. One targeting a fine layer produces rows at
+    that depth only. Summing both into one flow makes deep rows exceed their
+    own parents, which breaks the nesting invariant the entire model rests on.
+    """
+    per_flow = tcs.groupby('Output_FlowID')['TC_target_layer'].agg(['nunique', 'unique'])
+    return per_flow[per_flow['nunique'] > 1]
+
+
+def check_uncertainty(tcs: pd.DataFrame) -> pd.DataFrame | None:
+    """Validate the optional triangular columns, returning offending rows."""
+    if not {'value_min', 'value_max'}.issubset(tcs.columns):
+        return None
+    bad = tcs[(tcs['value_min'] > tcs['value']) | (tcs['value'] > tcs['value_max'])
+              | (tcs['value_min'] < 0) | (tcs['value_max'] > 1)]
+    return bad
+
+
+def check_composition(composition: pd.DataFrame) -> pd.DataFrame:
     """Total each parent resource's composition shares, which must come to 1."""
-    composition = pd.read_csv(f"{folder}/input_data/composition.csv", keep_default_na=False, na_values=[])
     layers = ['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
+    composition = composition.copy()
     composition['depth'] = (composition[layers] != '').sum(axis=1)
 
     results = []
@@ -50,9 +73,9 @@ def check_composition(folder: str) -> pd.DataFrame:
         # The parent is everything to the left of the layer being described.
         parent = ['Stock/ID'] + layers[:depth - 1]
         totals = composition[composition['depth'] == depth].groupby(parent)['Value'].sum()
-        results.append(pd.DataFrame({'depth': depth, 'parent_groups': len(totals),
-                                     'min': totals.min(), 'max': totals.max()}, index=[0]))
-    return pd.concat(results, ignore_index=True)
+        results.append({'depth': depth, 'parents': len(totals),
+                        'min': totals.min(), 'max': totals.max()})
+    return pd.DataFrame(results)
 
 
 def report(folder: str) -> None:
@@ -67,44 +90,76 @@ def report(folder: str) -> None:
                 print(f"  {os.path.dirname(root)}")
         sys.exit(1)
 
+    read = dict(keep_default_na=False, na_values=[])
+    tcs = pd.read_csv(f"{folder}/input_data/TCs.csv", **read)
+    composition = pd.read_csv(f"{folder}/input_data/composition.csv", **read)
     print(f"\n{folder}")
 
-    composition = check_composition(folder)
-    closes = ((composition['min'] - 1).abs() < TOLERANCE) & ((composition['max'] - 1).abs() < TOLERANCE)
+    closure = check_composition(composition)
     print("\nCOMPOSITION -- shares within each parent, which must sum to 1")
-    for _, row in composition.iterrows():
-        verdict = "OK" if closes[row.name] else "DOES NOT CLOSE"
-        print(f"  depth {int(row['depth'])}: {int(row['parent_groups']):5d} parents, "
-              f"range [{row['min']:.6g}, {row['max']:.6g}]  {verdict}")
+    for _, row in closure.iterrows():
+        closes = abs(row['min'] - 1) < TOLERANCE and abs(row['max'] - 1) < TOLERANCE
+        print(f"  depth {int(row['depth'])}: {int(row['parents']):5d} parents, "
+              f"range [{row['min']:.6g}, {row['max']:.6g}]  {'OK' if closes else 'DOES NOT CLOSE'}")
 
-    totals = check_transfer_coefficients(folder)
+    totals = check_transfer_coefficients(tcs)
     splits = totals[totals['destinations'] > 1]
     single = totals[totals['destinations'] == 1]
+    closes = (totals['total'] - 1).abs() < TOLERANCE
+    over = totals['total'] > 1 + TOLERANCE
+
     print("\nTRANSFER COEFFICIENTS -- per resource, totalled over its output flows")
     print(f"  {len(totals)} distinct resources transferred")
-    print(f"    {len(single)} reach exactly one output flow  -> nothing to sum; each is a retention fraction")
-    print(f"    {len(splits)} split across several output flows -> these are the ones a sum-to-1 rule would bind")
-
-    if len(splits):
-        print("\n  Resources that genuinely split:")
-        for _, row in splits.iterrows():
-            print(f"    {row['Input_FlowID']:>4} {row['Input_layer_key']:>4} -> {row['TC_target_key']:<4} "
-                  f"across {row['destinations']} flows, total {row['total']:.4g}")
-
-    out_of_range = totals[(totals['total'] < -TOLERANCE) | (totals['total'] > 1 + TOLERANCE)]
-    print(f"\n  totalling exactly 1: {int((totals['total'] - 1).abs().lt(TOLERANCE).sum())} of {len(totals)}")
-    print(f"  totalling above 1 (impossible -- creates mass): {len(out_of_range)}")
+    print(f"    {len(single):5d} reach exactly one output flow")
+    print(f"    {len(splits):5d} split across several output flows")
+    print(f"    {int(closes.sum()):5d} total exactly 1  (mass conserved by construction)")
+    print(f"    {int(over.sum()):5d} total ABOVE 1     (impossible -- creates mass)")
     print(f"  range of totals: [{totals['total'].min():.4g}, {totals['total'].max():.4g}]")
 
-    if totals['duplicated'].any():
-        print(f"\n  WARNING: {int(totals['duplicated'].sum())} resources routed to the same output flow "
-              f"more than once. The two engines resolve this differently -- see documentation/DEFECTS.md 2.3.")
+    if over.any():
+        print("\n  ERROR -- these create mass:")
+        for _, row in totals[over].iterrows():
+            print(f"    {row['Input_FlowID']} / {row['Input_layer_key']} -> "
+                  f"{row['TC_target_key']}: {row['total']:.4g}")
 
     unaccounted = 1 - totals['total']
-    print(f"\n  Unaccounted fraction (1 - total), which currently goes nowhere:")
-    print(f"    mean {unaccounted.mean():.3f}, min {unaccounted.min():.3f}, max {unaccounted.max():.3f}")
-    print("  Nothing in the model records this. Adding explicit loss flows is what")
-    print("  would make it visible, and a sum-to-1 rule checkable.")
+    if (unaccounted.abs() > TOLERANCE).any():
+        leaking = unaccounted[unaccounted.abs() > TOLERANCE]
+        print(f"\n  {len(leaking)} resources do not total 1. Unaccounted fraction: "
+              f"mean {leaking.mean():.3f}, max {leaking.max():.3f}")
+        print("  That mass is not routed anywhere and leaves the system unrecorded.")
+        print("  Adding explicit per-process loss flows is what closes this.")
+    else:
+        print("\n  All resources total exactly 1: mass is conserved by construction.")
+
+    if totals['duplicated'].any():
+        print(f"\n  WARNING: {int(totals['duplicated'].sum())} resources routed to the same output "
+              f"flow more than once. The engines disagree here -- see documentation/DEFECTS.md 2.3.")
+
+    mixed = check_single_target_layer(tcs)
+    print("\nSTRUCTURE -- every TC writing into one output flow must target the same layer")
+    if len(mixed):
+        print(f"  ERROR: {len(mixed)} output flows are written at mixed layers.")
+        print("  This breaks the nesting invariant: deep rows will exceed their own parents.")
+        for flow, row in mixed.iterrows():
+            print(f"    {flow}: {', '.join(sorted(row['unique']))}")
+    else:
+        print("  OK -- no output flow is written at mixed layers.")
+
+    uncertainty = check_uncertainty(tcs)
+    print("\nUNCERTAINTY -- optional value_min / value_max triangular columns")
+    if uncertainty is None:
+        print("  Not present. The table is deterministic; the Monte Carlo needs these.")
+    elif len(uncertainty):
+        print(f"  ERROR: {len(uncertainty)} rows violate 0 <= value_min <= value <= value_max <= 1")
+        print(uncertainty.head(10).to_string(index=False))
+    else:
+        spread = tcs['value_max'] - tcs['value_min']
+        skew = ((tcs['value_max'] - tcs['value']) - (tcs['value'] - tcs['value_min']))
+        print(f"  OK -- {len(tcs)} rows, all with 0 <= min <= mode <= max <= 1")
+        print(f"  width  : mean {spread.mean():.3f}, max {spread.max():.3f}")
+        print(f"  skew   : {int((skew.abs() > TOLERANCE).sum())} of {len(tcs)} asymmetric "
+              f"(mode off-centre), mean signed skew {skew.mean():+.3f}")
 
 
 if __name__ == "__main__":
