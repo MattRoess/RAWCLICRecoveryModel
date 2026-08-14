@@ -12,6 +12,7 @@ flows it can reach.
 Composition is checked too: shares must sum to 1 within each parent, or the
 inflow expansion silently creates or destroys mass.
 """
+import os
 import sys
 
 import pandas as pd
@@ -55,6 +56,17 @@ def check_composition(folder: str) -> pd.DataFrame:
 
 
 def report(folder: str) -> None:
+    missing = [name for name in ('TCs.csv', 'composition.csv')
+               if not os.path.exists(os.path.join(folder, 'input_data', name))]
+    if missing:
+        print(f"\nNothing to check in '{folder}': missing {', '.join(missing)}")
+        print(f"Expected them in {os.path.join(folder, 'input_data')}.")
+        print("\nData folders that do have them:")
+        for root, _, files in os.walk('data_folder'):
+            if 'TCs.csv' in files:
+                print(f"  {os.path.dirname(root)}")
+        sys.exit(1)
+
     print(f"\n{folder}")
 
     composition = check_composition(folder)
