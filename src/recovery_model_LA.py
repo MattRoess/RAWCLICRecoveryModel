@@ -169,15 +169,20 @@ class RecoveryModelLA:
         if len(inflows_df)==0:
             raise AssertionError("This combination of year, scenario, location and additionalSpecification does not exist.")
 
-        # Create a new dataframe that expresses the flows/resources in encodable form
-        encoding_df = pd.DataFrame(columns=['Stock/Flow ID'] + self.layer_names)
+        # Create a new dataframe that expresses the flows/resources in encodable form.
+        # Rows are collected in a list and the frame built once: appending row by row
+        # is quadratic, and DataFrame._append was removed in pandas 3.
+        encoding_columns = ['Stock/Flow ID'] + self.layer_names
+        encoding_rows = []
         for _, row in inflows_df.iterrows():
             new_row = {}
             new_row['Stock/Flow ID'] = row['Stock/Flow ID']
             new_row[self.layer_names[0]] = row['Substance_main_parent']
             for layer in self.layer_names[1:]:
                 new_row[layer] = 'empty'
-            encoding_df = encoding_df._append(new_row, ignore_index=True)
+            encoding_rows.append(new_row)
+        # Column order is enforced because the frame is later read positionally (.values)
+        encoding_df = pd.DataFrame(encoding_rows, columns=encoding_columns)
 
         for column, mapping in self.encoding_dict.items():
             encoding_df[column] = encoding_df[column].replace(mapping)
@@ -270,7 +275,9 @@ class RecoveryModelLA:
         tcs_df = tcs_df.sort_values(by='input_layer_sort',ascending=True)
         
         # Now we create a new dataframe that has the same shape as the final matrix. We fill it row by row and use it to create the final matrix.
-        new_tcs_df = pd.DataFrame(columns=['Input_FlowID'] + ['Input_'+layer_name for layer_name in self.layer_names]+['Output_FlowID'] +['Output_'+layer_name for layer_name in self.layer_names]+['value'])
+        new_tcs_columns = ['Input_FlowID'] + ['Input_'+layer_name for layer_name in self.layer_names]+['Output_FlowID'] +['Output_'+layer_name for layer_name in self.layer_names]+['value']
+        # As above: collect rows and build the frame once, rather than appending in a loop.
+        new_tcs_rows = []
         for _, row in tcs_df.iterrows():
             # For each TC entry, fill the values one-by-one.
             new_row = {}
@@ -287,8 +294,10 @@ class RecoveryModelLA:
                 else:
                     new_row['Input_'+layer] = list(self.decoding_dict[layer].values())
                     new_row['Output_'+layer] = list(self.decoding_dict[layer].values())
-            new_tcs_df = new_tcs_df._append(new_row,ignore_index=True)
-                
+            new_tcs_rows.append(new_row)
+        new_tcs_df = pd.DataFrame(new_tcs_rows, columns=new_tcs_columns)
+
+
         for layer in self.layer_names:
             new_tcs_df = new_tcs_df.explode(['Input_'+layer, 'Output_'+layer])
 

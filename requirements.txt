@@ -1,10 +1,20 @@
-scipy
-numpy
-pandas
-networkx
-openpyxl
-jupyter
-jupyterlab
-ipywidgets
-gprof2dot
-graphviz
+# Recovery model dependencies. Python 3.14, no conda.
+#
+# Setup (from the project root):
+#   python3 -m venv .venv
+#   ./.venv/bin/pip install -r requirements.txt
+#
+# Then select .venv as the interpreter in Positron.
+# Versions are pinned: this project is sensitive to pandas behaviour changes
+# (copy-on-write and the removal of legacy APIs both altered results in the past).
+
+pandas==3.0.5
+numpy==2.5.2
+scipy==1.18.0
+networkx==3.6.1
+
+# Reading the .docx user guide and any Excel-format input data.
+openpyxl==3.1.5
+
+# Required by Positron to start a Python console or run notebooks.
+ipykernel==7.3.0

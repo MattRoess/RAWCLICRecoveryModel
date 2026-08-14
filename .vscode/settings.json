@@ -1,0 +1,16 @@
+{
+  // Positron / VS Code pick up the project venv automatically from this path.
+  // Recreate it with:  python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+
+  // Run scripts and the console from the project root, so that the relative
+  // paths in run_model.py ("data_folder/...") resolve correctly.
+  "python.terminal.executeInFileDir": false,
+  "jupyter.notebookFileRoot": "${workspaceFolder}",
+
+  // Make `import src.recovery_model_optimized` resolve for the language server.
+  "python.analysis.extraPaths": ["${workspaceFolder}"],
+
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true
+}

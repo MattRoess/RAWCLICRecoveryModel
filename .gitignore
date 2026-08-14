@@ -1,13 +1,31 @@
-.
-~
-.*
-~*
-__*
-*test_size_*
-**/data*/
-**/*data*/
-!data_folder/
+# --- Python ---
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# --- Virtual environment ---
+# The venv is recreated from requirements.txt; never commit it.
+.venv/
+venv/
+
+# --- Editor / OS ---
+# .vscode is NOT ignored wholesale: settings.json is committed so that
+# Positron picks up the right interpreter for everyone who clones this.
+.vscode/*
+!.vscode/settings.json
+.DS_Store
+
+# --- Data ---
+# Real input data stays local. Only the small mock dataset is tracked,
+# because it is the reference case the model is checked against.
 data_folder/*
 !data_folder/basic_test/
 !data_folder/basic_test/**
-environment.yml
+
+# Model outputs are regenerated on every run. The one exception is
+# basic_test's solution.csv, which is the committed reference result.
+data_folder/basic_test/output_data/*
+!data_folder/basic_test/output_data/solution.csv
+
+# --- Profiling scratch ---
+*test_size_*

@@ -293,7 +293,12 @@ class RecoveryModelOptimized:
                 
                 tcs_layer.rename(columns={"Input_layer_key": input_layer, "TC_target_key": target_layer, "value": "TC"}, inplace=True)
                 process_outflow = process_inflow.merge(tcs_layer, on=[input_layer, target_layer], how='left')
-            process_outflow["TC"].fillna(0, inplace=True)
+            # Rows with no matching TC get a TC of 0, i.e. none of that resource is
+            # transferred. This must be an assignment, not fillna(inplace=True): under
+            # copy-on-write the inplace form silently does nothing, leaving the TC as
+            # NaN. The Value!=0 filter below then prunes nothing and the intermediate
+            # result grows 16x per process step.
+            process_outflow["TC"] = process_outflow["TC"].fillna(0)
             process_outflow["Value"] *= process_outflow["TC"]
             return process_outflow[process_outflow["Value"]!=0.0].drop(columns=["TC"])
 
