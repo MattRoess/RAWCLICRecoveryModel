@@ -34,10 +34,9 @@ Nothing about uncertainty exists yet. That is the work ahead.
 | Editor | Positron | `.vscode/settings.json` is committed, so `.venv` is auto-selected. `ipykernel` is in requirements for the console. |
 | Repo | `MattRoess/RAWCLICRecoveryModel`, private | Empa research code; can be made public later. |
 
-```bash
-python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
-```
-
+**Setting this up on another machine: see [SETUP.md](SETUP.md).** It covers
+installing Python 3.14 without conda, building the venv, selecting the
+interpreter in Positron, and the pyenv trap that bit us on the first machine.
 Verified reproducible from a clean clone.
 
 The version pins are not caution for its own sake. The pandas copy-on-write
@@ -60,6 +59,8 @@ it is recoverable from commit `cc82a0a` if ever needed.
 | `902b04c` | This documentation set, `compare_engines.py`, and the defect cases. |
 | `9cbbe8d` | Corrected the TC mass-balance grouping; added `check_mass_balance.py`. |
 | `f082c7b` | Positron terminal auto-activation. |
+| `f719d5f` | TC table schema proposal and the `template` worked example. |
+| `cf9b188` | `plot_flows.py` — mass-weighted Sankey figures. |
 
 ## 4. Open questions — these need answers, not code
 
@@ -113,7 +114,42 @@ pole and is not engineering at all — it is a method decision followed by data
 collection, and nothing in step 4 can be finished without it. Step 4 should not
 start before step 1 exists.
 
-## 6. Upstream context
+## 6. Picking up on Monday
+
+Do these in order and you are back to where today ended in about ten minutes.
+
+1. **[SETUP.md](SETUP.md)** — Python 3.14, venv, Positron interpreter. Finish
+   with the verification block; if `compare_engines.py` prints *Engines agree*,
+   the environment is good.
+2. **Look at `figures/template_structure.svg`** — one page showing every flow,
+   every process, and every transfer coefficient behind each arrow. It is the
+   fastest way back into how the model is wired.
+3. **Read [MODEL_MECHANICS.md](MODEL_MECHANICS.md) §1 and §4.** The nesting
+   rule and what a TC can meaningfully sum to. Both are counter-intuitive and
+   both were got wrong at least once during this session.
+4. **Then [DESIGN_tc_table.md](DESIGN_tc_table.md)**, which is where the work
+   actually resumes.
+
+### The one thing waiting on you, not on the code
+
+**The flow network.** Which processes exist, and what output flows each has.
+The real TC table does not exist yet, so nothing downstream can be finished
+without it, and it is entirely domain knowledge. `data_folder/template` is a
+worked example of the shape the answer takes — seven flows, three processes,
+explicit loss flows — not a proposal about the content.
+
+Everything else in §5 is engineering that can proceed in parallel.
+
+### Known unfinished
+
+- **The structure figure needs a second pass.** `plot_structure.py` was written
+  at the end of the session in response to the note that the Sankey diagrams
+  did not answer "how is this set up". It is a first cut. If it is still hard
+  to follow, that is the figure to iterate on, not the Sankeys.
+- No regression test exists yet. It is step 1 of §5 and should come before any
+  Monte Carlo restructuring.
+
+## 7. Upstream context
 
 Inflows come from `04_02` in the separate pipeline: per-element inflow, outflow
 and collected in kt, at 200,000 draws, resolved by domain.

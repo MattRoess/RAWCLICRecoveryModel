@@ -14,7 +14,8 @@ processes by transfer coefficients (TCs).
 - `run_model.py` — entry point
 - `compare_engines.py` — runs both engines over a data folder and diffs them
 - `check_mass_balance.py` — reports what a dataset's TCs and composition total to
-- `plot_flows.py` — draws the flow network as a Sankey diagram, into `figures/`
+- `plot_structure.py` — draws how the flows connect and the TCs behind each arrow
+- `plot_flows.py` — draws mass-weighted Sankey diagrams, in total and per element
 
 **Start at [documentation/README.md](documentation/README.md).** It indexes how
 the model actually computes a result, every known defect with a reproduction,
@@ -35,7 +36,8 @@ small cases.
 ## Setup
 
 No conda. The project uses a plain virtual environment, pinned in
-`requirements.txt` and built with Python 3.14.
+`requirements.txt` and built with Python 3.14. Full instructions for a fresh
+machine, including Positron, are in [documentation/SETUP.md](documentation/SETUP.md).
 
 ```bash
 python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt

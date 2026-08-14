@@ -6,6 +6,7 @@ rather than from anyone's recollection.
 
 | Document | What is in it |
 |---|---|
+| [SETUP.md](SETUP.md) | Getting running on a new machine: Python 3.14 without conda, the venv, and Positron. Start here on a fresh Mac. |
 | [MODEL_MECHANICS.md](MODEL_MECHANICS.md) | How the model actually computes a result. The nesting rule, how composition and TCs are applied, what the two engines do differently by design. Read this first. |
 | [DEFECTS.md](DEFECTS.md) | Every defect and engine divergence found, each with a measurement and a one-command reproduction. |
 | [DESIGN_tc_table.md](DESIGN_tc_table.md) | How to build the TC table so that sum-to-1 holds by construction. Proposal, with a worked example in `data_folder/template`. The real table does not exist yet, so read this before collecting data. |
@@ -30,6 +31,15 @@ Read MODEL_MECHANICS.md §4 first — the grouping this uses is not the obvious
 one, and the obvious one produces numbers that are not quantities.
 
 ## Seeing the flows
+
+To understand **how the model is wired** — every flow, every process, and the
+transfer coefficients behind each arrow, nothing scaled by mass:
+
+```bash
+./.venv/bin/python plot_structure.py data_folder/template
+```
+
+To see **how much mass goes where**, as a Sankey, in total and per element:
 
 ```bash
 ./.venv/bin/python plot_flows.py data_folder/template
