@@ -63,11 +63,19 @@ it is recoverable from commit `cc82a0a` if ever needed.
 These are method decisions. They are listed in DESIGN_monte_carlo.md §6 with
 context; repeated here because they gate the work.
 
-1. **Do losses get explicit flows?** The "everything sums to 1" requirement
-   cannot be met without them — the current TCs sum to 0.06–0.80 and the
-   shortfall vanishes unrecorded. Enforcing sum-to-1 on the data as it stands
-   would multiply some recovery routes by up to 2.4x. This is a data collection
-   task and it blocks everything else.
+0. **How much does "everything sums to 1" actually constrain?** Answer this
+   first, empirically: `./.venv/bin/python check_mass_balance.py <your data>`.
+   A TC is a retention fraction for one resource into one destination, so the
+   only meaningful total is per resource over its output flows. In `basic_test`
+   **22 of 24 resources reach exactly one output flow** — nothing to sum, and
+   the simplex machinery in DESIGN_monte_carlo.md §4 would be a corner case.
+   Real separation processes may well split much more, which is why this needs
+   measuring against the real TC table rather than assuming either way.
+1. **Do losses get explicit flows**, for the sets that do split? Sum-to-1
+   cannot be enforced without them: `basic_test`'s two split sets total 0.08
+   and 0.66, so normalising as-is would inflate those routes 12x and 1.5x.
+   A weaker rule — a resource's total must never *exceed* 1 — needs no new data
+   and should be enforced immediately.
 2. **How should overlapping TC specificity resolve?** The two engines disagree
    by a factor of two and the user guide is silent. This must be settled
    *before* element-layer TCs are layered over component-layer ones — which is

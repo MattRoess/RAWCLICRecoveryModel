@@ -74,33 +74,76 @@ materialise the full array.
    slow. The same root cause — seeding a frame with
    `pd.DataFrame(columns=[...])` — produces both this and problem 2.
 
-## 3. "Everything sums to 1" is a data-model change, not a sampling change
+## 3. How much does "everything sums to 1" actually constrain?
 
-**This is the most important point in this document.**
+Less than it first appears. Establishing this properly changes the design.
 
-The current TCs do not sum to 1, and are not close. Per flow and input key in
-`basic_test`, the outgoing TCs sum to: 0.41, 0.74, 0.71, 0.80, 0.60, 0.66,
-0.77, 0.18, 0.06, 0.14, 0.19.
+### What can sum to anything
 
-The shortfall is not routed anywhere — it has no loss or residual flow, and
-simply stops existing (MODEL_MECHANICS.md §4).
+A TC is a **retention fraction for one resource into one destination flow**
+(MODEL_MECHANICS.md §4). The only meaningful total is: one resource, summed
+over the output flows it reaches. Summing by input key, or across different
+target keys, adds unrelated resources together and produces a number that is
+not a quantity.
 
-So the constraint cannot be applied to the data as it stands. Normalising
-F1/P1's TCs to sum to 1 would multiply that recovery route by 2.4x. **Enforcing
-sum-to-1 on an incomplete set does not conserve mass, it invents recovery.**
+### What that total looks like in practice
 
-The prerequisite is therefore a schema and data change:
+From `check_mass_balance.py` on `basic_test`:
 
-> Every process must gain **explicit residual/loss output flows**, so that the
-> set being constrained is complete — recovered fractions *plus* losses to
-> slag, dust, landfill, export, and any unrecovered remainder.
+| | count |
+|---|---|
+| Distinct resources transferred | 24 |
+| Reaching exactly **one** output flow | **22** |
+| Genuinely **splitting** across several | **2** |
+| Totalling exactly 1 | 0 |
+| Totalling above 1 (would create mass) | 0 |
 
-That is a data collection task and a modelling decision before it is a coding
-task. Once it exists, sum-to-1 becomes both enforceable and *checkable*, and a
-mass balance assertion can be added as a hard validation on load.
+So a sum-to-1 rule has almost nothing to bind on here. 22 of the 24 resources
+have a single destination, where the coefficient is just a retention fraction
+and the only constraint is `0 <= TC <= 1`. The two genuine splits total 0.08
+and 0.66 — both well under 1, the rest being loss.
 
-Composition already satisfies this — it closes to 1.0 exactly at all three
-depths — so the same machinery should cover both inputs.
+### What this means for the design
+
+**The simplex problem is the exception, not the rule.** Most TCs can be sampled
+as independent triangulars on [0, 1] with no normalisation, no marginal
+distortion, and no joint machinery at all. Only split sets need special
+handling, and only where a resource reaches more than one output flow.
+
+This is a significant simplification over treating every process as a simplex.
+
+**But it is an empirical question about your data, not a settled fact.**
+`basic_test` is mock data with a mostly linear flow network. A real recovery
+network is full of separation steps — a shredder splitting into ferrous,
+non-ferrous and ASR — where one input resource genuinely does divide between
+several output flows. In that data, split sets could be the majority.
+
+> **Run `check_mass_balance.py` against the real TC table before designing the
+> constraint handling.** The ratio of split sets to single-destination sets
+> determines how much of §4 you actually need.
+
+### Where splits do exist, sum-to-1 still needs loss flows
+
+For a split set, enforcing "sums to 1" is only correct if the set is complete.
+In `basic_test` the two splits total 0.08 and 0.66; normalising them as they
+stand would inflate those routes by 12x and 1.5x. **Enforcing sum-to-1 on an
+incomplete set does not conserve mass, it invents recovery.**
+
+So where the constraint is to be applied, the prerequisite is still a data
+change: those processes need **explicit residual/loss output flows**, so that
+the set being constrained is complete — recovered fractions *plus* losses to
+slag, dust, landfill, export and unrecovered remainder.
+
+The weaker constraint applies everywhere and is worth enforcing immediately,
+independent of any of the above:
+
+> **A resource's total over its output flows must never exceed 1.** Above 1
+> creates mass. It holds for singletons and split sets alike, it needs no new
+> data, and it should be a hard validation on load and a per-draw check in the
+> Monte Carlo.
+
+Composition already closes to 1.0 exactly at all three depths, so if it is
+sampled too it is a genuine simplex — and there the machinery in §4 does apply.
 
 ## 4. Sampling asymmetric triangulars on a simplex
 
@@ -113,8 +156,13 @@ x = a + sqrt(U * (b - a) * (c - a))              where U <  F_c
 x = b - sqrt((1 - U) * (b - a) * (b - c))        where U >= F_c
 ```
 
-The difficulty is the **joint** constraint: the k TCs leaving one (flow, key)
-must sum to 1, but k independent triangulars do not. Three options, none free:
+**For a single-destination resource that is the whole job** — sample the
+triangular, done. No joint constraint exists, because there is no set to
+constrain. Per §3 that covers 22 of 24 resources in `basic_test`.
+
+The rest of this section applies only to **split sets**, where one resource
+reaches several output flows and those k coefficients must sum to 1. Sampling
+k independent triangulars does not give a sum of 1. Three options, none free:
 
 | Approach | Constraint | Marginals | Problem |
 |---|---|---|---|
@@ -164,8 +212,13 @@ Also to decide:
 
 These need answers before implementation, in roughly this order:
 
-1. Whether losses/residuals get explicit flows (§3). Everything else depends
-   on this.
+0. **How many resources in the real TC table actually split?** Run
+   `check_mass_balance.py` against it. This is a five-minute empirical question
+   and it determines how much of §4 is needed at all — in `basic_test` the
+   answer is 2 of 24, which would make the simplex machinery a corner case
+   rather than the core of the design.
+1. Whether losses/residuals get explicit flows, for those sets that do split
+   (§3). Everything about the constraint depends on this.
 2. Which TCs are correlated, keyed on `process` / `technology` (§5).
 3. Whether composition is uncertain as well as TCs.
 4. Which rows need full per-draw traces retained, versus summary statistics

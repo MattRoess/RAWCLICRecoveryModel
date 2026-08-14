@@ -8,13 +8,25 @@ rather than from anyone's recollection.
 |---|---|
 | [MODEL_MECHANICS.md](MODEL_MECHANICS.md) | How the model actually computes a result. The nesting rule, how composition and TCs are applied, what the two engines do differently by design. Read this first. |
 | [DEFECTS.md](DEFECTS.md) | Every defect and engine divergence found, each with a measurement and a one-command reproduction. |
-| [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | The design problem for the Monte Carlo version: architecture, the sum-to-1 requirement, sampling asymmetric triangulars, and the compute budget. Not yet built. |
+| [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | The design problem for the Monte Carlo version: architecture, the compute budget, sampling asymmetric triangulars, and how much a sum-to-1 rule really constrains (less than it looks). Not yet built. |
 | [HANDOVER.md](HANDOVER.md) | Current state, decisions taken and why, open questions, and the recommended order of work. |
 
 The input file format is specified in `../doc/User guide.docx` (Harmjan de
 Vries, 21-11-2024). That document is the authority on the input schema and is
 still accurate. It does not describe model behaviour, which is what
 MODEL_MECHANICS.md covers.
+
+## Checking a dataset
+
+What the transfer coefficients in a dataset actually total, and whether
+composition closes to 1:
+
+```bash
+./.venv/bin/python check_mass_balance.py data_folder/basic_test
+```
+
+Read MODEL_MECHANICS.md §4 first — the grouping this uses is not the obvious
+one, and the obvious one produces numbers that are not quantities.
 
 ## Verifying the model still works
 

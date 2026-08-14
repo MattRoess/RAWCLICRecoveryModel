@@ -98,31 +98,53 @@ final output.
 > produce a *different set of rows*, which cannot be stacked into an array.
 > See DESIGN_monte_carlo.md.
 
-## 4. Mass is not conserved, and nothing checks it
+## 4. What a TC is, and what it can meaningfully sum to
 
-The TCs leaving a flow are not required to sum to anything. In `basic_test`
-they sum to:
+This is easy to get wrong, so it is worth stating precisely.
 
-| Flow / key | Sum of outgoing TCs |
-|---|---|
-| F1 / P1 | 0.41 |
-| F1 / P2 | 0.74 |
-| F2 / C1 | 0.71 |
-| F2 / C2 | 0.80 |
-| F3 / C2 | 0.60 |
-| F3 / C3 | 0.66 |
-| F4 / C2 | 0.77 |
-| F5 / M1 | 0.18 |
-| F5 / M2 | 0.06 |
-| F7 / M1 | 0.14 |
-| F7 / M2 | 0.19 |
+A TC is applied by joining on **both** layer columns and multiplying. So the
+thing it transfers is identified by the **pair** `(Input_layer_key,
+TC_target_key)` — "component C1 as found within product P1" — and the
+coefficient is the fraction of *that* resource which survives into *one named
+output flow*.
 
-The remainder is not routed to a loss or residual flow. It simply stops
-existing, with no record and no warning. Composition, by contrast, closes to
-1.0 exactly. The discipline exists on one input and not the other.
+> **A TC is a retention fraction for one resource into one destination.**
 
-This matters directly for the planned "everything sums to 1" requirement —
-see DESIGN_monte_carlo.md §3.
+Two consequences that are easy to get backwards:
+
+- **Summing TCs by input key alone is meaningless.** For `F1 / P1` that gives
+  0.41, but it is 0.25 of C1 plus 0.08 of C2 plus 0.08 of C3 — three different
+  resources added together. It is not a quantity.
+- **Summing TCs across different target keys at the same depth is also
+  meaningless.** `F2 / C1 → M1` (0.39) and `F2 / C1 → M2` (0.32) describe two
+  different materials inside C1. They are not competing destinations for the
+  same mass.
+
+The only sum that means anything is: **one resource, totalled over the output
+flows it can reach.** That total must lie in [0, 1] — above 1 creates mass, and
+the shortfall below 1 is loss.
+
+Run `check_mass_balance.py` to compute this for any dataset. On `basic_test`:
+
+```
+24 distinct resources transferred
+  22 reach exactly one output flow  -> nothing to sum; each is a retention fraction
+   2 split across several output flows
+      F1  P1 -> C2  across 2 flows, total 0.08
+      F1  P2 -> C2  across 2 flows, total 0.66
+range of totals: [0, 0.66]   none exceed 1
+```
+
+So in this dataset there is almost nothing for a sum-to-1 rule to bind on —
+22 of 24 resources have a single destination and a retention fraction well
+below 1. The remaining 78% on average is loss, and **it is not routed
+anywhere**: no residual flow, no record, no warning.
+
+Composition, by contrast, closes to 1.0 exactly at all three depths. That
+discipline exists on one input and not the other.
+
+Whether a sum-to-1 rule applies to *your* data is an empirical question about
+how many resources genuinely split — see DESIGN_monte_carlo.md §3.
 
 ## 5. The two engines
 

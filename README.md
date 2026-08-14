@@ -13,6 +13,7 @@ processes by transfer coefficients (TCs).
 - `doc/User guide.docx` — input data format specification
 - `run_model.py` — entry point
 - `compare_engines.py` — runs both engines over a data folder and diffs them
+- `check_mass_balance.py` — reports what a dataset's TCs and composition total to
 
 **Start at [documentation/README.md](documentation/README.md).** It indexes how
 the model actually computes a result, every known defect with a reproduction,
@@ -83,9 +84,11 @@ measurement and a one-command reproduction in
 - **Overlapping TC specificity resolves differently.** Given both a
   product-level and a component-level TC for the same process, `LA` applies the
   more specific one and `Optimized` adds them together.
-- **There is no mass balance check.** Nothing verifies that the TCs leaving a
-  flow sum to anything in particular. In `basic_test` they sum to between 0.06
-  and 0.80, and the unaccounted mass has no residual flow — it simply leaves
-  the system unrecorded.
+- **There is no mass balance check.** A TC is a retention fraction for one
+  resource into one destination flow, so the meaningful total is per resource
+  over the output flows it reaches. Nothing verifies it. Run
+  `check_mass_balance.py` to see it for any dataset: on `basic_test` the totals
+  range [0, 0.66] and the unaccounted 78% has no residual flow — it simply
+  leaves the system unrecorded.
 - **Everything is deterministic.** The `DQS` and `CV` columns are declared in
   the input dtypes but are read by nothing.

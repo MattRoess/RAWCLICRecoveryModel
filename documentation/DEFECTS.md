@@ -154,13 +154,22 @@ engines equally. Listed so they are not rediscovered.
 
 ### 3.1 No mass balance check anywhere
 
-Nothing verifies that TCs leaving a flow sum to anything. In `basic_test` they
-sum to between 0.06 and 0.80, and the shortfall has no residual or loss flow —
-it leaves the system unrecorded. Composition, by contrast, closes to 1.0
-exactly at every depth.
+Nothing verifies that the TCs for a resource total to anything sensible, and
+nothing records the shortfall.
 
-This blocks the "everything sums to 1" requirement directly. See
-DESIGN_monte_carlo.md §3 — it is a data-model change, not a code change.
+The meaningful check is per transferred resource, totalled over the output
+flows it reaches — see MODEL_MECHANICS.md §4 for why other groupings are not
+quantities. `check_mass_balance.py` computes it. On `basic_test`, totals range
+[0, 0.66], none exceed 1, and the unaccounted fraction averages 0.78. That mass
+has no residual or loss flow: it leaves the system unrecorded.
+
+Two things a checker should catch that nothing currently does:
+
+- **A total above 1**, which creates mass and is always an error.
+- **Composition failing to close to 1**, which silently rescales the entire
+  inflow expansion. In `basic_test` it closes exactly, at all three depths.
+
+See DESIGN_monte_carlo.md §3 for how this bears on the sum-to-1 question.
 
 ### 3.2 No uncertainty of any kind
 
