@@ -1,0 +1,2 @@
+Input_FlowID,Input_layer,Input_layer_key,Output_FlowID,TC_target_layer,TC_target_key,value,process,technology
+F1,product,P*,F2,component,C1,0.5,T1,

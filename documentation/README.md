@@ -1,0 +1,32 @@
+# Documentation index
+
+Written 2026-08-14, after a review of the inherited code. The point of these
+documents is that the next working session starts from something written down
+rather than from anyone's recollection.
+
+| Document | What is in it |
+|---|---|
+| [MODEL_MECHANICS.md](MODEL_MECHANICS.md) | How the model actually computes a result. The nesting rule, how composition and TCs are applied, what the two engines do differently by design. Read this first. |
+| [DEFECTS.md](DEFECTS.md) | Every defect and engine divergence found, each with a measurement and a one-command reproduction. |
+| [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | The design problem for the Monte Carlo version: architecture, the sum-to-1 requirement, sampling asymmetric triangulars, and the compute budget. Not yet built. |
+| [HANDOVER.md](HANDOVER.md) | Current state, decisions taken and why, open questions, and the recommended order of work. |
+
+The input file format is specified in `../doc/User guide.docx` (Harmjan de
+Vries, 21-11-2024). That document is the authority on the input schema and is
+still accurate. It does not describe model behaviour, which is what
+MODEL_MECHANICS.md covers.
+
+## Verifying the model still works
+
+Both engines reproduce the committed reference result exactly:
+
+```bash
+./.venv/bin/python compare_engines.py data_folder/basic_test
+```
+
+Expected: 180 rows, largest engine difference on the order of 1e-15.
+
+That last figure varies slightly between runs. This is expected and understood:
+the LA engine's encoding order depends on Python's hash randomisation, which
+changes the floating-point accumulation order in its sparse solve. See
+DEFECTS.md §3.5. The optimized engine is bit-identical across runs.

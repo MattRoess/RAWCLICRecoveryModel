@@ -1,0 +1,118 @@
+# Handover
+
+State as of 2026-08-14. Everything below is either verified by running it or
+flagged as a decision still to be taken.
+
+## 1. Where things stand
+
+The model works, in the narrow sense that both engines reproduce the committed
+reference result exactly:
+
+```bash
+./.venv/bin/python compare_engines.py data_folder/basic_test
+# 180 rows, largest engine difference 8.9e-16
+```
+
+The core algebra — nested layers, composition expansion, TC application,
+topological process ordering — is sound, and two independent implementations
+agreeing is real evidence for it.
+
+It did not run when inherited. Three pandas-3 breakages were fixed
+(DEFECTS.md §1). Beyond `basic_test`, three semantic divergences between the
+engines remain open and change results (DEFECTS.md §2).
+
+Nothing about uncertainty exists yet. That is the work ahead.
+
+## 2. Environment — decisions and why
+
+**No conda, on this or any machine.** Plain venv, pinned requirements.
+
+| Decision | Value | Why |
+|---|---|---|
+| Python | 3.14.2 | Already installed; avoids a mid-project migration. |
+| pandas | 3.0.5, pinned | See below — the pins are load-bearing. |
+| Editor | Positron | `.vscode/settings.json` is committed, so `.venv` is auto-selected. `ipykernel` is in requirements for the console. |
+| Repo | `MattRoess/RAWCLICRecoveryModel`, private | Empa research code; can be made public later. |
+
+```bash
+python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+```
+
+Verified reproducible from a clean clone.
+
+The version pins are not caution for its own sake. The pandas copy-on-write
+change turned a `fillna` call into a silent no-op and inflated this model's
+intermediates 300,000-fold **without changing its output** (DEFECTS.md §1.3).
+Unpinned, that class of failure recurs invisibly. Do not relax the pins without
+running the comparison above.
+
+Python 3.13 + pandas 2.2 was the considered alternative — everything would have
+run unmodified. Rejected because the code needed fixing either way, and
+migrating mid-project is worse than fixing now. `environment.yml` was deleted;
+it is recoverable from commit `cc82a0a` if ever needed.
+
+## 3. Commits
+
+| Commit | Contents |
+|---|---|
+| `cc82a0a` | The code exactly as inherited. Baseline for reviewing every later diff. |
+| `ee3fc6b` | Environment setup and the three pandas-3 fixes. |
+
+## 4. Open questions — these need answers, not code
+
+These are method decisions. They are listed in DESIGN_monte_carlo.md §6 with
+context; repeated here because they gate the work.
+
+1. **Do losses get explicit flows?** The "everything sums to 1" requirement
+   cannot be met without them — the current TCs sum to 0.06–0.80 and the
+   shortfall vanishes unrecorded. Enforcing sum-to-1 on the data as it stands
+   would multiply some recovery routes by up to 2.4x. This is a data collection
+   task and it blocks everything else.
+2. **How should overlapping TC specificity resolve?** The two engines disagree
+   by a factor of two and the user guide is silent. This must be settled
+   *before* element-layer TCs are layered over component-layer ones — which is
+   precisely what the new requirements ask for, so this will be hit immediately.
+3. **Which TCs are correlated?** `TCs.csv` already carries `process` and
+   `technology` columns that the model reads and discards. They are the obvious
+   grouping keys for common random numbers.
+4. **Is composition uncertain too, or only the TCs?**
+5. **Which rows need full per-draw traces**, versus summary statistics only?
+   This sets the memory budget.
+
+## 5. Recommended order of work
+
+1. **Regression test pinning `basic_test`.** Cheap, and the justification is
+   concrete: defect 1.3 was a 300,000x blow-up that stayed invisible for months
+   *because the output remained correct*. Without a pinned test, the Monte
+   Carlo restructuring can silently move the deterministic answer and nobody
+   will know. Compare with a tolerance rather than exactly — the LA engine
+   varies by ~1.5 ULP between runs (DEFECTS.md §3.5).
+2. **Fix the engine divergences** (DEFECTS.md §2.1, §2.2), and settle §2.3 with
+   whoever owns the method. Write the resolved semantics down — their absence
+   is why §2.3 exists at all.
+3. **Add residual/loss flows and a mass balance assertion on load.** Open
+   question 1. Everything downstream depends on it.
+4. **Then restructure for Monte Carlo** (DESIGN_monte_carlo.md §2): hoist the
+   join structure out, carry `Value` as `(n_rows x n_draws)`, chunk over draws.
+
+Steps 1 and 2 are ordinary engineering and can proceed immediately. Step 3 is
+blocked on a data decision. Step 4 should not start before step 1 exists.
+
+## 6. Upstream context
+
+Inflows come from `04_02` in the separate pipeline: per-element inflow, outflow
+and collected in kt, at 200,000 draws, resolved by domain.
+
+Two things carried over from that work:
+
+- Collection there is applied to **whole vehicles** — one rate, identical for
+  every element by construction. Element-specific recovery yield is not
+  modelled anywhere yet. That gap is exactly what this model is meant to fill.
+- **Known-open defect:** `mc_composition`'s Sensors series is mode-based and
+  understates sensor domain mass by ~1.73x. `04_02` works around it for
+  elements, but **domain mass still carries the error**. If this model consumes
+  domain-level mass rather than element-level, it inherits the bias.
+
+Draw alignment matters: draw *i* of the upstream inflow must pair with draw *i*
+of the TCs here, not an independent resample, or the uncertainties will not
+compose correctly.

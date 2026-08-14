@@ -9,8 +9,14 @@ processes by transfer coefficients (TCs).
 
 - `src/` — the two model engines
 - `data_folder/` — input data, one folder per case (`basic_test` is the mock reference case)
+- `documentation/` — how the model works, known defects, and the Monte Carlo design
 - `doc/User guide.docx` — input data format specification
 - `run_model.py` — entry point
+- `compare_engines.py` — runs both engines over a data folder and diffs them
+
+**Start at [documentation/README.md](documentation/README.md).** It indexes how
+the model actually computes a result, every known defect with a reproduction,
+and the open design questions.
 
 There are two engines, which agree exactly on `basic_test`:
 
@@ -63,7 +69,9 @@ Real input data is not tracked by git; only the `basic_test` mock case is.
 
 The model reproduces its reference case exactly, but several behaviours are
 either undocumented or differ between the two engines. Before relying on
-results beyond `basic_test`, read these:
+results beyond `basic_test`, read these — each is documented with a
+measurement and a one-command reproduction in
+[documentation/DEFECTS.md](documentation/DEFECTS.md):
 
 - **Composition `Stock/ID` is ignored by `RecoveryModelOptimized`.** It merges
   composition on the parent resource alone, so compositions defined for one
