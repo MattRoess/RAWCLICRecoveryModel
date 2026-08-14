@@ -1,0 +1,10 @@
+scipy
+numpy
+pandas
+networkx
+openpyxl
+jupyter
+jupyterlab
+ipywidgets
+gprof2dot
+graphviz

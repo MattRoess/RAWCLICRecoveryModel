@@ -1,0 +1,17 @@
+name: futuram
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pandas
+  - conda-forge::numpy
+  - scipy
+  - jupyterlab
+  - conda-forge::jupyter
+  - conda-forge::openpyxl
+  - conda-forge::gprof2dot
+  - conda-forge::graphviz
+  - conda-forge::snakeviz
+  - conda-forge::joblib
+  - conda-forge::numba
+  - conda-forge::networkx

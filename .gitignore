@@ -1,0 +1,13 @@
+.
+~
+.*
+~*
+__*
+*test_size_*
+**/data*/
+**/*data*/
+!data_folder/
+data_folder/*
+!data_folder/basic_test/
+!data_folder/basic_test/**
+environment.yml
