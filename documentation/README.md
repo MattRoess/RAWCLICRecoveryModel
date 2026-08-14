@@ -29,6 +29,18 @@ composition closes to 1:
 Read MODEL_MECHANICS.md §4 first — the grouping this uses is not the obvious
 one, and the obvious one produces numbers that are not quantities.
 
+## Seeing the flows
+
+```bash
+./.venv/bin/python plot_flows.py data_folder/template
+```
+
+Writes an SVG Sankey per case into `figures/` — one for total mass, one per
+element. Totals are taken at each flow's own shallowest depth, so the nesting
+described in MODEL_MECHANICS.md §1 is not double counted, and edge magnitudes
+are recomputed by replaying the model's own process loop rather than inferred
+from the solution file.
+
 ## Verifying the model still works
 
 Both engines reproduce the committed reference result exactly:

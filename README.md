@@ -14,6 +14,7 @@ processes by transfer coefficients (TCs).
 - `run_model.py` — entry point
 - `compare_engines.py` — runs both engines over a data folder and diffs them
 - `check_mass_balance.py` — reports what a dataset's TCs and composition total to
+- `plot_flows.py` — draws the flow network as a Sankey diagram, into `figures/`
 
 **Start at [documentation/README.md](documentation/README.md).** It indexes how
 the model actually computes a result, every known defect with a reproduction,

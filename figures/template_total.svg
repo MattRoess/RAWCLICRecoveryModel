@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 620" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+<style>  .bg{fill:#ffffff} .ttl{fill:#111827} .sub{fill:#6b7280} .lbl{fill:#111827}  .val{fill:#6b7280}  @media (prefers-color-scheme: dark){    .bg{fill:#0b0f19} .ttl{fill:#f3f4f6} .sub{fill:#9ca3af} .lbl{fill:#f3f4f6}    .val{fill:#9ca3af}}</style>
+<rect class="bg" width="1180" height="620"/>
+<text class="ttl" x="20" y="30" font-size="17" font-weight="600">template — material flows</text>
+<text class="sub" x="20" y="52" font-size="12.5">Each flow totalled at its own shallowest depth, so nesting is not double counted. Mass in Mg. 7 flows, 7 transfers.</text>
+<path d="M36.0,215.8 C276.5,215.8 276.5,215.8 517.0,215.8" fill="none" stroke="#4C78A8" stroke-opacity="0.42" stroke-width="279.6"/>
+<path d="M533.0,207.3 C773.5,207.3 773.5,240.3 1014.0,240.3" fill="none" stroke="#F58518" stroke-opacity="0.42" stroke-width="262.6"/>
+<path d="M36.0,444.7 C276.5,444.7 276.5,460.7 517.0,460.7" fill="none" stroke="#4C78A8" stroke-opacity="0.42" stroke-width="178.3"/>
+<path d="M533.0,419.8 C773.5,419.8 773.5,419.8 1014.0,419.8" fill="none" stroke="#54A24B" stroke-opacity="0.42" stroke-width="96.5"/>
+<path d="M533.0,509.0 C773.5,509.0 773.5,525.0 1014.0,525.0" fill="none" stroke="#54A24B" stroke-opacity="0.42" stroke-width="81.8"/>
+<path d="M36.0,545.9 C276.5,545.9 276.5,577.9 517.0,577.9" fill="none" stroke="#4C78A8" stroke-opacity="0.42" stroke-width="24.1"/>
+<path d="M533.0,347.1 C773.5,347.1 773.5,84.5 1014.0,84.5" fill="none" stroke="#F58518" stroke-opacity="0.42" stroke-width="17.0"/>
+<rect x="20.0" y="76.0" width="16" height="482.0" rx="2" fill="#4C78A8"/>
+<text class="lbl" x="43.0" y="316.0" font-size="12" text-anchor="start">F1_collected</text>
+<text class="val" x="43.0" y="329.0" font-size="10.5" text-anchor="start">1,000.0</text>
+<rect x="517.0" y="76.0" width="16" height="279.6" rx="2" fill="#F58518"/>
+<text class="lbl" x="540.0" y="214.8" font-size="12" text-anchor="start">F2_dismantled</text>
+<text class="val" x="540.0" y="227.8" font-size="10.5" text-anchor="start">580.0</text>
+<rect x="517.0" y="371.6" width="16" height="178.3" rx="2" fill="#54A24B"/>
+<text class="lbl" x="540.0" y="459.7" font-size="12" text-anchor="start">F3_shredded</text>
+<text class="val" x="540.0" y="472.7" font-size="10.5" text-anchor="start">370.0</text>
+<rect x="517.0" y="565.9" width="16" height="24.1" rx="2" fill="#B279A2"/>
+<text class="lbl" x="540.0" y="576.9" font-size="12" text-anchor="start">F8_loss_dismantling</text>
+<text class="val" x="540.0" y="589.9" font-size="10.5" text-anchor="start">50.0</text>
+<rect x="1014.0" y="76.0" width="16" height="17.0" rx="2" fill="#EECA3B"/>
+<text class="lbl" x="1037.0" y="83.5" font-size="12" text-anchor="start">F9_loss_refining</text>
+<text class="val" x="1037.0" y="96.5" font-size="10.5" text-anchor="start">35.2</text>
+<rect x="1014.0" y="109.0" width="16" height="359.1" rx="2" fill="#E45756"/>
+<text class="lbl" x="1037.0" y="287.5" font-size="12" text-anchor="start">F6_refined</text>
+<text class="val" x="1037.0" y="300.5" font-size="10.5" text-anchor="start">745.0</text>
+<rect x="1014.0" y="484.1" width="16" height="81.8" rx="2" fill="#72B7B2"/>
+<text class="lbl" x="1037.0" y="524.0" font-size="12" text-anchor="start">F7_loss_shredding</text>
+<text class="val" x="1037.0" y="537.0" font-size="10.5" text-anchor="start">169.8</text>
+</svg>

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 620" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+<style>  .bg{fill:#ffffff} .ttl{fill:#111827} .sub{fill:#6b7280} .lbl{fill:#111827}  .val{fill:#6b7280}  @media (prefers-color-scheme: dark){    .bg{fill:#0b0f19} .ttl{fill:#f3f4f6} .sub{fill:#9ca3af} .lbl{fill:#f3f4f6}    .val{fill:#9ca3af}}</style>
+<rect class="bg" width="1180" height="620"/>
+<text class="ttl" x="20" y="30" font-size="17" font-weight="600">basic_test — material flows</text>
+<text class="sub" x="20" y="52" font-size="12.5">Each flow totalled at its own shallowest depth, so nesting is not double counted. Mass in Mg. 8 flows, 10 transfers.</text>
+<path d="M36.0,95.3 C152.2,95.3 152.2,95.3 268.5,95.3" fill="none" stroke="#4C78A8" stroke-opacity="0.42" stroke-width="38.6"/>
+<path d="M36.0,121.5 C152.2,121.5 152.2,137.5 268.5,137.5" fill="none" stroke="#4C78A8" stroke-opacity="0.42" stroke-width="13.8"/>
+<path d="M284.5,81.8 C400.8,81.8 400.8,81.8 517.0,81.8" fill="none" stroke="#F58518" stroke-opacity="0.42" stroke-width="11.6"/>
+<path d="M284.5,132.6 C525.0,132.6 525.0,78.0 765.5,78.0" fill="none" stroke="#54A24B" stroke-opacity="0.42" stroke-width="3.9"/>
+<path d="M284.5,88.9 C400.8,88.9 400.8,104.9 517.0,104.9" fill="none" stroke="#F58518" stroke-opacity="0.42" stroke-width="2.6"/>
+<path d="M284.5,135.6 C525.0,135.6 525.0,98.0 765.5,98.0" fill="none" stroke="#54A24B" stroke-opacity="0.42" stroke-width="2.1"/>
+<path d="M533.0,104.1 C649.2,104.1 649.2,80.5 765.5,80.5" fill="none" stroke="#E45756" stroke-opacity="0.42" stroke-width="1.0"/>
+<path d="M533.0,76.4 C773.5,76.4 773.5,76.4 1014.0,76.4" fill="none" stroke="#72B7B2" stroke-opacity="0.42" stroke-width="0.8"/>
+<path d="M533.0,105.0 C649.2,105.0 649.2,99.4 765.5,99.4" fill="none" stroke="#E45756" stroke-opacity="0.42" stroke-width="0.8"/>
+<path d="M781.5,97.4 C897.8,97.4 897.8,77.2 1014.0,77.2" fill="none" stroke="#EECA3B" stroke-opacity="0.42" stroke-width="0.8"/>
+<rect x="20.0" y="76.0" width="16" height="498.0" rx="2" fill="#4C78A8"/>
+<text class="lbl" x="43.0" y="324.0" font-size="12" text-anchor="start">F1</text>
+<text class="val" x="43.0" y="337.0" font-size="10.5" text-anchor="start">1,700.0</text>
+<rect x="268.5" y="76.0" width="16" height="38.6" rx="2" fill="#F58518"/>
+<text class="lbl" x="291.5" y="94.3" font-size="12" text-anchor="start">F2</text>
+<text class="val" x="291.5" y="107.3" font-size="10.5" text-anchor="start">131.7</text>
+<rect x="268.5" y="130.6" width="16" height="13.8" rx="2" fill="#54A24B"/>
+<text class="lbl" x="291.5" y="136.5" font-size="12" text-anchor="start">F3</text>
+<text class="val" x="291.5" y="149.5" font-size="10.5" text-anchor="start">47.2</text>
+<rect x="517.0" y="76.0" width="16" height="11.6" rx="2" fill="#72B7B2"/>
+<text class="lbl" x="540.0" y="80.8" font-size="12" text-anchor="start">F5</text>
+<text class="val" x="540.0" y="93.8" font-size="10.5" text-anchor="start">39.5</text>
+<rect x="517.0" y="103.6" width="16" height="2.6" rx="2" fill="#E45756"/>
+<text class="lbl" x="540.0" y="103.9" font-size="12" text-anchor="start">F4</text>
+<text class="val" x="540.0" y="116.9" font-size="10.5" text-anchor="start">9.0</text>
+<rect x="765.5" y="76.0" width="16" height="5.0" rx="2" fill="#B279A2"/>
+<text class="lbl" x="788.5" y="77.5" font-size="12" text-anchor="start">F6</text>
+<text class="val" x="788.5" y="90.5" font-size="10.5" text-anchor="start">16.9</text>
+<rect x="765.5" y="97.0" width="16" height="2.6" rx="2" fill="#EECA3B"/>
+<text class="lbl" x="788.5" y="97.2" font-size="12" text-anchor="start">F7</text>
+<text class="val" x="788.5" y="110.2" font-size="10.5" text-anchor="start">8.7</text>
+<rect x="1014.0" y="76.0" width="16" height="1.5" rx="2" fill="#9D755D"/>
+<text class="lbl" x="1037.0" y="75.8" font-size="12" text-anchor="start">F8</text>
+<text class="val" x="1037.0" y="88.8" font-size="10.5" text-anchor="start">3.4</text>
+</svg>

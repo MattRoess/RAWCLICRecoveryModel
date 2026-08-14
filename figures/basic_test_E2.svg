@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 620" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+<style>  .bg{fill:#ffffff} .ttl{fill:#111827} .sub{fill:#6b7280} .lbl{fill:#111827}  .val{fill:#6b7280}  @media (prefers-color-scheme: dark){    .bg{fill:#0b0f19} .ttl{fill:#f3f4f6} .sub{fill:#9ca3af} .lbl{fill:#f3f4f6}    .val{fill:#9ca3af}}</style>
+<rect class="bg" width="1180" height="620"/>
+<text class="ttl" x="20" y="30" font-size="17" font-weight="600">basic_test — E2 through the recovery system</text>
+<text class="sub" x="20" y="52" font-size="12.5">Element-depth rows only. Node and ribbon size are mass in Mg. 8 flows, 10 transfers.</text>
+<path d="M36.0,89.2 C152.2,89.2 152.2,89.2 268.5,89.2" fill="none" stroke="#4C78A8" stroke-opacity="0.42" stroke-width="26.4"/>
+<path d="M36.0,110.7 C152.2,110.7 152.2,126.7 268.5,126.7" fill="none" stroke="#4C78A8" stroke-opacity="0.42" stroke-width="16.5"/>
+<path d="M284.5,79.8 C400.8,79.8 400.8,79.8 517.0,79.8" fill="none" stroke="#F58518" stroke-opacity="0.42" stroke-width="7.5"/>
+<path d="M284.5,120.8 C525.0,120.8 525.0,78.3 765.5,78.3" fill="none" stroke="#54A24B" stroke-opacity="0.42" stroke-width="4.7"/>
+<path d="M284.5,85.0 C400.8,85.0 400.8,101.0 517.0,101.0" fill="none" stroke="#F58518" stroke-opacity="0.42" stroke-width="2.9"/>
+<path d="M284.5,124.4 C525.0,124.4 525.0,99.1 765.5,99.1" fill="none" stroke="#54A24B" stroke-opacity="0.42" stroke-width="2.6"/>
+<path d="M533.0,100.1 C649.2,100.1 649.2,81.2 765.5,81.2" fill="none" stroke="#E45756" stroke-opacity="0.42" stroke-width="1.1"/>
+<path d="M533.0,101.1 C649.2,101.1 649.2,100.8 765.5,100.8" fill="none" stroke="#E45756" stroke-opacity="0.42" stroke-width="0.8"/>
+<path d="M781.5,98.2 C897.8,98.2 897.8,76.4 1014.0,76.4" fill="none" stroke="#EECA3B" stroke-opacity="0.42" stroke-width="0.8"/>
+<path d="M533.0,76.4 C773.5,76.4 773.5,77.2 1014.0,77.2" fill="none" stroke="#72B7B2" stroke-opacity="0.42" stroke-width="0.8"/>
+<rect x="20.0" y="76.0" width="16" height="498.0" rx="2" fill="#4C78A8"/>
+<text class="lbl" x="43.0" y="324.0" font-size="12" text-anchor="start">F1</text>
+<text class="val" x="43.0" y="337.0" font-size="10.5" text-anchor="start">1,023.2</text>
+<rect x="268.5" y="76.0" width="16" height="26.4" rx="2" fill="#F58518"/>
+<text class="lbl" x="291.5" y="88.2" font-size="12" text-anchor="start">F2</text>
+<text class="val" x="291.5" y="101.2" font-size="10.5" text-anchor="start">54.3</text>
+<rect x="268.5" y="118.4" width="16" height="16.5" rx="2" fill="#54A24B"/>
+<text class="lbl" x="291.5" y="125.7" font-size="12" text-anchor="start">F3</text>
+<text class="val" x="291.5" y="138.7" font-size="10.5" text-anchor="start">34.0</text>
+<rect x="517.0" y="76.0" width="16" height="7.5" rx="2" fill="#72B7B2"/>
+<text class="lbl" x="540.0" y="78.8" font-size="12" text-anchor="start">F5</text>
+<text class="val" x="540.0" y="91.8" font-size="10.5" text-anchor="start">15.5</text>
+<rect x="517.0" y="99.5" width="16" height="2.9" rx="2" fill="#E45756"/>
+<text class="lbl" x="540.0" y="100.0" font-size="12" text-anchor="start">F4</text>
+<text class="val" x="540.0" y="113.0" font-size="10.5" text-anchor="start">6.0</text>
+<rect x="765.5" y="76.0" width="16" height="5.8" rx="2" fill="#B279A2"/>
+<text class="lbl" x="788.5" y="77.9" font-size="12" text-anchor="start">F6</text>
+<text class="val" x="788.5" y="90.9" font-size="10.5" text-anchor="start">11.9</text>
+<rect x="765.5" y="97.8" width="16" height="3.2" rx="2" fill="#EECA3B"/>
+<text class="lbl" x="788.5" y="98.4" font-size="12" text-anchor="start">F7</text>
+<text class="val" x="788.5" y="111.4" font-size="10.5" text-anchor="start">6.5</text>
+<rect x="1014.0" y="76.0" width="16" height="1.5" rx="2" fill="#9D755D"/>
+<text class="lbl" x="1037.0" y="75.8" font-size="12" text-anchor="start">F8</text>
+<text class="val" x="1037.0" y="88.8" font-size="10.5" text-anchor="start">1.1</text>
+</svg>

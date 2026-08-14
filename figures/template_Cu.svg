@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 620" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+<style>  .bg{fill:#ffffff} .ttl{fill:#111827} .sub{fill:#6b7280} .lbl{fill:#111827}  .val{fill:#6b7280}  @media (prefers-color-scheme: dark){    .bg{fill:#0b0f19} .ttl{fill:#f3f4f6} .sub{fill:#9ca3af} .lbl{fill:#f3f4f6}    .val{fill:#9ca3af}}</style>
+<rect class="bg" width="1180" height="620"/>
+<text class="ttl" x="20" y="30" font-size="17" font-weight="600">template — Cu through the recovery system</text>
+<text class="sub" x="20" y="52" font-size="12.5">Element-depth rows only. Node and ribbon size are mass in Mg. 7 flows, 7 transfers.</text>
+<path d="M36.0,218.2 C276.5,218.2 276.5,218.2 517.0,218.2" fill="none" stroke="#4C78A8" stroke-opacity="0.42" stroke-width="284.4"/>
+<path d="M533.0,210.0 C773.5,210.0 773.5,242.4 1014.0,242.4" fill="none" stroke="#F58518" stroke-opacity="0.42" stroke-width="268.1"/>
+<path d="M36.0,447.2 C276.5,447.2 276.5,463.2 517.0,463.2" fill="none" stroke="#4C78A8" stroke-opacity="0.42" stroke-width="173.5"/>
+<path d="M533.0,426.0 C773.5,426.0 773.5,426.0 1014.0,426.0" fill="none" stroke="#54A24B" stroke-opacity="0.42" stroke-width="99.2"/>
+<path d="M533.0,512.8 C773.5,512.8 773.5,528.8 1014.0,528.8" fill="none" stroke="#54A24B" stroke-opacity="0.42" stroke-width="74.2"/>
+<path d="M36.0,545.9 C276.5,545.9 276.5,577.9 517.0,577.9" fill="none" stroke="#4C78A8" stroke-opacity="0.42" stroke-width="24.1"/>
+<path d="M533.0,352.3 C773.5,352.3 773.5,84.2 1014.0,84.2" fill="none" stroke="#F58518" stroke-opacity="0.42" stroke-width="16.3"/>
+<rect x="20.0" y="76.0" width="16" height="482.0" rx="2" fill="#4C78A8"/>
+<text class="lbl" x="43.0" y="316.0" font-size="12" text-anchor="start">F1_collected</text>
+<text class="val" x="43.0" y="329.0" font-size="10.5" text-anchor="start">928.0</text>
+<rect x="517.0" y="76.0" width="16" height="284.4" rx="2" fill="#F58518"/>
+<text class="lbl" x="540.0" y="217.2" font-size="12" text-anchor="start">F2_dismantled</text>
+<text class="val" x="540.0" y="230.2" font-size="10.5" text-anchor="start">547.6</text>
+<rect x="517.0" y="376.4" width="16" height="173.5" rx="2" fill="#54A24B"/>
+<text class="lbl" x="540.0" y="462.2" font-size="12" text-anchor="start">F3_shredded</text>
+<text class="val" x="540.0" y="475.2" font-size="10.5" text-anchor="start">334.0</text>
+<rect x="517.0" y="565.9" width="16" height="24.1" rx="2" fill="#B279A2"/>
+<text class="lbl" x="540.0" y="576.9" font-size="12" text-anchor="start">F8_loss_dismantling</text>
+<text class="val" x="540.0" y="589.9" font-size="10.5" text-anchor="start">46.4</text>
+<rect x="1014.0" y="76.0" width="16" height="16.3" rx="2" fill="#EECA3B"/>
+<text class="lbl" x="1037.0" y="83.2" font-size="12" text-anchor="start">F9_loss_refining</text>
+<text class="val" x="1037.0" y="96.2" font-size="10.5" text-anchor="start">31.5</text>
+<rect x="1014.0" y="108.3" width="16" height="367.3" rx="2" fill="#E45756"/>
+<text class="lbl" x="1037.0" y="291.0" font-size="12" text-anchor="start">F6_refined</text>
+<text class="val" x="1037.0" y="304.0" font-size="10.5" text-anchor="start">707.2</text>
+<rect x="1014.0" y="491.7" width="16" height="74.2" rx="2" fill="#72B7B2"/>
+<text class="lbl" x="1037.0" y="527.8" font-size="12" text-anchor="start">F7_loss_shredding</text>
+<text class="val" x="1037.0" y="540.8" font-size="10.5" text-anchor="start">143.0</text>
+</svg>
