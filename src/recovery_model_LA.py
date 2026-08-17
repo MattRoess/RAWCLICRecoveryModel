@@ -13,7 +13,7 @@ from typing import Tuple, List
 from dataclasses import dataclass
 from itertools import product
 
-from src.selection import chosen_scenario, is_year_match, select
+from src.selection import chosen_scenario, chosen_years, is_year_match, select
 from src.tc_precedence import apply_precedence
 from src.validate_inputs import validate
 
@@ -67,7 +67,7 @@ class InputDataFormat:
 class RecoveryModelLA:
     """Class representing the Linear Algebra based recovery model, as documented in the doc/Recovery_model_documentation.pdf"""
     def __init__(self, data_folder: str, layer_names: List[str],
-                 scenario: str | None = None):
+                 scenario: str | None = None, years: str | None = None):
         """
         Initialize the System class.
          - Defines and creates folder structure
@@ -81,6 +81,7 @@ class RecoveryModelLA:
         # None means "use the scenario setting"; a string overrides it for one
         # call, which is what the tests and a one-off run need.
         self._scenario_override = scenario
+        self._years_override = years
 
         # Check the input tables before anything is encoded. This engine maps
         # every key to an integer with .replace(), which leaves an unknown key
@@ -128,11 +129,19 @@ class RecoveryModelLA:
 
         tcs_df.loc[tcs_df['Input_layer_key'] == '', 'Input_layer'] = ''
 
-        # Define the years, locations, scenarios and additionalSpecifications with the inflows file as the defining basis
-        years = inflows_df['Year'].unique() if 'Year' in inflows_df.columns else [None]
-        # One run is one scenario (src/params_schema.py). This used to sweep
-        # every scenario in the file, writing each over the last one's output.
+        # What this run covers. inputs.csv is the defining basis for which
+        # years, scenarios, locations and additionalSpecifications exist; the
+        # settings then narrow that down.
         from src.params_schema import Params
+
+        # Blank means every year in the file; a single year or a '2030-2050'
+        # range narrows it (src/params_schema.py).
+        wanted_years = (self._years_override if self._years_override is not None
+                        else Params().run.years)
+        years = chosen_years(inflows_df, wanted_years)
+
+        # One run is one scenario. This used to sweep every scenario in the
+        # file, writing each one's output over the last one's.
         wanted = (self._scenario_override if self._scenario_override is not None
                   else Params().run.scenario)
         self.scenario = chosen_scenario(inflows_df, wanted)

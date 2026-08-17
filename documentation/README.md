@@ -74,6 +74,28 @@ A note on the theme: the figures used to be hand-written SVG carrying a
 `prefers-color-scheme` rule, so they followed the reader's system setting. A
 PNG or PDF cannot do that, so `theme` picks the palette at render time.
 
+## Years and scenarios
+
+**Years**: `years` in `src/params_schema.py`.
+
+| setting | runs |
+|---|---|
+| `''` | every year in the data |
+| `'2040'` | that one year |
+| `'2030-2050'` | that range, every year in it |
+| `'2030-2050,10'` | that range, every 10th year |
+| `',10'` | every 10th year of the whole data |
+
+Real inflow data is annual — the upstream arrays run 1975 to 2070 — so a step
+is usually what you want: it keeps the shape of the trajectory while cutting
+its size. The step counts by year value rather than by row, so a gap in the
+data does not shift everything after it.
+
+Several years in one run is normal, unlike scenarios which are one per run.
+It matters under the Monte Carlo: 200,000 draws × 96 years is the memory
+problem in DESIGN_monte_carlo.md §2, and the year axis is the most direct lever
+on it.
+
 ## Scenarios
 
 **One run is one scenario, across all its years.** Set `scenario` in

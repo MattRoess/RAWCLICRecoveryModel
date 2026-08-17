@@ -73,6 +73,30 @@ class RunParams:
     # SAFE TO CHANGE: yes -- it must name a scenario present in inputs.csv.
     scenario: str = ''
 
+    # WHICH YEARS TO RUN.  Blank means every year the data holds.
+    #
+    #     ''               every year in inputs.csv
+    #     '2030'           that one year
+    #     '2030-2050'      that range, both ends included, every year in it
+    #     '2030-2050,10'   that range, every 10th year: 2030, 2040, 2050
+    #     ',10'            every 10th year of the whole data
+    #
+    # Real inflow data is annual -- the upstream arrays run 1975 to 2070 -- so
+    # a step is usually what you want rather than the full trajectory. It keeps
+    # the shape of the curve while cutting its size. The step counts by year
+    # value, not by row, so a gap in the data does not shift everything after
+    # it.
+    #
+    # Several years in one run is normal, unlike scenarios which are one per
+    # run. Years are independent here too, but a result usually wants the
+    # trajectory rather than a point.
+    #
+    # It matters for the Monte Carlo: 200,000 draws x 96 years is the memory
+    # problem in DESIGN_monte_carlo.md section 2, and the year axis is the most
+    # direct lever on it.
+    # SAFE TO CHANGE: yes -- it must match at least one year present in the data.
+    years: str = ''
+
     # WHICH OF THE TWO ENGINES SOLVES THE SYSTEM: 'optimized' or 'LA'.
     # SAFE TO CHANGE: yes, but read this first. The two engines disagree beyond
     # the basic_test case -- seven documented differences, several of which

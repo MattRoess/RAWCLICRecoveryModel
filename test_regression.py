@@ -386,6 +386,44 @@ def test_a_scenario_must_be_chosen() -> None:
         raise AssertionError('an unknown scenario name was accepted')
 
 
+def test_years_can_be_narrowed() -> None:
+    """
+    A run covers every year in the data, one year, a range, or a range
+    thinned by a step -- real inflow data is annual over ~50 years, so a step
+    is usually what is wanted.
+
+    Not just convenience: 200,000 draws x 96 years is the memory problem in
+    DESIGN_monte_carlo.md §2, and the year axis is the most direct lever on it.
+    """
+    from src.validate_inputs import InputDataError
+
+    folder = 'data_folder/defect_cases/year_range'   # annual, 2020 to 2070
+    expected = {
+        '': [str(y) for y in range(2020, 2071)],
+        '2040': ['2040'],
+        '2030-2035': [str(y) for y in range(2030, 2036)],
+        ',10': ['2020', '2030', '2040', '2050', '2060', '2070'],
+        '2030-2070,10': ['2030', '2040', '2050', '2060', '2070'],
+    }
+
+    for engine in (RecoveryModelOptimized, RecoveryModelLA):
+        for setting, wanted in expected.items():
+            model = engine(data_folder=folder, layer_names=LAYER_NAMES, years=setting)
+            solution = model.solve_models_and_write_to_output()
+            got = sorted(str(year) for year in solution['Year'].unique())
+            assert got == wanted, (
+                f'{engine.__name__} with years={setting!r}: got {got}, '
+                f'expected {wanted}')
+
+    for bad, why in (('1999', 'a year matching nothing'), ('2030-2050,0', 'a step of zero')):
+        try:
+            RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES, years=bad)
+        except InputDataError as error:
+            assert bad.split(',')[0] in str(error) or '0' in str(error)
+        else:
+            raise AssertionError(f'{why} was accepted')
+
+
 def test_validation_rejects_a_same_layer_transformation() -> None:
     """
     DEFECTS.md §2.5. A transfer within one layer carries a resource unchanged,

@@ -20,7 +20,8 @@ Every figure comes out of step 1 — the Sankeys always, the structure diagram
 whenever `draw_structure` is on. Nothing else has to be run to get a picture.
 
 **`src/params_schema.py` is the file you edit to change a setting** — which
-case, which engine, which figures, which file formats. Everything else reads it.
+case, which years, which scenario, which engine, which figures. Everything else
+reads it.
 
 Everything else:
 

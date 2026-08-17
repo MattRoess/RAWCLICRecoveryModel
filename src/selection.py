@@ -113,6 +113,98 @@ def chosen_scenario(inflows: pd.DataFrame, setting: str) -> str | None:
     return setting
 
 
+def years_in(frame: pd.DataFrame) -> list[str]:
+    """The distinct years a table declares, ignoring blanks, in order."""
+    if 'Year' not in frame.columns:
+        return []
+    found = {str(value).strip() for value in frame['Year'] if str(value).strip()}
+
+    def order(value: str):
+        # '2020' sorts numerically; '2020-2030' sorts by its start.
+        head = value.split('-')[0]
+        return (0, int(head)) if head.isdigit() else (1, value)
+
+    return sorted(found, key=order)
+
+
+def chosen_years(inflows: pd.DataFrame, setting: str) -> list:
+    """
+    The years this run solves.
+
+    Four forms, since real inflow data is annual and usually more years than
+    anyone wants to look at:
+
+        ''               every year in the data
+        '2030'           that one year
+        '2030-2050'      every year in that range, both ends included
+        '2030-2050,10'   every 10th year of that range: 2030, 2040, 2050
+        ',10'            every 10th year of the whole data
+
+    The step counts from the first selected year, so ',10' on 2020-2070 gives
+    2020, 2030 ... 2070 rather than an offset series. Years the data does not
+    have are skipped rather than invented -- the step selects from what is
+    there.
+
+    Unlike the scenario, several years in one run is normal: they are
+    independent, but a result usually wants the trajectory. Narrowing matters
+    for the Monte Carlo, where 200,000 draws x 96 years is the memory problem
+    in DESIGN_monte_carlo.md section 2 -- and a step is the form that keeps the
+    shape of the trajectory while cutting its size.
+    """
+    from src.validate_inputs import InputDataError
+
+    available = years_in(inflows)
+    setting = str(setting or '').strip()
+
+    if not available:
+        if setting:
+            raise InputDataError(
+                f"years is set to {setting!r} in src/params_schema.py, but "
+                f"inputs.csv has no Year column. Clear the setting, or add the "
+                f"column.")
+        return [None]
+
+    span, _, step_text = setting.partition(',')
+    span, step_text = span.strip(), step_text.strip()
+
+    step = 1
+    if step_text:
+        if not step_text.isdigit() or int(step_text) < 1:
+            raise InputDataError(
+                f"years is set to {setting!r} in src/params_schema.py, but "
+                f"{step_text!r} is not a step. Write a whole number above zero, "
+                f"as in '2030-2050,10' or ',10'.")
+        step = int(step_text)
+
+    matched = available if not span else [
+        year for year in available if is_year_match(year, span)]
+
+    if not matched:
+        raise InputDataError(
+            f"years is set to {setting!r} in src/params_schema.py, but "
+            f"inputs.csv has no year matching {span!r}. Available: "
+            f"{available[0]} to {available[-1]} ({len(available)} years).\n"
+            f"Write a single year such as '2030', a range such as '2030-2050', "
+            f"or a range with a step such as '2030-2050,10'.")
+
+    if step == 1:
+        return matched
+
+    # Step by year value rather than by position, so a gap in the data does not
+    # shift everything after it.
+    first = int(str(matched[0]).split('-')[0])
+    stepped = [year for year in matched
+               if str(year).split('-')[0].isdigit()
+               and (int(str(year).split('-')[0]) - first) % step == 0]
+
+    if not stepped:
+        raise InputDataError(
+            f"years is set to {setting!r} in src/params_schema.py, but a step "
+            f"of {step} starting at {first} selects none of the years present.")
+
+    return stepped
+
+
 def _active(frame: pd.DataFrame, column: str) -> bool:
     """Whether a column exists and actually holds values worth filtering on."""
     return column in frame.columns and frame[column].dropna().astype(bool).any()
