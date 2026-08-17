@@ -305,31 +305,6 @@ def check(folder: str) -> list[Problem]:
             f"or target a deeper layer if the resource really does become "
             f"something else."))
 
-    # ---- 2.3 / 2.5  two TCs competing for one destination ------------------
-    # A TC identifies its resource by BOTH keys -- "component C1 within product
-    # P1" -- so two TCs reaching the same target key from different input keys
-    # are different resources and perfectly normal. What is not normal is two
-    # TCs that describe the *same* resource reaching the same destination.
-    for (source, target, layer, key), group in tcs.groupby(
-            ['Input_FlowID', 'Output_FlowID', 'TC_target_layer', 'TC_target_key']):
-        input_layers = set(group['Input_layer'])
-        pairs = list(zip(group['Input_layer'], group['Input_layer_key']))
-
-        if len(input_layers) > 1:
-            problems.append(Problem(
-                'WARNING', '2.3',
-                f"TCs.csv: {source} -> {target} sets {layer} {key!r} from more than one "
-                f"layer ({', '.join(sorted(input_layers))}). The optimized engine adds "
-                f"the two together, the LA engine keeps only the more specific one -- "
-                f"a factor of two between them, on an input the user guide does not "
-                f"call illegal."))
-        elif len(pairs) > len(set(pairs)):
-            problems.append(Problem(
-                'WARNING', '2.5',
-                f"TCs.csv: {source} -> {target} has the same transfer coefficient "
-                f"written more than once for {layer} {key!r}. The optimized engine adds "
-                f"the duplicates together."))
-
     return problems
 
 

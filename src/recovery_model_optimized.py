@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import networkx as nx
 from itertools import product
 
+from src.tc_precedence import apply_precedence
 from src.validate_inputs import validate
 
 # Definition of file/folder names within the overarching data directory
@@ -114,6 +115,12 @@ class RecoveryModelOptimized:
             keep_default_na=False,
             na_values=[]
         )
+        # Where two TCs describe the same material, the row naming the parent
+        # governs and the other is narrowed to the products it still covers.
+        # Done here, on the table, so that both engines are handed the same
+        # explicit rows and cannot drift apart again (DEFECTS.md 2.3).
+        tcs_df = apply_precedence(tcs_df, composition_df)
+
         # Replace the wording of 'product', 'component', etc... with a consistent wording within the model: 'Layer 1', 'Layer 2', etc...
         layer_names_replace = {item: f"Layer {i+1}" for i, item in enumerate(self.layer_names)}
         tcs_df["Input_layer"] = tcs_df["Input_layer"].replace(layer_names_replace)

@@ -59,15 +59,15 @@ MAX_INTERMEDIATE_ROWS = 1000
 
 # The largest absolute disagreement between the two engines on each case.
 #
-# composition_stock_id and wildcard_star were 100.0 and 50.0 until 2026-08-17,
-# when DEFECTS.md §2.1 and §2.2 were fixed in the optimized engine; they are
-# now zero and this test is what holds them there. tc_specificity is §2.3, an
-# unspecified semantic that needs a method decision before it can be fixed, so
-# its 50.0 still pins current behaviour rather than correct behaviour.
+# All three were non-zero until 2026-08-17 -- 100.0, 50.0 and 50.0 -- when
+# DEFECTS.md §2.1, §2.2 and §2.3 were resolved. They are zero now and this test
+# is what holds them there. Every remaining entry in section 2 of DEFECTS.md is
+# either caught at load or documented as an input error, so there is no longer
+# a case where the two engines are expected to differ.
 DOCUMENTED_DIVERGENCES = {
     'data_folder/defect_cases/composition_stock_id': 0.0,
     'data_folder/defect_cases/wildcard_star': 0.0,
-    'data_folder/defect_cases/tc_specificity': 50.0,
+    'data_folder/defect_cases/tc_specificity': 0.0,
 }
 
 
@@ -298,6 +298,34 @@ def test_validation_rejects_bad_units() -> None:
             assert 'Unit' in str(error)
         else:
             raise AssertionError(f'{description} was accepted')
+
+
+def test_overlapping_rules_resolve_to_the_specific_one() -> None:
+    """
+    DEFECTS.md §2.3. Two rules cover the harness in a BEV: one naming BEV at
+    0.80, one naming no product at 0.20. The row naming the parent governs.
+
+    Pinned as masses rather than as an engine difference, because the numbers
+    are the point: 800 t of BEV harness at 0.80 is 640 t, and the hybrid's
+    3000 t at 0.20 is 600 t. Adding the rules instead gives 800 t -- the whole
+    harness, perfectly recovered, which is what the optimized engine used to
+    report.
+    """
+    folder = 'data_folder/defect_cases/overlapping_rules'
+    expected = {('F2_dismantled', 'BEV', 'Harness'): 640.0,
+                ('F2_dismantled', 'HEV', 'Harness'): 600.0}
+
+    for engine in (RecoveryModelOptimized, RecoveryModelLA):
+        solution = solve(engine, folder)
+        for (flow, product, component), mass in expected.items():
+            rows = solution[(solution['Stock/Flow ID'] == flow)
+                            & (solution['Layer 1'] == product)
+                            & (solution['Layer 2'] == component)
+                            & (solution['Layer 3'] == '')]
+            assert len(rows) == 1, f'{engine.__name__}: {flow}/{product}/{component} not found'
+            got = float(rows['Value'].iloc[0])
+            assert abs(got - mass) <= TOLERANCE, (
+                f'{engine.__name__}: {component} in {product} is {got:g}, expected {mass:g}')
 
 
 def test_validation_rejects_a_same_layer_transformation() -> None:

@@ -142,26 +142,75 @@ same thing — the layer column already says which set is meant. That is how
 `RecoveryModelLA.fill_star_values` has always read it, and matching it is what
 makes the two agree.
 
-### 2.3 Overlapping TC specificity: LA overrides, optimized adds
+### 2.3 Overlapping TC rules — RESOLVED
 
-**Reproduce:** `data_folder/defect_cases/tc_specificity`
+**Reproduce:** `data_folder/defect_cases/overlapping_rules`
 
-Given both a product-level and a component-level TC of 0.5 for the same
-process, LA applies a specificity priority (sort by layer, then
-`groupby(...).last()`, `recovery_model_LA.py:269-300`) and takes the more
-specific one. The optimized engine concatenates the results of all 16 layer
-pairs, so the two TCs are **added**:
+A TC row names what it is about on its input side. A row naming a product is
+specific; a row naming only a component applies to that component in *every*
+product, the specific one included. Write both and one material is described
+twice:
 
-| Row | LA | Optimized |
+```
+row 2:  product   BEV      ->  component Harness   0.80
+row 3:  component Harness  ->  component Harness   0.20
+```
+
+Both cover the harness inside a BEV. The table never said which governs, and
+each engine guessed differently and silently.
+
+20,000 t of BEVs at 4% harness and 100,000 t of hybrids at 3%, so 800 t of BEV
+harness and 3,000 t of hybrid harness:
+
+| | BEV harness | hybrid harness |
 |---|---|---|
-| F2 / P1 / C1 | 50 | **100** |
+| LA, before | 160 t (used 0.20) | 600 t |
+| optimized, before | **800 t** (added to 1.00) | 600 t |
+| both, now | **640 t** (0.80 governs) | 600 t |
 
-A factor of two, from an input the user guide does not say is illegal.
+The optimized engine's 800 t is 800 of 800 — the entire harness recovered and
+zero dismantling loss, purely because two rows existed. A third overlapping row
+would have "recovered" more than went in.
 
-**This one is not simply a bug — it is an unspecified semantic.** Neither
-behaviour is documented as correct. It needs a decision before it can be
-fixed, and that decision belongs to whoever owns the method. See HANDOVER.md
-open question 1.
+**RESOLVED 2026-08-17: a row that names the parent beats a row that does not.**
+
+Specificity is the number of layers a row pins down. A blank key, or one
+containing `*`, pins nothing — those are the "applies to everything"
+conventions the user guide already defines. Two rows pinning the same number of
+layers and still overlapping are a real ambiguity and are refused, rather than
+resolved by a tie-break nobody chose.
+
+`src/tc_precedence.py` does this on the table, **before either engine sees it**,
+and rewrites the general row as one row per product it still governs. So the
+engines are handed identical explicit rows and cannot drift apart again — which
+is why this fixed both at once rather than needing two changes.
+
+#### It says what it did
+
+The rule is only half of it. The other half is that nothing is silent:
+
+```
+TC RESOLUTION -- 1 place(s) where more than one rule applied
+  Harness in BEV               row 2 governs (0.8), row 3 overridden (0.2)
+  The rule: a row naming the parent beats a row that does not.
+
+UNDER-SPECIFIED -- covered by a rule that names no parent
+  Harness in HEV  -- 0.2 from row 3, which names no product
+  Not a problem in itself, but a product added later inherits these silently.
+```
+
+The under-specified list matters as much as the overrides: it shows which
+materials are running on a general rate rather than one of their own, so a
+vehicle type added next year cannot quietly pick up a number nobody chose for
+it.
+
+#### Why not simply forbid the overlap
+
+That was the first proposal, and `DESIGN_tc_table.md` R4 still records it. It
+was rejected because the "applies to everything" row is a documented feature —
+the `P*` wildcard of §2.2 — and because with a dozen vehicle types sharing one
+rate, forbidding it means writing a dozen rows to say one thing. Reporting what
+was applied gives the brevity without the silence.
 
 ### 2.4 Year, scenario and location matching differ
 

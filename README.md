@@ -118,9 +118,12 @@ measurement and a one-command reproduction in
 `Stock/ID` being ignored, and the `P*` wildcard producing nothing — were fixed
 on 2026-08-17 and are recorded there as §2.1 and §2.2.
 
-- **Overlapping TC specificity resolves differently.** Given both a
-  product-level and a component-level TC for the same process, `LA` applies the
-  more specific one and `Optimized` adds them together.
+- **Overlapping TC rules are resolved and reported.** If one row names a
+  product and another names only the component, the row naming the product
+  governs — and the model prints every override it applied, plus every material
+  running on a general rate rather than its own. Previously the two engines
+  guessed differently and silently, one of them recovering an entire component
+  and reporting zero loss (DEFECTS.md §2.3).
 - **Bad input is now rejected, but the underlying code is unchanged.** Both
   engines check the three tables before using them, so an unresolvable key, a
   composition row with a gap, a mixed or unrecognised mass unit, and a share

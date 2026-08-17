@@ -13,6 +13,7 @@ from typing import Tuple, List
 from dataclasses import dataclass
 from itertools import product
 
+from src.tc_precedence import apply_precedence
 from src.validate_inputs import validate
 
 
@@ -115,6 +116,10 @@ class RecoveryModelLA:
             na_values=[]
         )
 
+
+        # Same precedence resolution the optimized engine applies, on the same
+        # table, before this engine's own encoding touches it (DEFECTS.md 2.3).
+        tcs_df = apply_precedence(tcs_df, composition_df)
 
         tcs_df.loc[tcs_df['Input_layer_key'] == '', 'Input_layer'] = ''
 

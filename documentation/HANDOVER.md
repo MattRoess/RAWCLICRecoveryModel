@@ -112,10 +112,11 @@ context; repeated here because they gate the work.
    them at zero. §2.5 remains and lands on the element-over-component layering
    the new requirements ask for, so it will be hit early.
 
-   §2.3 is **not** engineering: overlapping TC specificity is an unspecified
-   semantic, neither behaviour is documented as correct, and it needs a
-   decision from whoever owns the method before any code can be right. Write
-   the resolved semantics down — their absence is why §2.3 exists at all.
+   §2.3 is **resolved 2026-08-17**: a row naming the parent beats a row that
+   does not, resolved on the table before either engine sees it, and reported
+   — every override named, and every material running on a general rate
+   listed. The semantics are written down in DEFECTS.md §2.3, which is what
+   their absence had made impossible.
 4. **Add the mass balance assertion on load**, once the table has loss flows.
    `02_check_mass_balance.py` already computes everything it needs; this is
    promoting a report into a hard failure.

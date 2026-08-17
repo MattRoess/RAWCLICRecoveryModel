@@ -1,0 +1,3 @@
+Input_FlowID,Input_layer,Input_layer_key,Output_FlowID,TC_target_layer,TC_target_key,value,process,technology
+F1_collected,product,BEV,F2_dismantled,component,Harness,0.80,dismantling,manual
+F1_collected,component,Harness,F2_dismantled,component,Harness,0.20,dismantling,manual

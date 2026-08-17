@@ -1,0 +1,7 @@
+Stock/ID,Layer 1,Layer 2,Layer 3,Layer 4,Value,parameterCode
+F1_collected,BEV,Harness,,,0.04,c-p
+F1_collected,BEV,PCB,,,0.02,c-p
+F1_collected,BEV,Other,,,0.94,c-p
+F1_collected,HEV,Harness,,,0.03,c-p
+F1_collected,HEV,PCB,,,0.02,c-p
+F1_collected,HEV,Other,,,0.95,c-p
