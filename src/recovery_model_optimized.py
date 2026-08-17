@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import networkx as nx
 from itertools import product
 
+from src.selection import is_year_match as _is_year_match, select
 from src.tc_precedence import apply_precedence
 from src.validate_inputs import validate
 
@@ -384,46 +385,14 @@ class RecoveryModelOptimized:
 class HelperFunctions:
     @staticmethod
     def is_year_match(year_data, year_target):
-        """
-        Helper function to check if a year is an exact match or within a range.
+        """Kept for callers; the rule itself lives in src/selection.py."""
+        return _is_year_match(year_data, year_target)
 
-        Args:
-            year_data: The year value(s) in the column (can be int or str).
-            year_target: The year instance to be matched (can be int or str).
-
-        Returns:
-            True if there is a match, otherwise False.
-        """
-        year_target = str(year_target)
-        year_data = str(year_data)
-        if year_data == year_target:
-            return True
-
-        # Handle ranges in year_data
-        if '-' in year_data:
-            start, end = map(int, year_data.split('-'))
-            if start <= int(year_target) <= end:
-                return True
-
-        # Handle ranges in year_target
-        if '-' in year_target:
-            start, end = map(int, year_target.split('-'))
-            if start <= int(year_data) <= end:
-                return True
-
-        return False
-    
     @staticmethod
-    def select_df_by_year_scenario_location(df: pd.DataFrame, year: str | None, location: str | None, scenario:  str | None, additional_specification: str | None) -> pd.DataFrame:
-        check_year = 'Year' in df.columns and df['Year'].dropna().astype(bool).any()
-        check_scenario = 'Scenario' in df.columns and df['Scenario'].dropna().astype(bool).any()
-        check_location = 'Location' in df.columns and df['Location'].dropna().astype(bool).any()
-        check_additional_specification= 'additionalSpecification' in df.columns and df['additionalSpecification'].dropna().astype(bool).any()
-
-        
-        return df.loc[
-            (df['Year'].apply(lambda y: HelperFunctions.is_year_match(y, year)) if check_year else pd.Series(True, index=df.index)) & 
-            (df['Scenario'] == scenario if check_scenario else pd.Series(True, index=df.index)) & 
-            (df['Location'] == location if check_location else pd.Series(True, index=df.index)) & 
-            (df['additionalSpecification'] == additional_specification if check_additional_specification else pd.Series(True, index=df.index))
-            ].drop(columns=['Year','Scenario','Location', 'additionalSpecification'], errors='ignore')
+    def select_df_by_year_scenario_location(df: pd.DataFrame, year: str | None, location: str | None, scenario: str | None, additional_specification: str | None) -> pd.DataFrame:
+        """
+        Kept for callers; the rule itself lives in src/selection.py, which the
+        LA engine now uses too. Two copies of a selection rule is how the two
+        engines came apart in the first place (DEFECTS.md 2.4).
+        """
+        return select(df, year, scenario, location, additional_specification)

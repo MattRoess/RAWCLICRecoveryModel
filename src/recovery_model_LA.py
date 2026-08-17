@@ -13,6 +13,7 @@ from typing import Tuple, List
 from dataclasses import dataclass
 from itertools import product
 
+from src.selection import is_year_match, select
 from src.tc_precedence import apply_precedence
 from src.validate_inputs import validate
 
@@ -175,10 +176,8 @@ class RecoveryModelLA:
             An CSR matrix containing the inflows values at appropriate indices
         """
         # Filter the selected year, scenario, location and additionalSpecification
-        inflows_df = inflows_df[inflows_df['Year']==year] if year else inflows_df
-        inflows_df = inflows_df[inflows_df['Scenario']==scenario] if scenario else inflows_df
-        inflows_df = inflows_df[inflows_df['Location']==location] if location else inflows_df
-        inflows_df = inflows_df[inflows_df['additionalSpecification']==additional_specification] if additional_specification else inflows_df
+        inflows_df = select(inflows_df, year, scenario, location,
+                            additional_specification, drop=False)
         inflows_df = inflows_df[InputDataFormat.input_columns]
         if len(inflows_df)==0:
             raise AssertionError("This combination of year, scenario, location and additionalSpecification does not exist.")
@@ -216,17 +215,12 @@ class RecoveryModelLA:
         :returns:
             A CSR matrix containing the composition values at appropriate indices
         """
-        # Booleans that indicate whether or not the composition input has year, scenario, location or additionalSpecification
-        composition_year_specified = 'Year' in composition_df.columns and composition_df['Year'].dropna().astype(bool).any()
-        composition_scenario_specified = 'Scenario' in composition_df.columns and composition_df['Scenario'].dropna().astype(bool).any()
-        composition_location_specified = 'Location' in composition_df.columns and composition_df['Location'].dropna().astype(bool).any()
-        composition_additional_specification_specified = 'additionalSpecification' in composition_df.columns and composition_df['additionalSpecification'].dropna().astype(bool).any()
-
-        # If relevant, select the correct year, scenario, location and additionalSpecification
-        composition_df = composition_df[composition_df['Year'].apply(lambda y: HelperFunctions.is_year_match(y, year))] if year and composition_year_specified else composition_df
-        composition_df = composition_df[composition_df['Scenario'].str.contains(scenario, na=False)] if scenario and composition_scenario_specified else composition_df
-        composition_df = composition_df[composition_df['Location'].str.contains(location, na=False, regex=False)] if location and composition_location_specified else composition_df
-        composition_df = composition_df[composition_df['additionalSpecification'].str.contains(additional_specification, na=False)] if additional_specification and composition_additional_specification_specified else composition_df
+        # Select the rows for this year, scenario, location and
+        # additionalSpecification. Shared with the optimized engine: this used
+        # to match by substring, so 'BAU' also selected 'BAU_high' and the two
+        # engines quietly disagreed (DEFECTS.md 2.4).
+        composition_df = select(composition_df, year, scenario, location,
+                                additional_specification, drop=False)
 
 
         composition_df = composition_df[InputDataFormat.composition_columns]
@@ -256,17 +250,9 @@ class RecoveryModelLA:
         Returns:
             A CSR matrix containing the TC values at appropriate indices
         """
-        # Booleans that indicate whether or not the TCs input has year, scenario, location or additionalSpecification
-        tcs_year_specified = 'Year' in tcs_df.columns and tcs_df['Year'].dropna().astype(bool).any()
-        tcs_scenario_specified = 'Scenario' in tcs_df.columns and tcs_df['Scenario'].dropna().astype(bool).any()
-        tcs_location_specified = 'Location' in tcs_df.columns and tcs_df['Location'].dropna().astype(bool).any()
-        tcs_additional_specification_specified = 'additionalSpecification' in tcs_df.columns and tcs_df['additionalSpecification'].dropna().astype(bool).any()
-
-        # If relevant, select the correct year, scenario, location and additionalSpecification
-        tcs_df = tcs_df[tcs_df['Year'].apply(lambda y: HelperFunctions.is_year_match(y, year))] if year and tcs_year_specified else tcs_df
-        tcs_df = tcs_df[tcs_df['Scenario'].str.contains(scenario, na=False)] if scenario and tcs_scenario_specified else tcs_df
-        tcs_df = tcs_df[tcs_df['Location'].str.contains(location, na=False, regex=False)] if location and tcs_location_specified else tcs_df
-        tcs_df = tcs_df[tcs_df['additionalSpecification'].str.contains(additional_specification, na=False)] if additional_specification and tcs_additional_specification_specified else tcs_df
+        # Same shared selection as the composition above (DEFECTS.md 2.4).
+        tcs_df = select(tcs_df, year, scenario, location,
+                        additional_specification, drop=False)
 
 
         tcs_df = tcs_df[InputDataFormat.TCs_columns]
@@ -497,20 +483,12 @@ class HelperFunctions:
     @staticmethod
     def is_year_match(year_data, year_target):
         """
-        Helper function to subset a dataframe if the year is an exact match or within a range
-        Args:
-            year_data: Year values that are filled in column. 
-            year_target: the instance to be matched
+        Whether a row's year matches the year being solved.
 
-        Returns:
-            the matched instances if they exist
+        Kept as a method because callers use it; the rule itself now lives in
+        src/selection.py, shared with the optimized engine. It used to match by
+        substring here -- `str(year_target) in year_data` -- so 2020 also
+        matched 12020, and this engine disagreed with the other one on any
+        table holding more than one year (DEFECTS.md 2.4).
         """
-        if isinstance(year_data, int):
-            return year_data == year_target
-        if isinstance(year_data, str):
-            if str(year_target) in year_data:
-                return True
-            if '-' in year_data:
-                start, end = map(int, year_data.split('-'))
-                return start <= int(year_target) <= end
-        return False
+        return is_year_match(year_data, year_target)

@@ -142,4 +142,5 @@ on 2026-08-17 and are recorded there as §2.1 and §2.2.
   range [0, 0.66] and the unaccounted 78% has no residual flow — it simply
   leaves the system unrecorded.
 - **Everything is deterministic.** The `DQS` and `CV` columns are declared in
-  the input dtypes but are read by nothing.
+  the input dtypes but are read by nothing. This is the main body of work
+  ahead — see documentation/DESIGN_monte_carlo.md.

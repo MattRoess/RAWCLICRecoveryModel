@@ -1,20 +1,24 @@
 # Defects and engine divergences
 
-Found 2026-08-14; §2.5–2.7, §3.7 and §3.8 added 2026-08-17. Each item has a
-measurement and a reproduction. Items in §1 are **fixed**; items in §2 and §3
-are **open** and change results.
+Found 2026-08-14; §2.5–2.7, §3.7 and §3.8 added 2026-08-17, and all of §2
+resolved the same day. Each item has a measurement and a reproduction.
 
-Reproduce any divergence with:
+**Everything in §2 is now closed** — fixed in an engine, or settled as a rule
+the loader enforces. There is no longer an input on which the two engines
+disagree. The entries are kept with their measurements because each is a shape
+of mistake that can recur, and because the reasoning behind a rule matters more
+than the rule. §3 is still open.
+
+Reproduce any case with:
 
 ```bash
 ./.venv/bin/python compare_engines.py data_folder/defect_cases/<case>
 ```
 
-The cases in §2.1–2.3 have committed data folders. The ones added on
-2026-08-17 do not yet: each states the edit to `data_folder/basic_test` that
-exposes it. Its unmodified baseline, for comparison, is **180 rows** and a
-naive row total of **7514.4575** on both engines. That total sums nested rows
-at every depth, so it is a comparison figure and not a mass.
+Every §2 item has a committed data folder. `basic_test`, for comparison, is
+**180 rows** and a naive row total of **7514.4575** on both engines — that
+total sums nested rows at every depth, so it is a comparison figure and not a
+mass.
 
 ---
 
@@ -72,9 +76,10 @@ turns the memory curve from explosive into flat.
 because it exercises none of these cases. Do not treat their agreement as
 general validation.
 
-§2.1 and §2.2 were **fixed 2026-08-17** and are kept here with their
-measurements, because each is a shape of mistake that can recur. §2.3–§2.7
-remain open.
+All seven were closed on 2026-08-17. §2.1, §2.2 and §2.4 were plain bugs.
+§2.3 and §2.5 were unspecified semantics — neither engine's behaviour was
+documented as correct, so each needed a decision first, and both decisions are
+written down with the option not taken. §2.6 and §2.7 are refused at load.
 
 ### 2.1 Composition `Stock/ID` is ignored by the optimized engine — FIXED
 
@@ -212,19 +217,47 @@ the `P*` wildcard of §2.2 — and because with a dozen vehicle types sharing on
 rate, forbidding it means writing a dozen rows to say one thing. Reporting what
 was applied gives the brevity without the silence.
 
-### 2.4 Year, scenario and location matching differ
+### 2.4 Year, scenario and location matching differ — FIXED
 
-`RecoveryModelLA` matches by substring: `str(year_target) in year_data`, and
-`.str.contains()` for scenario and additionalSpecification — with regex still
-enabled (only `Location` passes `regex=False`).
+**Reproduce:** `data_folder/defect_cases/scenario_prefix`
 
-Consequences: scenario `"BAU"` also matches `"BAU_high"`; a scenario name
-containing a regex metacharacter raises or mismatches; year `"2020"` matches
-`"12020"`. `RecoveryModelOptimized` uses equality plus explicit range handling
-(`HelperFunctions.is_year_match`), which is the sane behaviour.
+`RecoveryModelLA` selected rows by **substring**: `str(year_target) in
+year_data`, and `.str.contains()` for scenario and additionalSpecification —
+with regex still enabled, only `Location` passing `regex=False`.
+`RecoveryModelOptimized` compared for equality, with explicit range handling.
 
-**Severity: medium** — silent cross-contamination between scenarios, but only
-with the LA engine and only with scenario names that are prefixes of others.
+Consequences: scenario `"BAU"` also selected `"BAU_high"`; year `"2020"` also
+selected `"12020"`; a scenario name containing a regex metacharacter either
+raised or matched something unintended.
+
+One inflow in scenario `BAU`, and TC rows of 0.30 for `BAU` and 0.90 for
+`BAU_high`:
+
+| | result |
+|---|---|
+| optimized | 30 t — only the BAU row |
+| LA, before | **90 t** — matched `BAU_high` as well |
+| both, now | 30 t |
+
+Not a wrong number so much as **a different scenario than the one asked for**,
+with nothing said about it.
+
+**FIXED 2026-08-17.** The selection rule moves to `src/selection.py` and both
+engines use it: equality on scenario, location and additionalSpecification;
+years equal or inside a `2020-2030` range, on either side. A column that exists
+but is empty everywhere does not filter, which is how a table with no scenario
+dimension is read against a request that names one.
+
+The point of one shared module rather than two corrected copies: two copies of
+a selection rule is exactly how these came apart. `is_year_match` and
+`select_df_by_year_scenario_location` remain on both engines as thin
+delegations, so existing callers are unaffected.
+
+**Found while fixing this:** `src/tc_precedence.py`, added the same day for
+§2.3, grouped rows without looking at the selector columns — so two TC rows for
+*different scenarios* were reported as an unresolvable overlap. They are
+alternatives, not a conflict. Corrected in the same commit; a
+scenario-differentiated table would have been refused outright otherwise.
 
 ### 2.5 Same-layer TCs: each engine drops a different key — RESOLVED
 

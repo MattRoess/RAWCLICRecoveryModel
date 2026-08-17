@@ -123,10 +123,18 @@ def resolve(tcs: pd.DataFrame, composition: pd.DataFrame):
     conflicts: list[Conflict] = []
     keep: list[pd.DataFrame] = []
 
-    grouped = tcs.groupby(['Input_FlowID', 'Output_FlowID',
-                           'TC_target_layer', 'TC_target_key'], sort=False)
+    # Two rows only compete if they could apply to the SAME run. Rows that
+    # differ by year, scenario, location or additionalSpecification are
+    # alternatives selected between later, not an overlap -- grouping without
+    # them called a scenario-differentiated table an unresolvable conflict.
+    selectors = [column for column in ('Year', 'Scenario', 'Location',
+                                       'additionalSpecification')
+                 if column in tcs.columns]
+    keys = ['Input_FlowID', 'Output_FlowID', 'TC_target_layer', 'TC_target_key']
+    grouped = tcs.groupby(keys + selectors, sort=False)
 
-    for (source, target, target_layer, target_key), group in grouped:
+    for group_key, group in grouped:
+        source, target, target_layer, target_key = group_key[:4]
         if len(group) == 1:
             keep.append(group)
             continue

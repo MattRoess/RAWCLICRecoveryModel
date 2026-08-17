@@ -21,11 +21,15 @@ WHAT IS PINNED
 1. Both engines reproduce the committed reference for `basic_test`.
 2. The two engines agree with each other on that case.
 3. The intermediate frames stay small -- the direct guard against defect 1.3.
-4. The three documented engine divergences still diverge by exactly the
-   documented amount. This pins current semantics rather than correct ones:
-   fixing DEFECTS.md §2.1, §2.2 or §2.5 SHOULD make check 4 fail, at which
-   point the expected value here is updated deliberately, in the same commit
-   as the fix. A silent change is what this is here to prevent.
+4. Every defect case in DEFECTS.md §2 gives the same answer on both engines.
+   These were non-zero until 2026-08-17; a case reappearing here means a
+   divergence has come back.
+5. The loader refuses what it is supposed to refuse: unknown keys, a
+   composition row with a gap, a bad mass unit, a percentage where a fraction
+   was meant, a same-layer transformation.
+6. The two resolved semantics produce the agreed numbers -- overlapping rules
+   resolve to the specific one, and a scenario is matched exactly rather than
+   by prefix.
 """
 from __future__ import annotations
 
@@ -68,6 +72,7 @@ DOCUMENTED_DIVERGENCES = {
     'data_folder/defect_cases/composition_stock_id': 0.0,
     'data_folder/defect_cases/wildcard_star': 0.0,
     'data_folder/defect_cases/tc_specificity': 0.0,
+    'data_folder/defect_cases/scenario_prefix': 0.0,
 }
 
 
@@ -326,6 +331,28 @@ def test_overlapping_rules_resolve_to_the_specific_one() -> None:
             got = float(rows['Value'].iloc[0])
             assert abs(got - mass) <= TOLERANCE, (
                 f'{engine.__name__}: {component} in {product} is {got:g}, expected {mass:g}')
+
+
+def test_scenario_is_matched_exactly() -> None:
+    """
+    DEFECTS.md §2.4. One inflow in scenario 'BAU', and TC rows for 'BAU' at
+    0.30 and 'BAU_high' at 0.90. Only the BAU row applies, so 100 t gives 30 t.
+
+    The LA engine used to select with str.contains, so 'BAU' also matched
+    'BAU_high' and it returned 90 t -- silently running a different scenario
+    than the one asked for.
+    """
+    folder = 'data_folder/defect_cases/scenario_prefix'
+    for engine in (RecoveryModelOptimized, RecoveryModelLA):
+        solution = solve(engine, folder)
+        rows = solution[(solution['Stock/Flow ID'] == 'F2')
+                        & (solution['Layer 2'] == 'C1')
+                        & (solution['Layer 3'] == '')]
+        assert len(rows) == 1, f'{engine.__name__}: F2/P1/C1 not found'
+        got = float(rows['Value'].iloc[0])
+        assert abs(got - 30.0) <= TOLERANCE, (
+            f'{engine.__name__}: got {got:g}, expected 30 -- 90 means the '
+            f'BAU_high row was matched as well')
 
 
 def test_validation_rejects_a_same_layer_transformation() -> None:
