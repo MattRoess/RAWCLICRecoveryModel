@@ -74,6 +74,31 @@ A note on the theme: the figures used to be hand-written SVG carrying a
 `prefers-color-scheme` rule, so they followed the reader's system setting. A
 PNG or PDF cannot do that, so `theme` picks the palette at render time.
 
+## Scenarios
+
+**One run is one scenario, across all its years.** Set `scenario` in
+`src/params_schema.py` and run; run the others separately. Each writes to its
+own folder, `output_data/<scenario>/`, so results accumulate rather than
+overwrite.
+
+Scenarios are declared by the data, not by a list: the distinct values in
+`inputs.csv`'s optional `Scenario` column are the scenarios that exist. If that
+column is absent — as it is in every case folder here today — there is no
+scenario dimension and the setting stays blank. If it is present and the
+setting is blank, the run stops and lists what it found rather than guessing.
+
+**Comparing scenarios is analysis, not modelling.** The model produces one
+scenario's numbers and stops. Reading several `output_data/<scenario>/` folders
+and putting them side by side is a separate step, deliberately kept outside the
+model so it does not grow a reporting layer.
+
+Why not solve them together: they are independent — this model is pure
+flow-through with no stock carried between runs — so nothing is shared but the
+time spent reading three CSVs. Under the Monte Carlo it actively costs, since
+memory is already the binding constraint (DESIGN_monte_carlo.md §2). Separate
+runs also means several scenarios on several cores, and a failure that loses
+one rather than all of them.
+
 ## Verifying the model still works
 
 Both engines reproduce the committed reference result exactly:

@@ -65,6 +65,54 @@ def is_year_match(year_data, year_target) -> bool:
     return False
 
 
+def scenarios_in(frame: pd.DataFrame) -> list[str]:
+    """The distinct scenario names a table declares, ignoring blanks."""
+    if 'Scenario' not in frame.columns:
+        return []
+    return sorted({str(value).strip() for value in frame['Scenario']
+                   if str(value).strip()})
+
+
+def chosen_scenario(inflows: pd.DataFrame, setting: str) -> str | None:
+    """
+    The one scenario this run solves, or None when there is no scenario
+    dimension at all.
+
+    One run is one scenario. Where the data holds several and the setting names
+    none, that is refused rather than guessed: running all of them silently is
+    what produced output files that overwrote each other.
+    """
+    from src.validate_inputs import InputDataError
+
+    available = scenarios_in(inflows)
+    setting = (setting or '').strip()
+
+    if not available:
+        if setting:
+            raise InputDataError(
+                f"scenario is set to {setting!r} in src/params_schema.py, but "
+                f"inputs.csv has no Scenario column. Clear the setting, or add "
+                f"the column.")
+        return None
+
+    if not setting:
+        raise InputDataError(
+            f"inputs.csv declares {len(available)} scenario(s): "
+            f"{', '.join(available)}.\n"
+            f"One run is one scenario. Set `scenario` in src/params_schema.py "
+            f"to the one you want, and run the others separately -- comparing "
+            f"them is analysis done afterwards on the output files.")
+
+    if setting not in available:
+        raise InputDataError(
+            f"scenario is set to {setting!r} in src/params_schema.py, but "
+            f"inputs.csv declares only: {', '.join(available)}. A name that "
+            f"matches nothing would solve an empty system and report it as a "
+            f"result.")
+
+    return setting
+
+
 def _active(frame: pd.DataFrame, column: str) -> bool:
     """Whether a column exists and actually holds values worth filtering on."""
     return column in frame.columns and frame[column].dropna().astype(bool).any()

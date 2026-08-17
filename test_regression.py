@@ -76,8 +76,14 @@ DOCUMENTED_DIVERGENCES = {
 }
 
 
+# Cases that declare scenarios have to say which one they mean, since one run
+# is one scenario. Everything else has no scenario dimension at all.
+SCENARIO_FOR = {'data_folder/defect_cases/scenario_prefix': 'BAU'}
+
+
 def solve(engine, folder: str) -> pd.DataFrame:
-    model = engine(data_folder=folder, layer_names=LAYER_NAMES)
+    model = engine(data_folder=folder, layer_names=LAYER_NAMES,
+                   scenario=SCENARIO_FOR.get(folder))
     frame = model.solve_models_and_write_to_output()
     for key in KEYS:
         frame[key] = frame[key].astype(str)
@@ -353,6 +359,31 @@ def test_scenario_is_matched_exactly() -> None:
         assert abs(got - 30.0) <= TOLERANCE, (
             f'{engine.__name__}: got {got:g}, expected 30 -- 90 means the '
             f'BAU_high row was matched as well')
+
+
+def test_a_scenario_must_be_chosen() -> None:
+    """
+    One run is one scenario. Where the data holds scenarios and none is
+    chosen, the run stops and lists them rather than solving all of them --
+    which used to write each scenario's output over the last one's.
+    """
+    from src.validate_inputs import InputDataError
+
+    folder = 'data_folder/defect_cases/scenario_prefix'
+    try:
+        RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES, scenario='')
+    except InputDataError as error:
+        assert 'BAU' in str(error), f'error does not list what it found: {error}'
+    else:
+        raise AssertionError('a case with scenarios ran without one being chosen')
+
+    try:
+        RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES,
+                               scenario='not_a_scenario')
+    except InputDataError as error:
+        assert 'not_a_scenario' in str(error)
+    else:
+        raise AssertionError('an unknown scenario name was accepted')
 
 
 def test_validation_rejects_a_same_layer_transformation() -> None:

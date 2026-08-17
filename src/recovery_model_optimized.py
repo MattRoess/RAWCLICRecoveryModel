@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import networkx as nx
 from itertools import product
 
-from src.selection import is_year_match as _is_year_match, select
+from src.selection import chosen_scenario, is_year_match as _is_year_match, select
 from src.tc_precedence import apply_precedence
 from src.validate_inputs import validate
 
@@ -64,7 +64,8 @@ class InputDataFormat:
 
 class RecoveryModelOptimized:
     """Class representing the optimized recovery model, which processes TCs one-by one using dataframe operations"""
-    def __init__(self, data_folder: str, layer_names: List[str]):
+    def __init__(self, data_folder: str, layer_names: List[str],
+                 scenario: str | None = None):
         """
         Initialize the System class.
          - Defines and creates folder structure
@@ -76,6 +77,9 @@ class RecoveryModelOptimized:
         # Set data folder and create structure if needed
         self.layer_names = layer_names
         self.data_folder = data_folder
+        # None means "use the scenario setting"; a string overrides it for one
+        # call, which is what the tests and a one-off run need.
+        self._scenario_override = scenario
 
         # Check the input tables before anything is joined. At this point a bad
         # key can still be reported with its file, column and value; a few lines
@@ -137,7 +141,13 @@ class RecoveryModelOptimized:
 
         # Define the years, locations, scenarios and additionalSpecifications with the inflows file as the defining basis
         years = inflows_df['Year'].unique() if 'Year' in inflows_df.columns else [None]
-        scenarios = inflows_df['Scenario'].unique() if 'Scenario' in inflows_df.columns else [None]
+        # One run is one scenario (src/params_schema.py). This used to sweep
+        # every scenario in the file, writing each over the last one's output.
+        from src.params_schema import Params
+        wanted = (self._scenario_override if self._scenario_override is not None
+                  else Params().run.scenario)
+        self.scenario = chosen_scenario(inflows_df, wanted)
+        scenarios = [self.scenario]
         locations = inflows_df['Location'].unique() if 'Location' in inflows_df.columns else [None]
         additional_specifications = inflows_df['additionalSpecification'].unique() if 'additionalSpecification' in inflows_df.columns else [None]
 
@@ -169,6 +179,22 @@ class RecoveryModelOptimized:
         return input_dfs
 
 
+    def output_path(self, filename: str) -> str:
+        """
+        Where a solution is written.
+
+        One subfolder per scenario, so separate runs accumulate rather than
+        overwrite -- comparing scenarios is analysis done afterwards on these
+        files, which requires them all to still exist. Without a scenario
+        dimension the layout is unchanged.
+        """
+        parts = [self.data_folder, OUTPUT_DATA_FOLDER_NAME]
+        if getattr(self, 'scenario', None):
+            parts.append(self.scenario)
+        folder = os.path.join(*parts)
+        os.makedirs(folder, exist_ok=True)
+        return os.path.join(folder, filename)
+
     def solve_models_and_write_to_output(self) -> pd.DataFrame:
         """
         Solve all entries in the variable self.input_data. Creates an output file where the solution is stored.
@@ -194,7 +220,7 @@ class RecoveryModelOptimized:
         empty_cols = [col for col in ["Scenario", "Location", "additionalSpecification", "Year"] if full_solution[col].isna().all()]
         full_solution = full_solution.drop(columns=empty_cols)
         full_solution = full_solution[full_solution.Value!=0]
-        full_solution.to_csv(os.path.join(self.data_folder, OUTPUT_DATA_FOLDER_NAME, SOLUTION_FILENAME),index=False)
+        full_solution.to_csv(self.output_path(SOLUTION_FILENAME), index=False)
         return full_solution
 
     def solve_model(self, inflows_df: pd.DataFrame, composition_df: pd.DataFrame, tcs_df: pd.DataFrame) -> pd.DataFrame:

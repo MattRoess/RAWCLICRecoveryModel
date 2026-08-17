@@ -45,6 +45,20 @@ method. Use `RecoveryModelOptimized` as the base: it is 11x faster than the LA
 engine at realistic sizes and scales with populated rows rather than with the
 product of layer cardinalities (see MODEL_MECHANICS.md §5).
 
+### One scenario per run
+
+Settled 2026-08-17. Scenarios are independent here, so the model solves one at
+a time and writes to `output_data/<scenario>/`; comparison is analysis done
+afterwards on those files.
+
+This matters for the sampling design. Comparing scenarios wants **common random
+numbers** — the same shredder-efficiency draw in both, so the difference
+between them reflects the scenario rather than sampling noise. Separate runs
+give that for free *provided* the sampling is seeded from `(draw index, TC
+identity)` rather than from a running generator. Seed it that way and the
+property also survives chunking, reordering and reruns, which a shared
+generator does not.
+
 ### Memory forces chunking over draws
 
 `734,110 rows x 200,000 draws x 8 bytes = 1.17 TB`. Even a 10,000-row

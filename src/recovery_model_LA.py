@@ -13,7 +13,7 @@ from typing import Tuple, List
 from dataclasses import dataclass
 from itertools import product
 
-from src.selection import is_year_match, select
+from src.selection import chosen_scenario, is_year_match, select
 from src.tc_precedence import apply_precedence
 from src.validate_inputs import validate
 
@@ -66,7 +66,8 @@ class InputDataFormat:
 
 class RecoveryModelLA:
     """Class representing the Linear Algebra based recovery model, as documented in the doc/Recovery_model_documentation.pdf"""
-    def __init__(self, data_folder: str, layer_names: List[str]):
+    def __init__(self, data_folder: str, layer_names: List[str],
+                 scenario: str | None = None):
         """
         Initialize the System class.
          - Defines and creates folder structure
@@ -77,6 +78,9 @@ class RecoveryModelLA:
         # Set data folder and create structure if needed
         self.layer_names = layer_names
         self.data_folder = data_folder
+        # None means "use the scenario setting"; a string overrides it for one
+        # call, which is what the tests and a one-off run need.
+        self._scenario_override = scenario
 
         # Check the input tables before anything is encoded. This engine maps
         # every key to an integer with .replace(), which leaves an unknown key
@@ -126,7 +130,13 @@ class RecoveryModelLA:
 
         # Define the years, locations, scenarios and additionalSpecifications with the inflows file as the defining basis
         years = inflows_df['Year'].unique() if 'Year' in inflows_df.columns else [None]
-        scenarios = inflows_df['Scenario'].unique() if 'Scenario' in inflows_df.columns else [None]
+        # One run is one scenario (src/params_schema.py). This used to sweep
+        # every scenario in the file, writing each over the last one's output.
+        from src.params_schema import Params
+        wanted = (self._scenario_override if self._scenario_override is not None
+                  else Params().run.scenario)
+        self.scenario = chosen_scenario(inflows_df, wanted)
+        scenarios = [self.scenario]
         locations = inflows_df['Location'].unique() if 'Location' in inflows_df.columns else [None]
         additional_specifications = inflows_df['additionalSpecification'].unique() if 'additionalSpecification' in inflows_df.columns else [None]
 
@@ -319,6 +329,22 @@ class RecoveryModelLA:
         tc_matrix = HelperFunctions.create_sparse_matrix(values=tcs_values, cols=tc_cols, rows=tc_rows, size=self.size)
         return tc_matrix
 
+    def output_path(self, filename: str) -> str:
+        """
+        Where a solution is written.
+
+        One subfolder per scenario, so separate runs accumulate rather than
+        overwrite -- comparing scenarios is analysis done afterwards on these
+        files, which requires them all to still exist. Without a scenario
+        dimension the layout is unchanged.
+        """
+        parts = [self.data_folder, OUTPUT_DATA_FOLDER_NAME]
+        if getattr(self, 'scenario', None):
+            parts.append(self.scenario)
+        folder = os.path.join(*parts)
+        os.makedirs(folder, exist_ok=True)
+        return os.path.join(folder, filename)
+
     def solve_models_and_write_to_output(self) -> pd.DataFrame:
         """
         Solve all entries in the variable self.input_matrices, which contains the model matrices
@@ -342,7 +368,7 @@ class RecoveryModelLA:
         empty_cols = [col for col in ["Scenario", "Location", "additionalSpecification", "Year"] if full_solution[col].isna().all()]
         full_solution = full_solution.drop(columns=empty_cols)
 
-        full_solution.to_csv(os.path.join(self.data_folder, OUTPUT_DATA_FOLDER_NAME, SOLUTION_FILENAME),index=False)
+        full_solution.to_csv(self.output_path(SOLUTION_FILENAME), index=False)
         return full_solution
 
 

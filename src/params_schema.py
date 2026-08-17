@@ -55,6 +55,24 @@ class RunParams:
     # To see which folders qualify, run:  ./.venv/bin/python 01_run_model.py --list
     data_folder: str = 'data_folder/template'
 
+    # WHICH SCENARIO TO RUN.  Blank when the data has no scenario dimension,
+    # which is the case for every data folder in this repository today.
+    #
+    # ONE RUN IS ONE SCENARIO, across all its years. Scenarios are independent
+    # here -- this model is pure flow-through, with no stock carried between
+    # runs -- so nothing is gained by solving several at once, and under the
+    # Monte Carlo it costs: the memory budget is already the binding constraint
+    # (DESIGN_monte_carlo.md section 2). Separate runs also means five
+    # scenarios on five cores, and a failure that loses one rather than all.
+    #
+    # Comparing scenarios is ANALYSIS, done afterwards on the output files. The
+    # model produces one scenario's numbers and stops there.
+    #
+    # If the data holds scenarios and this is left blank, the run stops and
+    # lists what it found rather than guessing.
+    # SAFE TO CHANGE: yes -- it must name a scenario present in inputs.csv.
+    scenario: str = ''
+
     # WHICH OF THE TWO ENGINES SOLVES THE SYSTEM: 'optimized' or 'LA'.
     # SAFE TO CHANGE: yes, but read this first. The two engines disagree beyond
     # the basic_test case -- seven documented differences, several of which
