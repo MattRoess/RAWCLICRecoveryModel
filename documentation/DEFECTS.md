@@ -1,13 +1,20 @@
 # Defects and engine divergences
 
-Found 2026-08-14. Each item has a measurement and a reproduction. Items in §1
-are **fixed**; items in §2 and §3 are **open** and change results.
+Found 2026-08-14; §2.5–2.7, §3.7 and §3.8 added 2026-08-17. Each item has a
+measurement and a reproduction. Items in §1 are **fixed**; items in §2 and §3
+are **open** and change results.
 
 Reproduce any divergence with:
 
 ```bash
 ./.venv/bin/python compare_engines.py data_folder/defect_cases/<case>
 ```
+
+The cases in §2.1–2.3 have committed data folders. The ones added on
+2026-08-17 do not yet: each states the edit to `data_folder/basic_test` that
+exposes it. Its unmodified baseline, for comparison, is **180 rows** and a
+naive row total of **7514.4575** on both engines. That total sums nested rows
+at every depth, so it is a comparison figure and not a mass.
 
 ---
 
@@ -145,6 +152,92 @@ containing a regex metacharacter raises or mismatches; year `"2020"` matches
 **Severity: medium** — silent cross-contamination between scenarios, but only
 with the LA engine and only with scenario names that are prefixes of others.
 
+### 2.5 Same-layer TCs ignore `Input_layer_key` in the optimized engine
+
+**Reproduce:** add to `basic_test/input_data/TCs.csv` a copy of the `F2 →  F4`
+component-level row keyed on `C1` instead of `C2`.
+
+When `Input_layer == TC_target_layer`, `recovery_model_optimized.py:263-266`
+selects only `TC_target_key` and `value` and merges on the target column
+alone. **`Input_layer_key` is never used.** Two consequences:
+
+- "C1 within P1 → C2" cannot be expressed as distinct from "C2 within P1 → C2";
+  both are read as "anything → C2".
+- Two TCs sharing a target key multiply rows in the merge rather than being
+  treated as alternatives.
+
+| | optimized | LA |
+|---|---|---|
+| baseline | 7514.4575 | 7514.4575 |
+| with the added row | **7555.3611** | **7566.4055** |
+
+Engines that agreed exactly now differ by 11.04.
+
+This is **not** §2.3. That one is about cross-layer TCs at different
+specificities being added together; this is the input key being discarded
+*within* a single layer. `basic_test` hides it because its same-layer TCs
+happen to use identical input and target keys (`C2 → C2`), which is the one
+case where dropping the input key is harmless.
+
+**Severity: high**, and it lands directly on the element-over-component
+layering the new requirements ask for.
+
+### 2.6 A composition row populating only Layer 1 invents mass
+
+**Reproduce:** add a row to `basic_test/input_data/composition.csv` with
+`Layer 1` filled, `Layer 2`–`Layer 4` empty, and `Value` 1.
+
+`recovery_model_optimized.py:214` selects the product→component shares with
+`Layer 3 == '' and Layer 4 == ''` — but never requires `Layer 2` to be
+non-empty. A Layer-1-only row therefore passes the filter, gets merged on
+`Layer 1`, and duplicates the product row at "component" depth with an empty
+component key.
+
+| | optimized | LA |
+|---|---|---|
+| baseline | 7514.4575 | 7514.4575 |
+| with the added row | **8514.4575** | 7514.4575 |
+
+Exactly +1000, the mass of `F1/P1`, created from a row that says nothing. The
+LA engine is unaffected.
+
+**Severity: medium.** Same family as §2.1 — a filter that under-constrains
+which composition rows apply — and equally silent. A depth check on load
+catches it.
+
+### 2.7 Unknown keys: LA crashes unreadably, optimized swallows them
+
+**Reproduce:** add to `basic_test/input_data/inputs.csv` either (a) a row whose
+`Substance_main_parent` appears in no composition row, or (b) a row whose
+`Stock/Flow ID` appears in no TC row.
+
+The LA engine encodes with `.replace(mapping)`
+(`recovery_model_LA.py:188`, `:224`, `:307-312`). `replace` leaves an unmapped
+value as the original **string**, which then reaches `ravel_multi_index`'s
+`np.dot` alongside integers:
+
+| case | LA |
+|---|---|
+| (a) unknown product | `TypeError: unsupported operand type(s) for +: 'int' and 'str'` |
+| (b) unknown flow id | `TypeError: can only concatenate str (not "int") to str` |
+
+Neither message names the column, the value, or the file. `.map()` yields NaN
+for a miss and would allow a real diagnostic.
+
+The optimized engine does not fail at all:
+
+| case | optimized |
+|---|---|
+| (a) unknown product | 181 rows, 8514.4575 — **+1000** as an inert product row |
+| (b) unknown flow id | 202 rows, 11514.4575 — **+4000** across 22 rows |
+
+In (b) the orphan flow's mass enters the system, expands through the full
+composition tree, and goes nowhere. No warning from either engine.
+
+**Severity: high for the optimized engine**, which is the one `run_model.py`
+uses and the one that fails silently; medium for LA, where the failure is loud
+but the message is useless. Both are the same missing loader check.
+
 ---
 
 ## 3. Open — absent capability and latent issues
@@ -238,6 +331,33 @@ sets (`sorted(set(...))`) makes it deterministic at no cost.
 recycling route must either use the LA engine or be modelled as a distinct
 downstream flow. Worth knowing before designing the flow network.
 
+### 3.7 `plot_flows.py` silently plots only the first case
+
+`plot_flows.py:51` takes `model.input_data[0]`. With more than one year,
+scenario, location or additionalSpecification, the figures describe that first
+combination alone — and nothing in the title or subtitle says which.
+
+`basic_test` and `template` each have one combination, so it does not bite
+today. It will the moment real data arrives with several years, and it will
+look like a plotting quirk rather than a selection.
+
+**Severity: low now.** Either loop over `input_data` and label each figure, or
+take the combination as an argument.
+
+### 3.8 The LA engine mixes the two scipy sparse APIs
+
+`HelperFunctions.create_sparse_matrix` builds a legacy `coo_matrix(...).tocsr()`
+— the `spmatrix` branch — while `solve_model` combines the result with
+`eye_array`, from the newer sparse *array* API. The type hints throughout claim
+`csr_array`, which is not what is returned.
+
+It works on scipy 1.18. But `spmatrix` is the branch scipy is moving away from,
+and the two APIs differ in operator semantics (notably `*`), so the mix is a
+trap for anyone editing this code later.
+
+**Severity: low, but fix before the Monte Carlo work** rather than during it —
+that restructuring will touch exactly these lines.
+
 ---
 
 ## 4. Code quality notes
@@ -253,3 +373,31 @@ One comment is worth flagging, at `recovery_model_optimized.py:277`:
 That block implements wildcard/empty-key expansion and is load-bearing. It is
 directly adjacent to defect 2.2. It needs to be understood and rewritten, not
 preserved.
+
+One dead line, at `recovery_model_optimized.py:211`:
+
+```python
+composition_df[['Layer 1','Layer 2','Layer 3','Layer 4']] = composition_df[['Layer 1','Layer 2','Layer 3','Layer 4']]
+```
+
+It assigns the four columns to themselves — a no-op. Worth noting rather than
+just deleting: it sits one line below the `Stock/ID` drop that is defect §2.1,
+and looks like the remains of something that was meant to happen there.
+
+---
+
+## 5. What ties §2.5–2.7 together
+
+All three, plus §2.1, are the same absence: **nothing validates the input
+tables before they are used.** Every one of them is catchable at load time,
+where the error can still name the file, the column and the value:
+
+- every `Substance_main_parent` and `Stock/Flow ID` in `inputs.csv` resolves
+  against `composition.csv` and `TCs.csv` (§2.7)
+- no composition row skips a layer (§2.6)
+- no two TCs for one process share a target key at the same layer (§2.5)
+- composition is defined per `Stock/ID`, and applied per `Stock/ID` (§2.1)
+
+`check_mass_balance.py` already does work of exactly this shape on the TC
+table. Extending it, and calling it on load, is the natural companion to the
+regression test that is step 1 of HANDOVER.md §5.

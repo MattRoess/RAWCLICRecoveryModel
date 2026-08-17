@@ -18,8 +18,10 @@ topological process ordering — is sound, and two independent implementations
 agreeing is real evidence for it.
 
 It did not run when inherited. Three pandas-3 breakages were fixed
-(DEFECTS.md §1). Beyond `basic_test`, three semantic divergences between the
-engines remain open and change results (DEFECTS.md §2).
+(DEFECTS.md §1). Beyond `basic_test`, **seven** divergences between the engines
+remain open and change results (DEFECTS.md §2). Four of those — §2.1 and
+§2.5–2.7 — are one absence: no input table is validated before use, so bad
+input is silently absorbed rather than rejected (DEFECTS.md §5).
 
 Nothing about uncertainty exists yet. That is the work ahead.
 
@@ -100,18 +102,24 @@ context; repeated here because they gate the work.
    Carlo restructuring can silently move the deterministic answer and nobody
    will know. Compare with a tolerance rather than exactly — the LA engine
    varies by ~1.5 ULP between runs (DEFECTS.md §3.5).
-2. **Fix the engine divergences** (DEFECTS.md §2.1, §2.2), and settle §2.3 with
-   whoever owns the method. Write the resolved semantics down — their absence
-   is why §2.3 exists at all.
-3. **Add the mass balance assertion on load**, once the table has loss flows.
+2. **Validate the input tables on load** (DEFECTS.md §5). One check catches
+   §2.1, §2.6 and §2.7 at the point where the error can still name the file,
+   the column and the value — instead of, respectively, inventing mass,
+   inventing mass, and either an unreadable `TypeError` or +4000 Mg of silent
+   phantom inflow. `check_mass_balance.py` already does work of this shape.
+3. **Fix the engine divergences** (DEFECTS.md §2.1, §2.2, §2.5), and settle
+   §2.3 with whoever owns the method. Write the resolved semantics down — their
+   absence is why §2.3 exists at all. §2.5 lands on the element-over-component
+   layering the new requirements ask for, so it will be hit early.
+4. **Add the mass balance assertion on load**, once the table has loss flows.
    `check_mass_balance.py` already computes everything it needs; this is
    promoting a report into a hard failure.
-4. **Then restructure for Monte Carlo** (DESIGN_monte_carlo.md §2): hoist the
+5. **Then restructure for Monte Carlo** (DESIGN_monte_carlo.md §2): hoist the
    join structure out, carry `Value` as `(n_rows x n_draws)`, chunk over draws.
 
-Steps 1 and 2 are ordinary engineering and can start today. Step 0 is the long
+Steps 1 to 3 are ordinary engineering and can start today. Step 0 is the long
 pole and is not engineering at all — it is a method decision followed by data
-collection, and nothing in step 4 can be finished without it. Step 4 should not
+collection, and nothing in step 5 can be finished without it. Step 5 should not
 start before step 1 exists.
 
 ## 6. Picking up on Monday

@@ -87,6 +87,14 @@ measurement and a one-command reproduction in
 - **Overlapping TC specificity resolves differently.** Given both a
   product-level and a component-level TC for the same process, `LA` applies the
   more specific one and `Optimized` adds them together.
+- **Bad input is not rejected — it is absorbed.** Nothing validates the input
+  tables. An inflow naming a flow that appears in no TC adds 4000 Mg of phantom
+  mass to `basic_test` under `RecoveryModelOptimized`, with no warning; the
+  same input makes `RecoveryModelLA` die on an unreadable `TypeError`. A
+  composition row that fills only `Layer 1` invents mass the same way.
+- **Same-layer TCs discard `Input_layer_key` in `RecoveryModelOptimized`.**
+  A component→component TC is read as "anything → that component", so the two
+  engines disagree wherever a resource is routed within one layer.
 - **There is no mass balance check.** A TC is a retention fraction for one
   resource into one destination flow, so the meaningful total is per resource
   over the output flows it reaches. Nothing verifies it. Run
