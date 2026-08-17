@@ -3,37 +3,32 @@ Draw the STRUCTURE of a data folder: what connects to what, and what each
 process does. Nothing is scaled by mass -- this is the diagram for
 understanding the setup, not for reading quantities off.
 
-    ./.venv/bin/python plot_structure.py                    # the case in params.xlsx
+    ./.venv/bin/python plot_structure.py                    # the case in params_schema.py
     ./.venv/bin/python plot_structure.py data_folder/basic_test
     ./.venv/bin/python plot_structure.py --list
 
 Everything about the output -- which formats, which resolution, which palette --
-is read from `params.xlsx`, not from flags. Change it there; run
-`00_parameters.py` once first if the file does not exist yet.
+is a parameter in `src/params_schema.py`, not a flag. Change it there.
 
 The argument, when given, may be a data folder, a folder containing
 input_data/, or a TCs.csv anywhere on disk. Pass `--pick` to choose from a
 list of the cases found.
 
-Writes <out_dir>/<case>_structure.<fmt> in every format `figures.formats` asks
-for. Every box is a flow, every arrow is a process, and the transfer
+Writes <out_dir>/<case>_structure.<fmt> in every format switched on by
+`figures.png`, `figures.svg` and `figures.pdf`. Every box is a flow, every arrow is a process, and the transfer
 coefficients behind each arrow are listed underneath so the whole configuration
 is visible at once.
 
 For mass-weighted Sankey diagrams instead, see plot_flows.py.
 """
-import argparse
 import os
-import sys
 
 import pandas as pd
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle
 from matplotlib.path import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 from src.figure_style import MONO, PALETTE, canvas, label, write
-from src.params_io import ParameterError, load
+from src.params_schema import Params, current
 
 SEARCH_ROOTS = ('data_folder', '.')
 
@@ -256,36 +251,15 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light'):
 
 # --------------------------------------------------------------------------
 
-def main(target: str | None = None, params=None) -> None:
-    params = params or load()
+def draw(target: str | None = None, params: Params | None = None) -> None:
+    params = params or current()
     tcs_path, case = resolve(target or params.run.data_folder)
     tcs = pd.read_csv(tcs_path, keep_default_na=False, na_values=[])
     figure = render(tcs, case, theme=params.figures.theme)
     for path in write(figure, params.figures.out_dir, f'{case}_structure',
-                      params.figures.formats, params.figures.dpi):
+                      params.figures.enabled(), params.figures.dpi):
         print(f'wrote {path}')
 
     import matplotlib.pyplot as plt
     plt.close(figure)
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    parser.add_argument('target', nargs='?',
-                        help='data folder or TCs.csv. Omit to use run.data_folder from params.xlsx.')
-    parser.add_argument('--pick', action='store_true', help='choose the case from a list')
-    parser.add_argument('-l', '--list', action='store_true',
-                        help='list the data folders that have a TC table, then exit')
-    parser.add_argument('-p', '--params', default=None, help='parameter file (default: params.xlsx)')
-    arguments = parser.parse_args()
-
-    if arguments.list:
-        for found in find_cases():
-            print(found)
-        raise SystemExit(0)
-
-    try:
-        main(choose() if arguments.pick else arguments.target,
-             load(arguments.params) if arguments.params else None)
-    except ParameterError as error:
-        raise SystemExit(error)

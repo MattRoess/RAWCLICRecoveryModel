@@ -93,7 +93,7 @@ Two inflows, FA composed of C1 and FB composed of C2:
 | FB / P1 / C2 | 100 | 100 |
 
 The component layer of FA now sums to 200 against a product layer of 100. Mass
-is invented, silently. The optimized engine is the one `run_model.py` uses.
+is invented, silently. The optimized engine is the one `01_run_model.py` uses.
 
 **Severity: high.** Any real dataset where two flows carry the same product with
 different compositions is wrong, in the direction of overestimating recovery.
@@ -234,7 +234,7 @@ The optimized engine does not fail at all:
 In (b) the orphan flow's mass enters the system, expands through the full
 composition tree, and goes nowhere. No warning from either engine.
 
-**Severity: high for the optimized engine**, which is the one `run_model.py`
+**Severity: high for the optimized engine**, which is the one `01_run_model.py`
 uses and the one that fails silently; medium for LA, where the failure is loud
 but the message is useless. Both are the same missing loader check.
 
@@ -252,7 +252,7 @@ nothing records the shortfall.
 
 The meaningful check is per transferred resource, totalled over the output
 flows it reaches — see MODEL_MECHANICS.md §4 for why other groupings are not
-quantities. `check_mass_balance.py` computes it. On `basic_test`, totals range
+quantities. `02_check_mass_balance.py` computes it. On `basic_test`, totals range
 [0, 0.66], none exceed 1, and the unaccounted fraction averages 0.78. That mass
 has no residual or loss flow: it leaves the system unrecorded.
 
@@ -331,9 +331,9 @@ sets (`sorted(set(...))`) makes it deterministic at no cost.
 recycling route must either use the LA engine or be modelled as a distinct
 downstream flow. Worth knowing before designing the flow network.
 
-### 3.7 `plot_flows.py` silently plots only the first case
+### 3.7 `src/plot_flows.py` silently plots only the first case
 
-`plot_flows.py:51` takes `model.input_data[0]`. With more than one year,
+`src/plot_flows.py:51` takes `model.input_data[0]`. With more than one year,
 scenario, location or additionalSpecification, the figures describe that first
 combination alone — and nothing in the title or subtitle says which.
 
@@ -398,6 +398,6 @@ where the error can still name the file, the column and the value:
 - no two TCs for one process share a target key at the same layer (§2.5)
 - composition is defined per `Stock/ID`, and applied per `Stock/ID` (§2.1)
 
-`check_mass_balance.py` already does work of exactly this shape on the TC
+`02_check_mass_balance.py` already does work of exactly this shape on the TC
 table. Extending it, and calling it on load, is the natural companion to the
 regression test that is step 1 of HANDOVER.md §5.

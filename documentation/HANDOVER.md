@@ -59,7 +59,7 @@ it is recoverable from commit `cc82a0a` if ever needed.
 | `cc82a0a` | The code exactly as inherited. Baseline for reviewing every later diff. |
 | `ee3fc6b` | Environment setup and the three pandas-3 fixes. |
 | `902b04c` | This documentation set, `compare_engines.py`, and the defect cases. |
-| `9cbbe8d` | Corrected the TC mass-balance grouping; added `check_mass_balance.py`. |
+| `9cbbe8d` | Corrected the TC mass-balance grouping; added `02_check_mass_balance.py`. |
 | `f082c7b` | Positron terminal auto-activation. |
 | `f719d5f` | TC table schema proposal and the `template` worked example. |
 | `cf9b188` | `plot_flows.py` — mass-weighted Sankey figures. |
@@ -106,13 +106,13 @@ context; repeated here because they gate the work.
    §2.1, §2.6 and §2.7 at the point where the error can still name the file,
    the column and the value — instead of, respectively, inventing mass,
    inventing mass, and either an unreadable `TypeError` or +4000 Mg of silent
-   phantom inflow. `check_mass_balance.py` already does work of this shape.
+   phantom inflow. `02_check_mass_balance.py` already does work of this shape.
 3. **Fix the engine divergences** (DEFECTS.md §2.1, §2.2, §2.5), and settle
    §2.3 with whoever owns the method. Write the resolved semantics down — their
    absence is why §2.3 exists at all. §2.5 lands on the element-over-component
    layering the new requirements ask for, so it will be hit early.
 4. **Add the mass balance assertion on load**, once the table has loss flows.
-   `check_mass_balance.py` already computes everything it needs; this is
+   `02_check_mass_balance.py` already computes everything it needs; this is
    promoting a report into a hard failure.
 5. **Then restructure for Monte Carlo** (DESIGN_monte_carlo.md §2): hoist the
    join structure out, carry `Value` as `(n_rows x n_draws)`, chunk over draws.
@@ -134,7 +134,7 @@ Do these in order and you are back to where today ended in about ten minutes.
    tracked copy would only ever be a stale one:
 
    ```bash
-   ./.venv/bin/python plot_structure.py data_folder/template
+   ./.venv/bin/python 03_plot_structure.py data_folder/template
    ```
 
    That writes `figures/template_structure.png` — one page showing every flow,

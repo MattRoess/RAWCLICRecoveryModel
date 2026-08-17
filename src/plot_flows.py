@@ -1,16 +1,15 @@
 """
 Draw the flow network of a data folder as a Sankey diagram.
 
-    ./.venv/bin/python plot_flows.py                       # the case in params.xlsx
+    ./.venv/bin/python plot_flows.py                       # the case in params_schema.py
     ./.venv/bin/python plot_flows.py data_folder/basic_test
 
 Everything about the output -- which formats, which resolution, which palette,
-whether the per-element figures are drawn -- is read from `params.xlsx`, not
-from flags. Change it there; run `00_parameters.py` once first if the file does
-not exist yet.
+whether the per-element figures are drawn -- is a parameter in
+`src/params_schema.py`, not a flag. Change it there.
 
 Writes <out_dir>/<case>_total.<fmt> plus one figure per element, in every
-format `figures.formats` asks for. Rendering goes through matplotlib, so all
+format switched on by `figures.png`, `figures.svg` and `figures.pdf`. Rendering goes through matplotlib, so all
 formats come from one drawing and cannot disagree.
 
 Two things this has to get right, both of which a naive script gets wrong:
@@ -26,18 +25,14 @@ Two things this has to get right, both of which a naive script gets wrong:
     by replaying the model's own process loop, so the picture cannot drift from
     what the model actually does.
 """
-import argparse
 import os
-import sys
 
 import pandas as pd
 from matplotlib.patches import PathPatch, Rectangle
 from matplotlib.path import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 from src.figure_style import PALETTE, canvas, label, write
-from src.params_io import ParameterError, load
+from src.params_schema import Params, current
 from src.recovery_model_optimized import RecoveryModelOptimized
 
 LAYERS = ['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
@@ -203,8 +198,8 @@ def figure_for(case: str, edges, flows, element: str | None, unit: str, theme: s
     return render(nodes, links, assign_columns(list(nodes), links), title, subtitle, theme)
 
 
-def main(folder: str | None = None, params=None) -> None:
-    params = params or load()
+def draw(folder: str | None = None, params: Params | None = None) -> None:
+    params = params or current()
     folder = folder or params.run.data_folder
 
     unit = 'Mg'
@@ -226,19 +221,8 @@ def main(folder: str | None = None, params=None) -> None:
             continue
         stem = f'{case}_{element or "total"}'
         for path in write(figure, params.figures.out_dir, stem,
-                          params.figures.formats, params.figures.dpi):
+                          params.figures.enabled(), params.figures.dpi):
             print(f'  wrote {path}')
         import matplotlib.pyplot as plt
         plt.close(figure)
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    parser.add_argument('folder', nargs='?',
-                        help='data folder to draw. Omit to use run.data_folder from params.xlsx.')
-    parser.add_argument('-p', '--params', default=None, help='parameter file (default: params.xlsx)')
-    arguments = parser.parse_args()
-    try:
-        main(arguments.folder, load(arguments.params) if arguments.params else None)
-    except ParameterError as error:
-        raise SystemExit(error)

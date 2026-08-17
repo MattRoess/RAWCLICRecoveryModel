@@ -12,7 +12,7 @@ rather than from anyone's recollection.
 | [DESIGN_tc_table.md](DESIGN_tc_table.md) | How to build the TC table so that sum-to-1 holds by construction. Proposal, with a worked example in `data_folder/template`. The real table does not exist yet, so read this before collecting data. |
 | [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | The design problem for the Monte Carlo version: architecture, the compute budget, sampling asymmetric triangulars, and how to sample under the sum-to-1 constraint. Not yet built. |
 | [HANDOVER.md](HANDOVER.md) | Current state, decisions taken and why, open questions, and the recommended order of work. |
-| [PARAMETER_REFERENCE.md](PARAMETER_REFERENCE.md) | Every setting in `params.xlsx`, its default, and what changing it does. Generated from `src/params_schema.py` — do not edit by hand. |
+| [PARAMETER_REFERENCE.md](PARAMETER_REFERENCE.md) | Every setting, its current value, and what changing it does. Generated from `src/params_schema.py` — do not edit by hand; edit the settings file. |
 
 The input file format is specified in `../doc/User guide.docx` (Harmjan de
 Vries, 21-11-2024). That document is the authority on the input schema and is
@@ -25,7 +25,7 @@ What the transfer coefficients in a dataset actually total, and whether
 composition closes to 1:
 
 ```bash
-./.venv/bin/python check_mass_balance.py data_folder/basic_test
+./.venv/bin/python 02_check_mass_balance.py data_folder/basic_test
 ```
 
 Read MODEL_MECHANICS.md §4 first — the grouping this uses is not the obvious
@@ -37,32 +37,34 @@ To understand **how the model is wired** — every flow, every process, and the
 transfer coefficients behind each arrow, nothing scaled by mass:
 
 ```bash
-./.venv/bin/python plot_structure.py data_folder/template
+./.venv/bin/python 03_plot_structure.py data_folder/template
 ```
 
 To see **how much mass goes where**, as a Sankey, in total and per element:
 
 ```bash
-./.venv/bin/python plot_flows.py data_folder/template
+./.venv/bin/python 04_plot_flows.py data_folder/template
 ```
 
 Both render through matplotlib, so every requested format comes from one
 drawing and they cannot disagree. Drawing the Sankeys is also part of a normal
-`run_model.py` run, so a result and the picture of it cannot drift apart.
+`01_run_model.py` run, so a result and the picture of it cannot drift apart.
 
-**Which formats, which resolution, which palette are parameters, not flags.**
-They live in `params.xlsx` — `figures.formats`, `figures.dpi`, `figures.theme`,
-`figures.out_dir`, `figures.element_figures` — and are documented in
-[PARAMETER_REFERENCE.md](PARAMETER_REFERENCE.md). The one thing still passed on
-the command line is which case to draw, and only because that is the thing that
-changes within a single sitting.
+For the Sankeys, totals are taken at each flow's own shallowest depth, so the
+nesting described in MODEL_MECHANICS.md §1 is not double counted, and edge
+magnitudes are recomputed by replaying the model's own process loop rather than
+inferred from the solution file.
+
+**Which formats, which resolution, which palette are settings, not flags.**
+They are in `src/params_schema.py` — `png`, `svg`, `pdf`, `dpi`, `theme`,
+`out_dir`, `element_figures` — and are listed in
+[PARAMETER_REFERENCE.md](PARAMETER_REFERENCE.md). PNG is on; SVG and PDF are
+off until switched on there. The one thing still passed on the command line is
+which case to draw, because that is what changes within a single sitting.
 
 A note on the theme: the figures used to be hand-written SVG carrying a
 `prefers-color-scheme` rule, so they followed the reader's system setting. A
-PNG or PDF cannot do that, so `figures.theme` picks the palette at render time. Totals are taken at each flow's own shallowest depth, so the nesting
-described in MODEL_MECHANICS.md §1 is not double counted, and edge magnitudes
-are recomputed by replaying the model's own process loop rather than inferred
-from the solution file.
+PNG or PDF cannot do that, so `theme` picks the palette at render time.
 
 ## Verifying the model still works
 

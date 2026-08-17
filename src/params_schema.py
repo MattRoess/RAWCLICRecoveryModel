@@ -2,248 +2,198 @@
 src/params_schema.py
 ====================
 
-Every parameter this project has, in one typed place.
+**This is the file you edit to change a setting.**
 
-WHY THIS LIVES HERE AND NOT IN 00_parameters.py
------------------------------------------------
-Same reason as the stock-flow model: a file that is run directly is module
-`__main__`, so any class defined in it is recorded as `__main__.Params` and
-cannot be resolved from a different script. Defining the schema in a module
-that is only ever imported keeps the classes addressable as
-`src.params_schema.Params` from everywhere.
+Every value the model uses is written below, with a plain-language comment
+above it saying what it does and whether it is safe to change. Change a value,
+save the file, and the next run uses it.
 
-HOW IT DIFFERS FROM THE STOCK-FLOW MODEL
-----------------------------------------
-There, `params.xlsx` is written but never read: the dataclass defaults are the
-only real source of truth, so changing a setting means editing Python. Here the
-spreadsheet is **read back** -- `load()` applies every row over the defaults
-below -- so the file is the control surface and the code does not have to be
-touched to change a case, a format or a resolution.
+Then run:
 
-The defaults in this file are therefore the fallback, not the setting. If
-`params.xlsx` is missing the model still runs on these.
+    ./.venv/bin/python 00_parameters.py
 
-Access is by attribute -- `params.run.data_folder`, `params.figures.formats` --
-and by dotted key when coming from the spreadsheet: `run.data_folder`.
+which rewrites `params.xlsx` and `documentation/PARAMETER_REFERENCE.md` so that
+the written record matches what is actually set. Both of those are reports:
+editing them changes nothing, because nothing reads them.
+
+Same arrangement as the stock-flow model -- parameters in code, Excel generated.
+
+WHY THIS IS A MODULE AND NOT PART OF 00_parameters.py
+-----------------------------------------------------
+A file that is run directly is module `__main__`, so a class defined in it is
+recorded as `__main__.Params` and cannot be resolved from any other script.
+Defining these here, in a module that is only ever imported, keeps them
+addressable as `src.params_schema.Params` from every stage.
 """
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field, fields, is_dataclass
-from typing import Any
+from dataclasses import dataclass, field, fields
 
 FORMATS = ('svg', 'png', 'pdf')
 THEMES = ('light', 'dark')
 ENGINES = ('optimized', 'LA')
 
 
+class ParameterError(ValueError):
+    """Raised when the values below do not make sense together."""
+
+
+# ======================================================================
+#  THE SETTINGS.  Everything you would want to change is in this block.
+#  Edit the value to the right of the '=' sign. Nothing else.
+# ======================================================================
+
 @dataclass
 class RunParams:
-    """What to solve, and with which engine."""
+    """What gets solved, and with which engine."""
 
+    # WHICH CASE THE MODEL RUNS.
+    # A folder holding an `input_data/` with the three CSV files: inputs.csv,
+    # composition.csv and TCs.csv. The path is written from the project root.
+    # SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
+    # To see which folders qualify, run:  ./.venv/bin/python 01_run_model.py --list
     data_folder: str = 'data_folder/template'
-    """
-    The case to run. A folder holding an `input_data/` with the three CSVs.
 
-    SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
-    Anything under `data_folder/` works; the path is relative to the project
-    root. `run_model.py --list` prints the folders that qualify.
-    """
-
+    # WHICH OF THE TWO ENGINES SOLVES THE SYSTEM: 'optimized' or 'LA'.
+    # SAFE TO CHANGE: yes, but read this first. The two engines disagree beyond
+    # the basic_test case -- seven documented differences, several of which
+    # change results silently (documentation/DEFECTS.md section 2). 'optimized'
+    # is the default because it is what this project has always run, NOT
+    # because it is the more correct of the two.
     engine: str = 'optimized'
-    """
-    Which of the two engines solves the system: 'optimized' or 'LA'.
 
-    SAFE TO CHANGE: yes, but know that the two disagree beyond `basic_test` --
-    seven documented divergences, some of which silently change results. See
-    documentation/DEFECTS.md §2. 'optimized' is the default because it is what
-    the project has always run; it is not the more correct of the two.
-    """
-
+    # DRAW THE SANKEY FIGURES AS PART OF A RUN.
+    # These show how much mass goes where, in total and per element.
+    # SAFE TO CHANGE: yes. Set to False to solve without drawing anything.
     draw_flows: bool = True
-    """Draw the Sankey figures as part of a run. SAFE TO CHANGE: yes."""
 
+    # ALSO DRAW THE STRUCTURE DIAGRAM ON EVERY RUN.
+    # This shows how the flows connect and the transfer coefficients behind
+    # each arrow. Off by default because the structure only changes when the TC
+    # table changes, while the Sankeys change with every result.
+    # SAFE TO CHANGE: yes.
     draw_structure: bool = False
-    """
-    Also draw the structure diagram on every run.
-
-    Off by default because the structure changes only when the TC table does,
-    while the Sankeys change with every result. SAFE TO CHANGE: yes.
-    """
 
 
 @dataclass
 class FigureParams:
-    """How every figure is rendered. Applies to both plot scripts."""
+    """How the figures are written. Applies to both kinds of figure."""
 
-    formats: list[str] = field(default_factory=lambda: ['png'])
-    """
-    Which file formats to write, from 'svg', 'png' and 'pdf'.
+    # WRITE PNG FILES.  On.
+    # The picture format -- use it for slides, email, and anything that will
+    # not accept a vector file.
+    # SAFE TO CHANGE: yes.
+    png: bool = True
 
-    PNG only by default. SVG and PDF are off unless this list asks for them --
-    add them here and nothing else changes, because one drawing produces every
-    format and they cannot disagree.
+    # WRITE SVG FILES.  Off -- set to True to also get them.
+    # A vector format: it stays sharp at any size, and can be opened and edited
+    # afterwards in Illustrator or Inkscape. Also the format for web pages.
+    # SAFE TO CHANGE: yes.
+    svg: bool = False
 
-    Written as a JSON list in the spreadsheet. To turn all three on:
-    ["svg", "png", "pdf"]. A plain comma-separated list is also accepted, so
-    svg, png, pdf typed straight into the cell works too.
+    # WRITE PDF FILES.  Off -- set to True to also get them.
+    # A vector format with the text kept as real, searchable text. This is the
+    # one for reports, papers and printing.
+    # SAFE TO CHANGE: yes.
+    pdf: bool = False
 
-    SAFE TO CHANGE: yes. PNG for anything that will not take a vector, SVG for
-    the web and for editing, PDF for documents and printing.
-    """
-
+    # WHERE THE FIGURES ARE WRITTEN, as a folder name from the project root.
+    # The folder is created if it does not exist.
+    # SAFE TO CHANGE: yes.
     out_dir: str = 'figures'
-    """Where figures are written, relative to the project root. SAFE TO CHANGE: yes."""
 
+    # RESOLUTION OF THE PNG FILES, in dots per inch.
+    # Ignored by SVG and PDF, which are vector formats and have no resolution.
+    # 200 is roughly print quality at the figure's natural size; 96 gives a
+    # smaller file for screen use; 300 is heavier than most documents need.
+    # SAFE TO CHANGE: yes. Must be a whole number above zero.
     dpi: int = 200
-    """
-    Raster resolution for PNG, in dots per inch. Ignored by SVG and PDF, which
-    are vector formats and have no resolution.
 
-    200 is roughly print quality at the figure's natural size. 96 gives a
-    smaller file for screen use; 300 is heavier than most documents need.
-
-    SAFE TO CHANGE: yes. Must be above zero.
-    """
-
+    # COLOUR SCHEME: 'light' or 'dark'.
+    # The figures used to follow the reader's system setting automatically. A
+    # PNG or PDF cannot do that, so the choice is made when they are drawn.
+    # SAFE TO CHANGE: yes.
     theme: str = 'light'
-    """
-    Colour scheme baked into the output: 'light' or 'dark'.
 
-    The figures used to carry a `prefers-color-scheme` rule and switch by
-    themselves. A PNG or PDF cannot, so the choice is made at render time.
-
-    SAFE TO CHANGE: yes.
-    """
-
+    # DRAW ONE SANKEY PER ELEMENT, in addition to the total.
+    # SAFE TO CHANGE: yes. With many elements this is one file per element per
+    # format, which multiplies quickly -- set to False for the total only.
     element_figures: bool = True
-    """
-    Whether plot_flows draws one Sankey per element in addition to the total.
 
-    SAFE TO CHANGE: yes. With many elements this is one file per element per
-    format, which multiplies quickly -- turn it off to get the total only.
-    """
+    def enabled(self) -> list[str]:
+        """The formats switched on above, in a fixed order. Not a setting."""
+        return [name for name in FORMATS if getattr(self, name)]
 
+
+# ======================================================================
+#  Below here is machinery. Nothing to edit.
+# ======================================================================
 
 @dataclass
 class Params:
-    """The whole parameter set. One instance is built by 00_parameters.py."""
+    """The whole parameter set."""
 
     run: RunParams = field(default_factory=RunParams)
     figures: FigureParams = field(default_factory=FigureParams)
 
-    # -- sections, in the order they appear in the spreadsheet
     SECTIONS = ('run', 'figures')
 
     def validate(self) -> list[str]:
-        """Return a list of human-readable problems. Empty means valid."""
+        """Return a list of plain-language problems. Empty means all is well."""
         issues: list[str] = []
 
         if self.run.engine not in ENGINES:
-            issues.append(f"run.engine is {self.run.engine!r}, expected one of {', '.join(ENGINES)}")
+            issues.append(f"engine is {self.run.engine!r}, but must be one of "
+                          f"{', '.join(repr(e) for e in ENGINES)}")
 
-        if not self.figures.formats:
-            issues.append('figures.formats is empty -- no figure would be written')
-        unknown = [f for f in self.figures.formats if f not in FORMATS]
-        if unknown:
-            issues.append(f"figures.formats contains {', '.join(map(repr, unknown))}; "
-                          f"allowed: {', '.join(FORMATS)}")
+        if not self.figures.enabled():
+            issues.append('png, svg and pdf are all False, so no figure would be '
+                          'written. Set at least one of them to True.')
 
         if self.figures.theme not in THEMES:
-            issues.append(f"figures.theme is {self.figures.theme!r}, expected one of {', '.join(THEMES)}")
+            issues.append(f"theme is {self.figures.theme!r}, but must be one of "
+                          f"{', '.join(repr(t) for t in THEMES)}")
 
-        if self.figures.dpi <= 0:
-            issues.append(f'figures.dpi is {self.figures.dpi}, must be above zero')
+        if not isinstance(self.figures.dpi, int) or isinstance(self.figures.dpi, bool) \
+                or self.figures.dpi <= 0:
+            issues.append(f'dpi is {self.figures.dpi!r}, but must be a whole number '
+                          f'above zero, such as 200')
 
         if not self.run.data_folder:
-            issues.append('run.data_folder is empty')
+            issues.append('data_folder is empty -- it needs the name of a case folder')
 
         return issues
 
-    # ------------------------------------------------------------------
-    # Dotted-key access, which is how the spreadsheet addresses a field
-    # ------------------------------------------------------------------
 
-    def get(self, key: str) -> Any:
-        section, _, name = key.partition('.')
-        return getattr(getattr(self, section), name)
+def current() -> Params:
+    """
+    The settings above, checked.
 
-    def set(self, key: str, raw: Any) -> None:
-        """
-        Apply one spreadsheet cell, coercing it to the field's declared type.
+    Every stage calls this rather than building Params itself, so a mistaken
+    edit is reported once and clearly at the start of a run, naming the setting
+    and what it should have been.
+    """
+    params = Params()
+    issues = params.validate()
+    if issues:
+        raise ParameterError(
+            'There is a problem with the settings in src/params_schema.py:\n\n'
+            + '\n'.join(f'  - {issue}' for issue in issues)
+            + '\n\nOpen that file, correct the value, and run again.')
+    return params
 
-        The spreadsheet has no types -- everything arrives as text or as
-        whatever openpyxl inferred -- so the dataclass annotation decides how
-        to read it. An unparseable cell raises rather than silently keeping
-        the default, because a typo that leaves the old value in place is the
-        kind of thing nobody notices.
-        """
-        section_name, _, name = key.partition('.')
-        if section_name not in self.SECTIONS:
-            raise KeyError(f'unknown parameter section {section_name!r} in key {key!r}')
-        section = getattr(self, section_name)
-        declared = {f.name: f.type for f in fields(section)}
-        if name not in declared:
-            raise KeyError(f'unknown parameter {key!r}')
-        setattr(section, name, _coerce(raw, declared[name], key))
-
-
-def _coerce(raw: Any, annotation: Any, key: str) -> Any:
-    """Turn one spreadsheet cell into the type the dataclass declares."""
-    text = str(raw).strip() if raw is not None else ''
-    annotation = str(annotation)
-
-    if annotation.startswith('list'):
-        if isinstance(raw, (list, tuple)):
-            return list(raw)
-        try:
-            parsed = json.loads(text)
-        except json.JSONDecodeError:
-            # Tolerate a bare comma-separated list, which is what a person
-            # types into a spreadsheet cell when not thinking about JSON.
-            parsed = [part.strip() for part in text.split(',') if part.strip()]
-        if not isinstance(parsed, list):
-            raise ValueError(f'{key}: expected a list, got {text!r}')
-        return [str(item).strip() for item in parsed]
-
-    if annotation.startswith('bool'):
-        if isinstance(raw, bool):
-            return raw
-        if text.lower() in ('true', 'yes', '1'):
-            return True
-        if text.lower() in ('false', 'no', '0'):
-            return False
-        raise ValueError(f'{key}: expected true or false, got {text!r}')
-
-    if annotation.startswith('int'):
-        try:
-            return int(float(text))
-        except ValueError:
-            raise ValueError(f'{key}: expected a whole number, got {text!r}') from None
-
-    if annotation.startswith('float'):
-        try:
-            return float(text)
-        except ValueError:
-            raise ValueError(f'{key}: expected a number, got {text!r}') from None
-
-    return text
-
-
-# ----------------------------------------------------------------------
-# Flattening, shared by the spreadsheet writer and the reference generator
-# ----------------------------------------------------------------------
 
 def describe(section_name: str, name: str) -> str:
-    """The field's own docstring, collapsed to one line for the register."""
+    """The comment block written above the setting, as one line."""
     section = {'run': RunParams, 'figures': FigureParams}[section_name]
-    doc = _FIELD_DOCS.get((section.__name__, name), '')
-    return ' '.join(doc.split()) or f"Parameter in section '{section_name}'."
+    return _FIELD_COMMENTS.get((section.__name__, name), '') or \
+        f"Setting in section '{section_name}'."
 
 
-def flatten(params: Params) -> list[list[Any]]:
-    """[name, description, key, value] per parameter, in declaration order."""
-    rows: list[list[Any]] = []
+def flatten(params: Params) -> list[list]:
+    """[name, description, key, value] per setting, in the order written above."""
+    rows: list[list] = []
     for section_name in params.SECTIONS:
         section = getattr(params, section_name)
         for f in fields(section):
@@ -257,32 +207,38 @@ def flatten(params: Params) -> list[list[Any]]:
     return rows
 
 
-def _collect_field_docs() -> dict[tuple[str, str], str]:
+def _collect_field_comments() -> dict[tuple[str, str], str]:
     """
-    Field docstrings are not kept by Python at runtime, so they are read back
-    out of this module's own source. Keeping the documentation next to the
-    field beats maintaining a parallel dict of descriptions that drifts.
+    Read the comment block sitting above each setting, out of this file's own
+    source.
+
+    Comments are discarded by Python at import time, so they have to be read
+    back from the source to appear in params.xlsx. Doing it this way means the
+    explanation a reader sees next to the value is the same text that reaches
+    the spreadsheet -- there is no second copy to fall out of date.
     """
     import ast
     import inspect
 
-    docs: dict[tuple[str, str], str] = {}
-    tree = ast.parse(inspect.getsource(__import__(__name__, fromlist=['_'])))
-    for node in ast.walk(tree):
+    source = inspect.getsource(__import__(__name__, fromlist=['_']))
+    lines = source.splitlines()
+    comments: dict[tuple[str, str], str] = {}
+
+    for node in ast.walk(ast.parse(source)):
         if not isinstance(node, ast.ClassDef):
             continue
-        previous = None
         for statement in node.body:
-            if (isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Constant)
-                    and isinstance(statement.value.value, str) and previous is not None):
-                docs[(node.name, previous)] = statement.value.value
-            previous = (statement.target.id if isinstance(statement, ast.AnnAssign)
-                        and isinstance(statement.target, ast.Name) else None)
-    return docs
+            if not (isinstance(statement, ast.AnnAssign)
+                    and isinstance(statement.target, ast.Name)):
+                continue
+            block = []
+            index = statement.lineno - 2          # the line above the setting
+            while index >= 0 and lines[index].strip().startswith('#'):
+                block.insert(0, lines[index].strip().lstrip('#').strip())
+                index -= 1
+            if block:
+                comments[(node.name, statement.target.id)] = ' '.join(block)
+    return comments
 
 
-_FIELD_DOCS = _collect_field_docs()
-
-
-def is_section(value: Any) -> bool:
-    return is_dataclass(value) and not isinstance(value, type)
+_FIELD_COMMENTS = _collect_field_comments()

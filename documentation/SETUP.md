@@ -122,22 +122,27 @@ Nothing is lost — everything in `.venv/` is reproducible from
 `requirements.txt`. Afterwards, close any terminal that was open before the
 rebuild: it still holds the stale `VIRTUAL_ENV` in its own environment.
 
-## 5. The parameter file
+## 5. The settings
 
-Create it once, before the first run:
+Everything the model reads — which case, which engine, which figures, which
+file formats — is in **`src/params_schema.py`**. Each value has a plain comment
+above it explaining what it does and whether it is safe to change.
+
+To see what is currently set, without opening the file:
+
+```bash
+./.venv/bin/python 00_parameters.py --check
+```
+
+After changing a value, run this so the written record matches the code:
 
 ```bash
 ./.venv/bin/python 00_parameters.py
 ```
 
-That writes `params.xlsx` — the case, the engine, and every figure setting —
-and regenerates PARAMETER_REFERENCE.md. From then on it is edited in Excel or
-Positron, not in Python; the scripts read it directly. `--check` validates it
-and prints what is in force, `--reset` returns it to the defaults.
-
-It is committed, so on a second machine it arrives with the repo and this step
-only matters on a fresh clone or after a new parameter is added to
-`src/params_schema.py`.
+That rewrites `params.xlsx` and PARAMETER_REFERENCE.md. Both are **reports**:
+nothing reads them, so editing either changes nothing about how the model runs.
+The file to edit is always `src/params_schema.py`.
 
 ## 6. Verify
 
@@ -149,13 +154,21 @@ Expected: 180 rows and `Engines agree`, with a largest difference on the order
 of 1e-15. That figure moves slightly between runs, which is expected and
 understood (DEFECTS.md §3.5).
 
-Then the rest, all of which should run clean:
+Then the regression test, which pins the deterministic answer:
 
 ```bash
-./.venv/bin/python run_model.py
-./.venv/bin/python check_mass_balance.py data_folder/template
-./.venv/bin/python plot_structure.py data_folder/template
-./.venv/bin/python plot_flows.py data_folder/template
+./.venv/bin/python test_regression.py
+```
+
+Expected: `6 of 6 passed`.
+
+Then the workflow itself, all of which should run clean:
+
+```bash
+./.venv/bin/python 01_run_model.py
+./.venv/bin/python 02_check_mass_balance.py data_folder/template
+./.venv/bin/python 03_plot_structure.py data_folder/template
+./.venv/bin/python 04_plot_flows.py data_folder/template
 ```
 
 Once the interpreter is selected in Positron, `./.venv/bin/python` can be

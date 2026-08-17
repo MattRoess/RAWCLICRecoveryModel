@@ -15,7 +15,6 @@ documentation/DESIGN_tc_table.md), and the optional value_min/value_max
 uncertainty columns if they are present.
 """
 import os
-import sys
 
 import pandas as pd
 
@@ -78,7 +77,7 @@ def check_composition(composition: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(results)
 
 
-def report(folder: str) -> None:
+def report(folder: str) -> bool:
     missing = [name for name in ('TCs.csv', 'composition.csv')
                if not os.path.exists(os.path.join(folder, 'input_data', name))]
     if missing:
@@ -88,7 +87,7 @@ def report(folder: str) -> None:
         for root, _, files in os.walk('data_folder'):
             if 'TCs.csv' in files:
                 print(f"  {os.path.dirname(root)}")
-        sys.exit(1)
+        return False
 
     read = dict(keep_default_na=False, na_values=[])
     tcs = pd.read_csv(f"{folder}/input_data/TCs.csv", **read)
@@ -161,6 +160,5 @@ def report(folder: str) -> None:
         print(f"  skew   : {int((skew.abs() > TOLERANCE).sum())} of {len(tcs)} asymmetric "
               f"(mode off-centre), mean signed skew {skew.mean():+.3f}")
 
+    return True
 
-if __name__ == "__main__":
-    report(sys.argv[1] if len(sys.argv) > 1 else "data_folder/basic_test")
