@@ -107,10 +107,15 @@ context; repeated here because they gate the work.
    joined. Errors stop the run and name the file, column and value; the open
    method questions (§2.1, §2.3, §2.5) warn and continue. Also checks the mass
    unit and that shares are fractions rather than percentages (DEFECTS.md §5).
-3. **Fix the engine divergences** (DEFECTS.md §2.1, §2.2, §2.5), and settle
-   §2.3 with whoever owns the method. Write the resolved semantics down — their
-   absence is why §2.3 exists at all. §2.5 lands on the element-over-component
-   layering the new requirements ask for, so it will be hit early.
+3. **Fix the engine divergences.** §2.1 and §2.2 are **done 2026-08-17** —
+   both engines now agree exactly on those cases, and the regression test holds
+   them at zero. §2.5 remains and lands on the element-over-component layering
+   the new requirements ask for, so it will be hit early.
+
+   §2.3 is **not** engineering: overlapping TC specificity is an unspecified
+   semantic, neither behaviour is documented as correct, and it needs a
+   decision from whoever owns the method before any code can be right. Write
+   the resolved semantics down — their absence is why §2.3 exists at all.
 4. **Add the mass balance assertion on load**, once the table has loss flows.
    `02_check_mass_balance.py` already computes everything it needs; this is
    promoting a report into a hard failure.

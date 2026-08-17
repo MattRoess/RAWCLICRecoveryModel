@@ -17,7 +17,9 @@ engine did instead:
   - A composition row filling only Layer 1 invented exactly the mass of its own
     product, again silently (2.6).
   - A composition defined for one flow was applied to every flow sharing its
-    parent (2.1).
+    parent (2.1) -- since fixed in the engine itself, so what remains here is
+    the check that every inflow's (flow, product) pair actually has a
+    composition to expand into.
 
 Every one of those is visible in the CSVs before a single row is joined, and at
 that point the message can still name the file, the column and the value. That
@@ -29,7 +31,7 @@ An ERROR means the input cannot be read as meaning anything: a key that names
 nothing, a row with a hole in it. The run stops.
 
 A WARNING means the input is readable but the two engines disagree about what
-it means. Those are open method questions (DEFECTS.md 2.1, 2.3, 2.5), not
+it means. Those are open method questions (DEFECTS.md 2.3 and 2.5), not
 mistakes, and the answer belongs to whoever owns the method -- so they are
 reported and the run continues. The defect-case folders are built from exactly
 these patterns and must stay runnable, which is the other reason they do not
@@ -170,12 +172,36 @@ def check(folder: str) -> list[Problem]:
     problems: list[Problem] = []
 
     # ---- 2.7  every key in inputs.csv has to name something -----------------
+    # Checked as a (flow, product) PAIR, because composition is defined per flow
+    # via 'Stock/ID'. A product that exists in the file but not for this flow no
+    # longer expands into components at all -- the mass stops at product depth
+    # and quietly never reaches the layers the whole model is about.
     products = known['product']
-    for value in sorted(set(inputs['Substance_main_parent']) - products):
-        problems.append(Problem(
-            'ERROR', '2.7',
-            f"inputs.csv, column 'Substance_main_parent': {value!r} appears in no "
-            f"composition.csv row. Known products: {', '.join(sorted(products)) or 'none'}."))
+    if 'Stock/ID' in composition.columns:
+        defined = set(zip(composition['Stock/ID'], composition['Layer 1']))
+        for flow, product in sorted(set(zip(inputs['Stock/Flow ID'],
+                                            inputs['Substance_main_parent']))):
+            if (flow, product) in defined:
+                continue
+            if product not in products:
+                problems.append(Problem(
+                    'ERROR', '2.7',
+                    f"inputs.csv: {product!r} appears in no composition.csv row. "
+                    f"Known products: {', '.join(sorted(products)) or 'none'}."))
+            else:
+                elsewhere = sorted({s for s, p in defined if p == product})
+                problems.append(Problem(
+                    'ERROR', '2.7',
+                    f"inputs.csv: flow {flow!r} carries {product!r}, but composition.csv "
+                    f"defines that product only for {', '.join(map(repr, elsewhere))}. "
+                    f"Composition is per flow ('Stock/ID'), so this inflow would never "
+                    f"be split into components."))
+    else:
+        for value in sorted(set(inputs['Substance_main_parent']) - products):
+            problems.append(Problem(
+                'ERROR', '2.7',
+                f"inputs.csv, column 'Substance_main_parent': {value!r} appears in no "
+                f"composition.csv row. Known products: {', '.join(sorted(products)) or 'none'}."))
 
     tc_flows = set(tcs['Input_FlowID'])
     for value in sorted(set(inputs['Stock/Flow ID']) - tc_flows):
@@ -223,8 +249,14 @@ def check(folder: str) -> list[Problem]:
     # The classic unit mistake in a table like this is writing 50 where 0.5 was
     # meant. Nothing downstream can tell the difference: the model just
     # multiplies, so a percentage inflates the answer a hundredfold in silence.
-    for name, frame, column in (('composition.csv', composition, 'Value'),
-                                ('TCs.csv', tcs, 'value')):
+    columns = [('composition.csv', composition, 'Value'), ('TCs.csv', tcs, 'value')]
+    # The optional triangular columns are fractions too, and are the ones the
+    # Monte Carlo will sample from, so a range reaching outside [0, 1] would
+    # draw impossible transfer coefficients on some fraction of the draws.
+    columns += [('TCs.csv', tcs, name) for name in ('value_min', 'value_max')
+                if name in tcs.columns]
+
+    for name, frame, column in columns:
         numeric = pd.to_numeric(frame[column], errors='coerce')
         for index, value in numeric[(numeric > 1) | (numeric < 0)].items():
             hint = ' -- looks like a percentage where a fraction was meant' \
@@ -234,21 +266,18 @@ def check(folder: str) -> list[Problem]:
                 f"{name} row {index + 2}, column '{column}': {value:g}. A share has to "
                 f"be a fraction between 0 and 1{hint}."))
 
-    # ---- 2.1  one parent, two flows, two different compositions ------------
-    if 'Stock/ID' in composition.columns:
-        shallow = composition[depth == 2]
-        for product, group in shallow.groupby('Layer 1'):
-            per_flow = {flow: frozenset(sub['Layer 2'])
-                        for flow, sub in group.groupby('Stock/ID')}
-            if len(set(per_flow.values())) > 1:
-                detail = '; '.join(f"{flow} -> {', '.join(sorted(parts))}"
-                                   for flow, parts in sorted(per_flow.items()))
-                problems.append(Problem(
-                    'WARNING', '2.1',
-                    f"composition.csv: product {product!r} is given different "
-                    f"compositions by different flows ({detail}). The optimized engine "
-                    f"ignores 'Stock/ID' and applies all of them to every flow, which "
-                    f"invents mass; the LA engine honours it."))
+    # A triangular needs min <= mode <= max, or the inverse-CDF sampling in
+    # DESIGN_monte_carlo.md §4 has no distribution to invert.
+    if {'value_min', 'value_max'}.issubset(tcs.columns):
+        low = pd.to_numeric(tcs['value_min'], errors='coerce')
+        mode = pd.to_numeric(tcs['value'], errors='coerce')
+        high = pd.to_numeric(tcs['value_max'], errors='coerce')
+        for index in tcs.index[(low > mode) | (mode > high)]:
+            problems.append(Problem(
+                'ERROR', '3.3',
+                f"TCs.csv row {index + 2}: value_min {low[index]:g}, value "
+                f"{mode[index]:g}, value_max {high[index]:g}. A triangular range needs "
+                f"value_min <= value <= value_max."))
 
     # ---- 2.3 / 2.5  two TCs competing for one destination ------------------
     # A TC identifies its resource by BOTH keys -- "component C1 within product

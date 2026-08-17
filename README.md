@@ -114,15 +114,10 @@ The model reproduces its reference case exactly, but several behaviours are
 either undocumented or differ between the two engines. Before relying on
 results beyond `basic_test`, read these — each is documented with a
 measurement and a one-command reproduction in
-[documentation/DEFECTS.md](documentation/DEFECTS.md):
+[documentation/DEFECTS.md](documentation/DEFECTS.md). Two more — composition
+`Stock/ID` being ignored, and the `P*` wildcard producing nothing — were fixed
+on 2026-08-17 and are recorded there as §2.1 and §2.2.
 
-- **Composition `Stock/ID` is ignored by `RecoveryModelOptimized`.** It merges
-  composition on the parent resource alone, so compositions defined for one
-  flow are applied to every flow with the same parent. `RecoveryModelLA`
-  honours it, as the user guide specifies.
-- **The documented `P*` wildcard only works in `RecoveryModelLA`.**
-  `RecoveryModelOptimized` treats it as a literal key, matches nothing, and
-  silently emits no flow at all.
 - **Overlapping TC specificity resolves differently.** Given both a
   product-level and a component-level TC for the same process, `LA` applies the
   more specific one and `Optimized` adds them together.

@@ -57,11 +57,16 @@ TOLERANCE = 1e-9
 # a blow-up could produce.
 MAX_INTERMEDIATE_ROWS = 1000
 
-# DEFECTS.md §2.1, §2.2, §2.3. Each is the largest absolute disagreement
-# between the two engines on that case. Update deliberately when one is fixed.
+# The largest absolute disagreement between the two engines on each case.
+#
+# composition_stock_id and wildcard_star were 100.0 and 50.0 until 2026-08-17,
+# when DEFECTS.md §2.1 and §2.2 were fixed in the optimized engine; they are
+# now zero and this test is what holds them there. tc_specificity is §2.3, an
+# unspecified semantic that needs a method decision before it can be fixed, so
+# its 50.0 still pins current behaviour rather than correct behaviour.
 DOCUMENTED_DIVERGENCES = {
-    'data_folder/defect_cases/composition_stock_id': 100.0,
-    'data_folder/defect_cases/wildcard_star': 50.0,
+    'data_folder/defect_cases/composition_stock_id': 0.0,
+    'data_folder/defect_cases/wildcard_star': 0.0,
     'data_folder/defect_cases/tc_specificity': 50.0,
 }
 

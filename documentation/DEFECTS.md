@@ -66,13 +66,17 @@ turns the memory curve from explosive into flat.
 
 ---
 
-## 2. Open — the two engines implement different semantics
+## 2. The two engines implement different semantics
 
-**This is the most important open issue.** The engines agree on `basic_test`
-only because it exercises none of these cases. Do not treat their agreement
-as general validation.
+**This is the most important area.** The engines agree on `basic_test` only
+because it exercises none of these cases. Do not treat their agreement as
+general validation.
 
-### 2.1 Composition `Stock/ID` is ignored by the optimized engine
+§2.1 and §2.2 were **fixed 2026-08-17** and are kept here with their
+measurements, because each is a shape of mistake that can recur. §2.3–§2.7
+remain open.
+
+### 2.1 Composition `Stock/ID` is ignored by the optimized engine — FIXED
 
 **Reproduce:** `data_folder/defect_cases/composition_stock_id`
 
@@ -96,9 +100,19 @@ The component layer of FA now sums to 200 against a product layer of 100. Mass
 is invented, silently. The optimized engine is the one `01_run_model.py` uses.
 
 **Severity: high.** Any real dataset where two flows carry the same product with
-different compositions is wrong, in the direction of overestimating recovery.
+different compositions was wrong, in the direction of overestimating recovery.
 
-### 2.2 The documented `P*` wildcard silently produces nothing
+**FIXED 2026-08-17.** `create_initial_flows` now carries `Stock/ID` into the
+join keys, renamed to `Stock/Flow ID`, at all three composition depths. The two
+engines agree exactly on this case: largest difference **0.00e+00**, down from
+100. `basic_test` is unmoved at 8.88e-16, so the fix changes only the datasets
+that were wrong.
+
+The companion check is in `src/validate_inputs.py`: an inflow whose (flow,
+product) pair has no composition is now an error, because after this fix such a
+row silently stops at product depth instead of being wrongly expanded.
+
+### 2.2 The documented `P*` wildcard silently produces nothing — FIXED
 
 **Reproduce:** `data_folder/defect_cases/wildcard_star`
 
@@ -114,8 +128,19 @@ key, matches nothing, and **emits no output flow at all**:
 
 No error, no warning — an entire flow is missing from the results.
 
-**Severity: high**, because it fails toward under-reporting with no signal, and
-because the feature is documented so a user has every reason to use it.
+**Severity: high**, because it failed toward under-reporting with no signal, and
+because the feature is documented so a user had every reason to use it.
+
+**FIXED 2026-08-17.** `RecoveryModelOptimized.expand_wildcards`, called from
+`read_input_data` once the layer names are normalised, turns any key containing
+`*` into one row per resource at that layer. The engines agree exactly on this
+case: **0.00e+00**, down from 50, with both now producing F2/P1/C1 = 50 and
+F2/P2/C1 = 50.
+
+The asterisk expands to *every* resource at the layer, so `P*` and `*` mean the
+same thing — the layer column already says which set is meant. That is how
+`RecoveryModelLA.fill_star_values` has always read it, and matching it is what
+makes the two agree.
 
 ### 2.3 Overlapping TC specificity: LA overrides, optimized adds
 

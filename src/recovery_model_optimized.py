@@ -118,7 +118,14 @@ class RecoveryModelOptimized:
         layer_names_replace = {item: f"Layer {i+1}" for i, item in enumerate(self.layer_names)}
         tcs_df["Input_layer"] = tcs_df["Input_layer"].replace(layer_names_replace)
         tcs_df["TC_target_layer"] = tcs_df["TC_target_layer"].replace(layer_names_replace)
-        
+
+        # The user guide documents an asterisk for "the same TC for all products
+        # in a layer". RecoveryModelLA implements it; this engine used to read
+        # 'P*' as a literal key, match nothing, and emit no output flow at all --
+        # no error and no warning, so an entire flow simply went missing from
+        # the results (DEFECTS.md 2.2).
+        tcs_df = self.expand_wildcards(tcs_df, composition_df)
+
 
         # Define the years, locations, scenarios and additionalSpecifications with the inflows file as the defining basis
         years = inflows_df['Year'].unique() if 'Year' in inflows_df.columns else [None]
@@ -203,6 +210,39 @@ class RecoveryModelOptimized:
         return flows_result.groupby(["Stock/Flow ID","Layer 1","Layer 2","Layer 3","Layer 4"],as_index=False).agg({"Value":"sum"})
 
     @staticmethod
+    def expand_wildcards(tcs_df: pd.DataFrame, composition_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Turn a key containing '*' into one row per resource at that layer.
+
+        The asterisk means "every resource in this layer", so the text around it
+        carries no meaning of its own -- 'P*' and '*' expand identically, since
+        the layer column already says which set is meant. That is also how
+        RecoveryModelLA reads it (`fill_star_values`), which is what makes the
+        two engines agree on this input rather than one of them silently
+        producing nothing.
+
+        Args:
+            tcs_df: TCs with their layers already renamed to 'Layer 1'..'Layer 4'
+            composition_df: supplies which resources exist at each layer
+        """
+        layers = ["Layer 1", "Layer 2", "Layer 3", "Layer 4"]
+        known = {layer: sorted({value for value in composition_df[layer].unique() if value})
+                 for layer in layers}
+
+        for key_column, layer_column in (("Input_layer_key", "Input_layer"),
+                                         ("TC_target_key", "TC_target_layer")):
+            if not tcs_df[key_column].astype(str).str.contains(r"\*", regex=True).any():
+                continue
+            tcs_df = tcs_df.copy()
+            tcs_df[key_column] = [
+                known.get(layer, []) if "*" in str(key) else key
+                for key, layer in zip(tcs_df[key_column], tcs_df[layer_column])
+            ]
+            tcs_df = tcs_df.explode(key_column).reset_index(drop=True)
+
+        return tcs_df
+
+    @staticmethod
     def create_initial_flows(inflows_df: pd.DataFrame, composition_df: pd.DataFrame) -> pd.DataFrame:
         """
         Use the provided inflows and composition to determine the initial inflow (with composition)
@@ -216,24 +256,31 @@ class RecoveryModelOptimized:
         column_order = ['Stock/Flow ID', 'Layer 1', 'Layer 2', 'Layer 3', 'Layer 4', 'Value']
         product_flows = product_flows[column_order]
 
-        composition_df = composition_df[["Layer 1","Layer 2","Layer 3","Layer 4", "Value"]]
-        composition_df[['Layer 1','Layer 2','Layer 3','Layer 4']] = composition_df[['Layer 1','Layer 2','Layer 3','Layer 4']]
-        
+        # Composition is defined PER FLOW. The user guide gives 'Stock/ID' as
+        # "Stock/Flow ID for the flow the material is contained in", and this
+        # column used to be dropped here and every merge done on the resource
+        # layers alone -- so a composition written for one flow was applied to
+        # every flow carrying the same parent, inventing mass (DEFECTS.md 2.1).
+        # Carrying it into the join keys is the whole fix.
+        composition_df = composition_df[["Stock/ID", "Layer 1", "Layer 2", "Layer 3",
+                                         "Layer 4", "Value"]].rename(
+            columns={"Stock/ID": "Stock/Flow ID"})
+
         # Apply composition p-c layer
         layer_2_composition = composition_df[(composition_df['Layer 3']=="") & (composition_df['Layer 4']=='')].copy()
-        df_merged = layer_2_composition.merge(product_flows, on=["Layer 1"], suffixes=("", "_inflow"))
+        df_merged = layer_2_composition.merge(product_flows, on=["Stock/Flow ID", "Layer 1"], suffixes=("", "_inflow"))
         df_merged["Value"] = df_merged["Value_inflow"]*df_merged["Value"]
         layer_2_flows = df_merged[["Stock/Flow ID","Layer 1","Layer 2", "Layer 3","Layer 4","Value"]]
-        
+
         # Apply composition c-m layer
         layer_3_composition = composition_df[(composition_df['Layer 3']!="") & (composition_df['Layer 4']=='')].copy()
-        df_merged = layer_3_composition.merge(layer_2_flows, on=["Layer 1", "Layer 2"], suffixes=("","_inflow"))
+        df_merged = layer_3_composition.merge(layer_2_flows, on=["Stock/Flow ID", "Layer 1", "Layer 2"], suffixes=("","_inflow"))
         df_merged["Value"] = df_merged["Value_inflow"]*df_merged["Value"]
         layer_3_flows = df_merged[["Stock/Flow ID","Layer 1","Layer 2", "Layer 3","Layer 4","Value"]]
 
         # Apply composition m-e layer
         layer_4_composition = composition_df[(composition_df['Layer 3']!="") & (composition_df['Layer 4']!='')].copy()
-        df_merged = layer_4_composition.merge(layer_3_flows, on=["Layer 1", "Layer 2", "Layer 3"], suffixes=("","_inflow"))
+        df_merged = layer_4_composition.merge(layer_3_flows, on=["Stock/Flow ID", "Layer 1", "Layer 2", "Layer 3"], suffixes=("","_inflow"))
         df_merged["Value"] = df_merged["Value_inflow"]*df_merged["Value"]
         layer_4_flows = df_merged[["Stock/Flow ID","Layer 1","Layer 2", "Layer 3","Layer 4","Value"]]
 
