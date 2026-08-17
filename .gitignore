@@ -39,12 +39,11 @@ data_folder/basic_test/output_data/*
 !data_folder/basic_test/output_data/solution.csv
 
 # --- Figures ---
-# The SVGs stay tracked: they diff as text and render on GitHub. The PNG and
-# PDF beside them come from the same drawing on every run and are large
-# binaries (~300-400 kB each), so they are not. Delete these two lines if the
-# rendered files should travel with the repo.
-figures/*.png
-figures/*.pdf
+# Not tracked at all. Every figure is regenerated from the inputs and
+# params.xlsx by run_model.py, in whichever formats figures.formats asks for,
+# so a committed copy is a stale copy the moment a parameter changes. Same
+# stance as output_data/ above: the inputs and the settings are the record.
+figures/
 
 # --- Profiling scratch ---
 *test_size_*

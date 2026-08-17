@@ -11,10 +11,12 @@ processes by transfer coefficients (TCs).
 - `data_folder/` — input data, one folder per case (`basic_test` is the mock reference case, `template` shows the proposed schema)
 - `documentation/` — how the model works, known defects, and the Monte Carlo design
 - `doc/User guide.docx` — input data format specification
-- `run_model.py` — entry point: solves a data folder and draws its Sankey figures
+- `params.xlsx` — **the parameter file**: which case, which engine, which figures. Every script reads it
+- `00_parameters.py` — creates and validates `params.xlsx`, and regenerates the parameter reference
+- `run_model.py` — entry point: solves a data folder and draws its figures
 - `compare_engines.py` — runs both engines over a data folder and diffs them
 - `check_mass_balance.py` — reports what a dataset's TCs and composition total to
-- `plot_structure.py` — draws how the flows connect and the TCs behind each arrow, as SVG, PNG and PDF
+- `plot_structure.py` — draws how the flows connect and the TCs behind each arrow
 - `plot_flows.py` — draws mass-weighted Sankey diagrams, in total and per element
 
 **Start at [documentation/README.md](documentation/README.md).** It indexes how
@@ -44,11 +46,21 @@ python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
 ```
 
 In Positron, select `.venv` as the interpreter (it is picked up automatically
-from `.vscode/settings.json`). Run the model from the project root:
+from `.vscode/settings.json`). Create the parameter file once, then run the
+model — both from the project root:
+
+```bash
+./.venv/bin/python 00_parameters.py
+```
 
 ```bash
 ./.venv/bin/python run_model.py
 ```
+
+`00_parameters.py` writes `params.xlsx`, which is where the case, the engine
+and every figure setting live. Edit it in Excel or Positron; the scripts read
+it directly, so nothing needs re-running there and no Python needs editing.
+`00_parameters.py --check` validates it and prints the values in force.
 
 Versions are pinned deliberately. This model is sensitive to pandas behaviour
 changes — copy-on-write and the removal of legacy APIs have both silently
@@ -63,16 +75,19 @@ with three CSV files:
 - `composition.csv` — what each resource is made of
 - `TCs.csv` — the transfer coefficients between flows
 
-Then pass the folder as an argument — no file needs editing:
+Then set `run.data_folder` in `params.xlsx` to your new folder and run
+`run_model.py`. For a one-off run of a different case without touching the
+parameter file, pass it as an argument instead:
 
 ```bash
 ./.venv/bin/python run_model.py data_folder/my_case
 ```
 
 Results are written to an `output_data/` folder alongside your inputs, and the
-Sankey figures to `figures/`. Run any script with `--list` to see the folders
-it can find, or with no argument at all to pick one from a menu. The column
-definitions for all three input files are in `doc/User guide.docx`.
+figures to `figures/`. Run any script with `--list` to see the folders it can
+find, or `--pick` to choose from a menu. The column definitions for all three
+input files are in `doc/User guide.docx`; every parameter is documented in
+[documentation/PARAMETER_REFERENCE.md](documentation/PARAMETER_REFERENCE.md).
 
 Real input data is not tracked by git; only the `basic_test` mock case is.
 

@@ -122,7 +122,24 @@ Nothing is lost — everything in `.venv/` is reproducible from
 `requirements.txt`. Afterwards, close any terminal that was open before the
 rebuild: it still holds the stale `VIRTUAL_ENV` in its own environment.
 
-## 5. Verify
+## 5. The parameter file
+
+Create it once, before the first run:
+
+```bash
+./.venv/bin/python 00_parameters.py
+```
+
+That writes `params.xlsx` — the case, the engine, and every figure setting —
+and regenerates PARAMETER_REFERENCE.md. From then on it is edited in Excel or
+Positron, not in Python; the scripts read it directly. `--check` validates it
+and prints what is in force, `--reset` returns it to the defaults.
+
+It is committed, so on a second machine it arrives with the repo and this step
+only matters on a fresh clone or after a new parameter is added to
+`src/params_schema.py`.
+
+## 6. Verify
 
 ```bash
 ./.venv/bin/python compare_engines.py data_folder/basic_test
@@ -144,11 +161,11 @@ Then the rest, all of which should run clean:
 Once the interpreter is selected in Positron, `./.venv/bin/python` can be
 shortened to `python` in its terminals.
 
-## 6. Why the versions are pinned
+## 7. Why the versions are pinned
 
 Not caution for its own sake. A pandas copy-on-write change turned a `fillna`
 call into a silent no-op and inflated this model's intermediates 300,000-fold
 **without changing its output** (DEFECTS.md §1.3). Unpinned, that class of
 failure recurs invisibly.
 
-Do not relax the pins without running step 5 afterwards.
+Do not relax the pins without running step 6 afterwards.

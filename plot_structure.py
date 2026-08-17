@@ -3,59 +3,39 @@ Draw the STRUCTURE of a data folder: what connects to what, and what each
 process does. Nothing is scaled by mass -- this is the diagram for
 understanding the setup, not for reading quantities off.
 
-    ./.venv/bin/python plot_structure.py                     # pick from a list
-    ./.venv/bin/python plot_structure.py data_folder/template
-    ./.venv/bin/python plot_structure.py path/to/TCs.csv --formats svg,png
+    ./.venv/bin/python plot_structure.py                    # the case in params.xlsx
+    ./.venv/bin/python plot_structure.py data_folder/basic_test
+    ./.venv/bin/python plot_structure.py --list
 
-Run with no argument and it lists every folder under the search roots that
-holds a TCs.csv, so the input never has to be edited into the source. The
-argument may be a data folder, a folder containing input_data/, or a TCs.csv
-itself.
+Everything about the output -- which formats, which resolution, which palette --
+is read from `params.xlsx`, not from flags. Change it there; run
+`00_parameters.py` once first if the file does not exist yet.
 
-Writes figures/<case>_structure.{svg,png,pdf} by default. Every box is a flow,
-every arrow is a process, and the transfer coefficients behind each arrow are
-listed underneath so the whole configuration is visible at once.
+The argument, when given, may be a data folder, a folder containing
+input_data/, or a TCs.csv anywhere on disk. Pass `--pick` to choose from a
+list of the cases found.
+
+Writes <out_dir>/<case>_structure.<fmt> in every format `figures.formats` asks
+for. Every box is a flow, every arrow is a process, and the transfer
+coefficients behind each arrow are listed underneath so the whole configuration
+is visible at once.
 
 For mass-weighted Sankey diagrams instead, see plot_flows.py.
 """
 import argparse
 import os
+import sys
 
-import matplotlib
-matplotlib.use('Agg')
-
-# Keep text as text in both vector formats. Matplotlib's default converts every
-# glyph to an outline, which makes the SVG an order of magnitude larger and the
-# PDF unsearchable. The layout never measures a string -- every position is
-# computed from the numbers below -- so a font substitution on another machine
-# changes the glyphs and nothing else.
-matplotlib.rcParams['svg.fonttype'] = 'none'
-matplotlib.rcParams['pdf.fonttype'] = 42
-
-import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle
 from matplotlib.path import Path
 
-PALETTE = ['#4C78A8', '#F58518', '#54A24B', '#E45756', '#72B7B2',
-           '#B279A2', '#EECA3B', '#9D755D', '#BAB0AC']
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-FORMATS = ('svg', 'png', 'pdf')
+from src.figure_style import MONO, PALETTE, canvas, label, write
+from src.params_io import ParameterError, load
+
 SEARCH_ROOTS = ('data_folder', '.')
-
-# Both themes, so the static PNG and PDF can be either. The SVG used to carry a
-# prefers-color-scheme rule and switch by itself; a rasterised figure cannot, so
-# the theme is chosen at render time instead.
-THEMES = {
-    'light': dict(bg='#ffffff', title='#111827', sub='#6b7280', node='#111827',
-                  edge='#4b5563', meta='#6b7280', tc='#374151',
-                  box='#f9fafb', box_line='#d1d5db', arrow='#9ca3af', rule='#e5e7eb'),
-    'dark': dict(bg='#0b0f19', title='#f3f4f6', sub='#9ca3af', node='#f3f4f6',
-                 edge='#9ca3af', meta='#9ca3af', tc='#d1d5db',
-                 box='#111827', box_line='#374151', arrow='#6b7280', rule='#1f2937'),
-}
-
-MONO = ['DejaVu Sans Mono', 'Menlo', 'monospace']
 
 
 # --------------------------------------------------------------------------
@@ -81,7 +61,7 @@ def find_cases(roots=SEARCH_ROOTS) -> list[str]:
 
 def resolve(target: str) -> tuple[str, str]:
     """
-    Turn whatever the user pointed at into (tcs_path, case_name).
+    Turn whatever was pointed at into (tcs_path, case_name).
 
     Accepts a TCs.csv, a folder containing input_data/TCs.csv, or an
     input_data folder itself.
@@ -171,13 +151,12 @@ def tc_blocks(tcs: pd.DataFrame, edges, has_range, process_col, technology_col):
 # Drawing
 # --------------------------------------------------------------------------
 
-def render(tcs: pd.DataFrame, case: str, theme: str = 'light') -> plt.Figure:
+def render(tcs: pd.DataFrame, case: str, theme: str = 'light'):
     """
-    Build the figure. One data unit is one typographic point, so the font sizes
+    Build the figure. One data unit is one typographic point, so the sizes
     below are literal point sizes and the layout is resolution independent --
-    which is the whole reason the same code can emit SVG, PNG and PDF.
+    which is what lets the same drawing emit SVG, PNG and PDF.
     """
-    colour_of = THEMES[theme]
     has_range = {'value_min', 'value_max'}.issubset(tcs.columns)
     process_col = 'process' if 'process' in tcs.columns else None
     technology_col = 'technology' if 'technology' in tcs.columns else None
@@ -204,17 +183,7 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light') -> plt.Figure:
     width = max(left * 2 + max(columns) * (box_w + col_gap) + box_w, 960)
     height = diagram_h + legend_h
 
-    fig = plt.figure(figsize=(width / 72, height / 72))
-    ax = fig.add_axes([0, 0, 1, 1])
-    ax.set_xlim(0, width)
-    ax.set_ylim(height, 0)          # inverted, so y grows downward as in the layout above
-    ax.axis('off')
-    fig.patch.set_facecolor(colour_of['bg'])
-
-    def text(x, y, s, size, colour, weight='normal', ha='left', family=None):
-        ax.text(x, y, s, fontsize=size, color=colour, fontweight=weight,
-                ha=ha, va='center', parse_math=False,
-                **({'fontfamily': family} if family else {}))
+    figure, axes, colours = canvas(width, height, theme)
 
     accent = {node: PALETTE[i % len(PALETTE)] for i, node in enumerate(nodes)}
     position = {}
@@ -224,10 +193,10 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light') -> plt.Figure:
         for i, node in enumerate(group):
             position[node] = (left + index * (box_w + col_gap), top + offset + i * (box_h + gap_y))
 
-    text(left, 26, f'{case} — how the flows connect', 17, colour_of['title'], 'bold')
-    text(left, 50, f'Structure only, nothing scaled by mass. {len(nodes)} flows, '
-                   f'{len(edges)} processes, {len(tcs)} transfer coefficients.',
-         12.5, colour_of['sub'])
+    label(axes, left, 26, f'{case} — how the flows connect', 17, colours['title'], 'bold')
+    label(axes, left, 50, f'Structure only, nothing scaled by mass. {len(nodes)} flows, '
+                          f'{len(edges)} processes, {len(tcs)} transfer coefficients.',
+          12.5, colours['sub'])
 
     placed: list[tuple[float, float]] = []
     for source, target in edges:
@@ -236,12 +205,12 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light') -> plt.Figure:
         mid = (x0 + x1) / 2
         curve = Path([(x0, y0), (mid, y0), (mid, y1), (x1 - 3, y1)],
                      [Path.MOVETO, Path.CURVE4, Path.CURVE4, Path.CURVE4])
-        ax.add_patch(FancyArrowPatch(path=curve, arrowstyle='-|>', mutation_scale=11,
-                                     linewidth=1.6, color=colour_of['arrow'],
-                                     shrinkA=0, shrinkB=0, joinstyle='round'))
+        axes.add_patch(FancyArrowPatch(path=curve, arrowstyle='-|>', mutation_scale=11,
+                                       linewidth=1.6, color=colours['arrow'],
+                                       shrinkA=0, shrinkB=0, joinstyle='round'))
 
         rows = tcs[(tcs['Input_FlowID'] == source) & (tcs['Output_FlowID'] == target)]
-        label = rows[process_col].iloc[0] if process_col and rows[process_col].iloc[0] else \
+        text = rows[process_col].iloc[0] if process_col and rows[process_col].iloc[0] else \
             f"{rows['Input_layer'].iloc[0][:4]}→{rows['TC_target_layer'].iloc[0][:4]}"
 
         # Nudge the label clear of any already placed nearby, so that arrows
@@ -250,91 +219,73 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light') -> plt.Figure:
         while any(abs(mid - px) < 62 and abs(label_y - py) < 12 for px, py in placed):
             label_y += 13
         placed.append((mid, label_y))
-        text(mid, label_y, label, 10.5, colour_of['edge'], ha='center')
+        label(axes, mid, label_y, text, 10.5, colours['edge'], ha='center')
 
     for node in nodes:
         x, y = position[node]
-        ax.add_patch(FancyBboxPatch((x, y), box_w, box_h,
-                                    boxstyle='round,pad=0,rounding_size=7',
-                                    facecolor=colour_of['box'], edgecolor=colour_of['box_line'],
-                                    linewidth=1.2, mutation_aspect=1))
-        ax.add_patch(Rectangle((x, y + 3), 4.5, box_h - 6, facecolor=accent[node],
-                               edgecolor='none'))
+        axes.add_patch(FancyBboxPatch((x, y), box_w, box_h,
+                                      boxstyle='round,pad=0,rounding_size=7',
+                                      facecolor=colours['box'], edgecolor=colours['box_line'],
+                                      linewidth=1.2, mutation_aspect=1))
+        axes.add_patch(Rectangle((x, y + 3), 4.5, box_h - 6, facecolor=accent[node],
+                                 edgecolor='none'))
         expressed = tcs.loc[tcs['Output_FlowID'] == node, 'TC_target_layer']
         role = expressed.iloc[0] if len(expressed) else 'inflow'
-        text(x + 14, y + 17, node, 12.5, colour_of['node'], 'bold')
-        text(x + 14, y + 33, f'expressed at: {role}', 10.5, colour_of['meta'])
+        label(axes, x + 14, y + 17, node, 12.5, colours['node'], 'bold')
+        label(axes, x + 14, y + 33, f'expressed at: {role}', 10.5, colours['meta'])
 
-    ax.plot([left, width - left], [diagram_h - 10] * 2, color=colour_of['rule'], linewidth=1)
-    text(left, diagram_h + 14, 'Transfer coefficients behind each arrow', 13,
-         colour_of['title'], 'bold')
+    axes.plot([left, width - left], [diagram_h - 10] * 2, color=colours['rule'], linewidth=1)
+    label(axes, left, diagram_h + 14, 'Transfer coefficients behind each arrow', 13,
+          colours['title'], 'bold')
 
     col_x = [left, width / 2 + 10]
     for c in range(2):
         y = diagram_h + 42
         for head, meta, lines in blocks[c * per_col:(c + 1) * per_col]:
-            text(col_x[c], y, head, 11.5, colour_of['title'], 'bold')
+            label(axes, col_x[c], y, head, 11.5, colours['title'], 'bold')
             y += 14
-            text(col_x[c], y, meta, 10, colour_of['meta'])
+            label(axes, col_x[c], y, meta, 10, colours['meta'])
             y += 14
             for line in lines:
-                text(col_x[c] + 10, y, line, 10.5, colour_of['tc'], family=MONO)
+                label(axes, col_x[c] + 10, y, line, 10.5, colours['tc'], family=MONO)
                 y += 13
             y += 14
 
-    return fig
-
-
-def write(fig: plt.Figure, out_dir: str, case: str, formats, dpi: int) -> list[str]:
-    os.makedirs(out_dir, exist_ok=True)
-    written = []
-    for fmt in formats:
-        path = os.path.join(out_dir, f'{case}_structure.{fmt}')
-        fig.savefig(path, format=fmt, dpi=dpi,
-                    facecolor=fig.get_facecolor(), edgecolor='none')
-        written.append(path)
-    return written
+    return figure
 
 
 # --------------------------------------------------------------------------
 
-def parse_args(argv=None):
-    parser = argparse.ArgumentParser(
-        description=__doc__.split('\n\n')[0],
-        formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('target', nargs='?',
-                        help='data folder, or a TCs.csv. Omit to choose from a list.')
-    parser.add_argument('-o', '--out', default='figures', help='output directory (default: figures)')
-    parser.add_argument('-f', '--formats', default=','.join(FORMATS),
-                        help=f'comma separated, any of {"/".join(FORMATS)} (default: all three)')
-    parser.add_argument('--theme', choices=sorted(THEMES), default='light',
-                        help='colour scheme baked into the output (default: light)')
-    parser.add_argument('--dpi', type=int, default=200, help='raster resolution for PNG (default: 200)')
-    parser.add_argument('-l', '--list', action='store_true',
-                        help='list the data folders that have a TC table, then exit')
-    return parser.parse_args(argv)
-
-
-def main(argv=None) -> None:
-    args = parse_args(argv)
-
-    if args.list:
-        for case in find_cases():
-            print(case)
-        return
-
-    formats = [f.strip().lower() for f in args.formats.split(',') if f.strip()]
-    unknown = [f for f in formats if f not in FORMATS]
-    if unknown:
-        raise SystemExit(f'Unknown format(s): {", ".join(unknown)}. Choose from {", ".join(FORMATS)}.')
-
-    tcs_path, case = resolve(args.target or choose())
+def main(target: str | None = None, params=None) -> None:
+    params = params or load()
+    tcs_path, case = resolve(target or params.run.data_folder)
     tcs = pd.read_csv(tcs_path, keep_default_na=False, na_values=[])
-    fig = render(tcs, case, theme=args.theme)
-    for path in write(fig, args.out, case, formats, args.dpi):
+    figure = render(tcs, case, theme=params.figures.theme)
+    for path in write(figure, params.figures.out_dir, f'{case}_structure',
+                      params.figures.formats, params.figures.dpi):
         print(f'wrote {path}')
-    plt.close(fig)
+
+    import matplotlib.pyplot as plt
+    plt.close(figure)
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    parser.add_argument('target', nargs='?',
+                        help='data folder or TCs.csv. Omit to use run.data_folder from params.xlsx.')
+    parser.add_argument('--pick', action='store_true', help='choose the case from a list')
+    parser.add_argument('-l', '--list', action='store_true',
+                        help='list the data folders that have a TC table, then exit')
+    parser.add_argument('-p', '--params', default=None, help='parameter file (default: params.xlsx)')
+    arguments = parser.parse_args()
+
+    if arguments.list:
+        for found in find_cases():
+            print(found)
+        raise SystemExit(0)
+
+    try:
+        main(choose() if arguments.pick else arguments.target,
+             load(arguments.params) if arguments.params else None)
+    except ParameterError as error:
+        raise SystemExit(error)

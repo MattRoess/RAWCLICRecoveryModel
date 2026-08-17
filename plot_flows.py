@@ -1,11 +1,17 @@
 """
-Draw the flow network of a data folder as a Sankey diagram, straight to SVG.
+Draw the flow network of a data folder as a Sankey diagram.
 
-    ./.venv/bin/python plot_flows.py data_folder/template
+    ./.venv/bin/python plot_flows.py                       # the case in params.xlsx
+    ./.venv/bin/python plot_flows.py data_folder/basic_test
 
-Writes figures/<case>_total.svg plus one figure per element. No plotting
-library is needed, and the SVGs open in a browser, in Positron, and render on
-GitHub.
+Everything about the output -- which formats, which resolution, which palette,
+whether the per-element figures are drawn -- is read from `params.xlsx`, not
+from flags. Change it there; run `00_parameters.py` once first if the file does
+not exist yet.
+
+Writes <out_dir>/<case>_total.<fmt> plus one figure per element, in every
+format `figures.formats` asks for. Rendering goes through matplotlib, so all
+formats come from one drawing and cannot disagree.
 
 Two things this has to get right, both of which a naive script gets wrong:
 
@@ -20,19 +26,22 @@ Two things this has to get right, both of which a naive script gets wrong:
     by replaying the model's own process loop, so the picture cannot drift from
     what the model actually does.
 """
+import argparse
 import os
 import sys
 
 import pandas as pd
+from matplotlib.patches import PathPatch, Rectangle
+from matplotlib.path import Path
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from src.figure_style import PALETTE, canvas, label, write
+from src.params_io import ParameterError, load
 from src.recovery_model_optimized import RecoveryModelOptimized
 
 LAYERS = ['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
 LAYER_NAMES = ['product', 'component', 'material', 'element']
-
-# Colour-blind-safe qualitative palette, cycled per source node.
-PALETTE = ['#4C78A8', '#F58518', '#54A24B', '#E45756', '#72B7B2',
-           '#B279A2', '#EECA3B', '#9D755D', '#BAB0AC']
 
 
 def depth_of(frame: pd.DataFrame) -> pd.Series:
@@ -98,7 +107,7 @@ def assign_columns(nodes: list[str], links: list[tuple]) -> dict[str, int]:
     return column
 
 
-def render(nodes, links, column, title, subtitle) -> str:
+def render(nodes, links, column, title, subtitle, theme: str):
     """Lay out and draw the Sankey. Node height and ribbon width are mass."""
     width, height = 1180, 620
     left, right, top, bottom = 20, 150, 76, 30
@@ -138,24 +147,15 @@ def render(nodes, links, column, title, subtitle) -> str:
             cursor[node] = {'out': y, 'in': y}
             y += size + gap
 
-    parts = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
-        f'font-family="system-ui, -apple-system, Segoe UI, sans-serif">',
-        '<style>'
-        '  .bg{fill:#ffffff} .ttl{fill:#111827} .sub{fill:#6b7280} .lbl{fill:#111827}'
-        '  .val{fill:#6b7280}'
-        '  @media (prefers-color-scheme: dark){'
-        '    .bg{fill:#0b0f19} .ttl{fill:#f3f4f6} .sub{fill:#9ca3af} .lbl{fill:#f3f4f6}'
-        '    .val{fill:#9ca3af}}'
-        '</style>',
-        f'<rect class="bg" width="{width}" height="{height}"/>',
-        f'<text class="ttl" x="{left}" y="30" font-size="17" font-weight="600">{title}</text>',
-        f'<text class="sub" x="{left}" y="52" font-size="12.5">{subtitle}</text>',
-    ]
+    figure, axes, colours = canvas(width, height, theme)
+    label(axes, left, 24, title, 17, colours['title'], 'bold')
+    label(axes, left, 48, subtitle, 12.5, colours['sub'])
 
     colour = {node: PALETTE[i % len(PALETTE)] for i, node in enumerate(sorted(nodes))}
 
-    # Ribbons first, so nodes and labels sit on top.
+    # Ribbons first, so nodes and labels sit on top. Each is a stroked curve
+    # whose LINE WIDTH is the mass -- one data unit is one point, so a ribbon
+    # of thickness t is exactly t points wide however the figure is written out.
     for source, target, value in sorted(links, key=lambda l: -l[2]):
         if value <= 0:
             continue
@@ -167,27 +167,23 @@ def render(nodes, links, column, title, subtitle) -> str:
         cursor[source]['out'] += thickness
         cursor[target]['in'] += thickness
         mid = (x0 + x1) / 2
-        parts.append(
-            f'<path d="M{x0:.1f},{y0:.1f} C{mid:.1f},{y0:.1f} {mid:.1f},{y1:.1f} {x1:.1f},{y1:.1f}" '
-            f'fill="none" stroke="{colour[source]}" stroke-opacity="0.42" stroke-width="{thickness:.1f}"/>')
+        ribbon = Path([(x0, y0), (mid, y0), (mid, y1), (x1, y1)],
+                      [Path.MOVETO, Path.CURVE4, Path.CURVE4, Path.CURVE4])
+        axes.add_patch(PathPatch(ribbon, fill=False, edgecolor=colour[source],
+                                 alpha=0.42, linewidth=thickness,
+                                 capstyle='butt', joinstyle='round'))
 
     for node, (x, y, size) in box.items():
-        parts.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{node_width}" height="{size:.1f}" '
-                     f'rx="2" fill="{colour[node]}"/>')
-        label_x = x + node_width + 7
-        anchor = 'start'
-        if column[node] == max(columns):
-            label_x, anchor = x + node_width + 7, 'start'
-        parts.append(f'<text class="lbl" x="{label_x:.1f}" y="{y + size / 2 - 1:.1f}" '
-                     f'font-size="12" text-anchor="{anchor}">{node}</text>')
-        parts.append(f'<text class="val" x="{label_x:.1f}" y="{y + size / 2 + 12:.1f}" '
-                     f'font-size="10.5" text-anchor="{anchor}">{nodes[node]:,.1f}</text>')
+        axes.add_patch(Rectangle((x, y), node_width, size, facecolor=colour[node],
+                                 edgecolor='none'))
+        text_x = x + node_width + 7
+        label(axes, text_x, y + size / 2 - 5, node, 12, colours['node'])
+        label(axes, text_x, y + size / 2 + 8, f'{nodes[node]:,.1f}', 10.5, colours['meta'])
 
-    parts.append('</svg>')
-    return '\n'.join(parts)
+    return figure
 
 
-def figure(folder: str, edges, flows, element: str | None, unit: str) -> str | None:
+def figure_for(case: str, edges, flows, element: str | None, unit: str, theme: str):
     """Build one figure, for total mass or for a single element."""
     nodes = {flow: mass(frame, element) for flow, frame in flows.items()}
     nodes = {flow: value for flow, value in nodes.items() if value > 1e-12}
@@ -196,7 +192,6 @@ def figure(folder: str, edges, flows, element: str | None, unit: str) -> str | N
     if not links:
         return None
 
-    case = os.path.basename(folder.rstrip('/'))
     if element:
         title = f'{case} — {element} through the recovery system'
         subtitle = (f'Element-depth rows only. Node and ribbon size are mass in {unit}. '
@@ -205,10 +200,13 @@ def figure(folder: str, edges, flows, element: str | None, unit: str) -> str | N
         title = f'{case} — material flows'
         subtitle = (f'Each flow totalled at its own shallowest depth, so nesting is not '
                     f'double counted. Mass in {unit}. {len(nodes)} flows, {len(links)} transfers.')
-    return render(nodes, links, assign_columns(list(nodes), links), title, subtitle)
+    return render(nodes, links, assign_columns(list(nodes), links), title, subtitle, theme)
 
 
-def main(folder: str) -> None:
+def main(folder: str | None = None, params=None) -> None:
+    params = params or load()
+    folder = folder or params.run.data_folder
+
     unit = 'Mg'
     inputs = pd.read_csv(f'{folder}/input_data/inputs.csv', keep_default_na=False, na_values=[])
     if 'Unit' in inputs.columns and inputs['Unit'].nunique() == 1:
@@ -216,22 +214,31 @@ def main(folder: str) -> None:
 
     edges, flows = replay(folder)
     case = os.path.basename(folder.rstrip('/'))
-    os.makedirs('figures', exist_ok=True)
 
-    written = []
-    for element in [None] + sorted({e for f in flows.values() for e in f['Layer 4'].unique() if e}):
-        svg = figure(folder, edges, flows, element, unit)
-        if svg is None:
-            continue
-        path = f'figures/{case}_{element or "total"}.svg'
-        with open(path, 'w') as handle:
-            handle.write(svg)
-        written.append(path)
+    elements = [None]
+    if params.figures.element_figures:
+        elements += sorted({e for f in flows.values() for e in f['Layer 4'].unique() if e})
 
     print(f'{folder}: {len(flows)} flows, {len(edges)} transfers')
-    for path in written:
-        print(f'  wrote {path}')
+    for element in elements:
+        figure = figure_for(case, edges, flows, element, unit, params.figures.theme)
+        if figure is None:
+            continue
+        stem = f'{case}_{element or "total"}'
+        for path in write(figure, params.figures.out_dir, stem,
+                          params.figures.formats, params.figures.dpi):
+            print(f'  wrote {path}')
+        import matplotlib.pyplot as plt
+        plt.close(figure)
 
 
 if __name__ == '__main__':
-    main(sys.argv[1] if len(sys.argv) > 1 else 'data_folder/template')
+    parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    parser.add_argument('folder', nargs='?',
+                        help='data folder to draw. Omit to use run.data_folder from params.xlsx.')
+    parser.add_argument('-p', '--params', default=None, help='parameter file (default: params.xlsx)')
+    arguments = parser.parse_args()
+    try:
+        main(arguments.folder, load(arguments.params) if arguments.params else None)
+    except ParameterError as error:
+        raise SystemExit(error)

@@ -12,6 +12,7 @@ rather than from anyone's recollection.
 | [DESIGN_tc_table.md](DESIGN_tc_table.md) | How to build the TC table so that sum-to-1 holds by construction. Proposal, with a worked example in `data_folder/template`. The real table does not exist yet, so read this before collecting data. |
 | [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | The design problem for the Monte Carlo version: architecture, the compute budget, sampling asymmetric triangulars, and how to sample under the sum-to-1 constraint. Not yet built. |
 | [HANDOVER.md](HANDOVER.md) | Current state, decisions taken and why, open questions, and the recommended order of work. |
+| [PARAMETER_REFERENCE.md](PARAMETER_REFERENCE.md) | Every setting in `params.xlsx`, its default, and what changing it does. Generated from `src/params_schema.py` — do not edit by hand. |
 
 The input file format is specified in `../doc/User guide.docx` (Harmjan de
 Vries, 21-11-2024). That document is the authority on the input schema and is
@@ -39,21 +40,26 @@ transfer coefficients behind each arrow, nothing scaled by mass:
 ./.venv/bin/python plot_structure.py data_folder/template
 ```
 
-Writes `figures/<case>_structure.{svg,png,pdf}`. It renders through matplotlib,
-so all three come from one drawing and cannot disagree. Run it with no argument
-to pick a case from a list, `--list` to see them, `--formats svg,png` to narrow
-the output, `--theme dark` for the dark palette, or point it straight at a
-`TCs.csv` anywhere on disk.
-
 To see **how much mass goes where**, as a Sankey, in total and per element:
 
 ```bash
 ./.venv/bin/python plot_flows.py data_folder/template
 ```
 
-Drawing these is also part of a normal `run_model.py` run, so a result and the
-picture of it cannot drift apart. Writes an SVG Sankey per case into
-`figures/` — one for total mass, one per element. Totals are taken at each flow's own shallowest depth, so the nesting
+Both render through matplotlib, so every requested format comes from one
+drawing and they cannot disagree. Drawing the Sankeys is also part of a normal
+`run_model.py` run, so a result and the picture of it cannot drift apart.
+
+**Which formats, which resolution, which palette are parameters, not flags.**
+They live in `params.xlsx` — `figures.formats`, `figures.dpi`, `figures.theme`,
+`figures.out_dir`, `figures.element_figures` — and are documented in
+[PARAMETER_REFERENCE.md](PARAMETER_REFERENCE.md). The one thing still passed on
+the command line is which case to draw, and only because that is the thing that
+changes within a single sitting.
+
+A note on the theme: the figures used to be hand-written SVG carrying a
+`prefers-color-scheme` rule, so they followed the reader's system setting. A
+PNG or PDF cannot do that, so `figures.theme` picks the palette at render time. Totals are taken at each flow's own shallowest depth, so the nesting
 described in MODEL_MECHANICS.md §1 is not double counted, and edge magnitudes
 are recomputed by replaying the model's own process loop rather than inferred
 from the solution file.

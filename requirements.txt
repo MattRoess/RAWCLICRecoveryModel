@@ -13,7 +13,7 @@ numpy==2.5.2
 scipy==1.18.0
 networkx==3.6.1
 
-# Reading the .docx user guide and any Excel-format input data.
+# Reading params.xlsx, the parameter file, plus any Excel-format input data.
 openpyxl==3.1.5
 
 # Figures. plot_structure.py renders through matplotlib so that one drawing

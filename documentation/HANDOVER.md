@@ -129,7 +129,15 @@ Do these in order and you are back to where today ended in about ten minutes.
 1. **[SETUP.md](SETUP.md)** — Python 3.14, venv, Positron interpreter. Finish
    with the verification block; if `compare_engines.py` prints *Engines agree*,
    the environment is good.
-2. **Look at `figures/template_structure.svg`** — one page showing every flow,
+2. **Draw the structure figure and look at it.** Figures are no longer
+   committed — they are regenerated from the inputs and `params.xlsx`, so a
+   tracked copy would only ever be a stale one:
+
+   ```bash
+   ./.venv/bin/python plot_structure.py data_folder/template
+   ```
+
+   That writes `figures/template_structure.png` — one page showing every flow,
    every process, and every transfer coefficient behind each arrow. It is the
    fastest way back into how the model is wired.
 3. **Read [MODEL_MECHANICS.md](MODEL_MECHANICS.md) §1 and §4.** The nesting
