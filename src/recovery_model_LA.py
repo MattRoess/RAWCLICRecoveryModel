@@ -13,6 +13,8 @@ from typing import Tuple, List
 from dataclasses import dataclass
 from itertools import product
 
+from src.validate_inputs import validate
+
 
 # Definition of file/folder names within the overarching data directory
 OUTPUT_DATA_FOLDER_NAME = "output_data"
@@ -73,6 +75,13 @@ class RecoveryModelLA:
         # Set data folder and create structure if needed
         self.layer_names = layer_names
         self.data_folder = data_folder
+
+        # Check the input tables before anything is encoded. This engine maps
+        # every key to an integer with .replace(), which leaves an unknown key
+        # as a string and fails later inside np.dot with a message naming
+        # neither the column nor the value (DEFECTS.md 2.7).
+        validate(data_folder)
+
         if not os.path.exists(os.path.join(self.data_folder, OUTPUT_DATA_FOLDER_NAME)):
             os.makedirs(os.path.join(self.data_folder, OUTPUT_DATA_FOLDER_NAME))
 

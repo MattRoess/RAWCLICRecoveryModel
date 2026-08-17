@@ -12,6 +12,8 @@ from dataclasses import dataclass
 import networkx as nx
 from itertools import product
 
+from src.validate_inputs import validate
+
 # Definition of file/folder names within the overarching data directory
 OUTPUT_DATA_FOLDER_NAME = "output_data"
 INPUT_DATA_FOLDER_NAME = "input_data"
@@ -72,6 +74,13 @@ class RecoveryModelOptimized:
         # Set data folder and create structure if needed
         self.layer_names = layer_names
         self.data_folder = data_folder
+
+        # Check the input tables before anything is joined. At this point a bad
+        # key can still be reported with its file, column and value; a few lines
+        # later it is either silent phantom mass or an unreadable TypeError.
+        # See src/validate_inputs.py and documentation/DEFECTS.md section 5.
+        validate(data_folder)
+
         if not os.path.exists(os.path.join(self.data_folder, OUTPUT_DATA_FOLDER_NAME)):
             os.makedirs(os.path.join(self.data_folder, OUTPUT_DATA_FOLDER_NAME))
 

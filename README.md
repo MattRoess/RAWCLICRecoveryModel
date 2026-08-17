@@ -126,11 +126,14 @@ measurement and a one-command reproduction in
 - **Overlapping TC specificity resolves differently.** Given both a
   product-level and a component-level TC for the same process, `LA` applies the
   more specific one and `Optimized` adds them together.
-- **Bad input is not rejected — it is absorbed.** Nothing validates the input
-  tables. An inflow naming a flow that appears in no TC adds 4000 Mg of phantom
-  mass to `basic_test` under `RecoveryModelOptimized`, with no warning; the
-  same input makes `RecoveryModelLA` die on an unreadable `TypeError`. A
-  composition row that fills only `Layer 1` invents mass the same way.
+- **Bad input is now rejected, but the underlying code is unchanged.** Both
+  engines check the three tables before using them, so an unresolvable key, a
+  composition row with a gap, a mixed or unrecognised mass unit, and a share
+  written as a percentage all stop the run with a message naming the file, the
+  column and the value. What they used to do — 4000 Mg of silent phantom mass,
+  or an unreadable `TypeError` — is recorded in DEFECTS.md §2.6, §2.7 and §3.3.
+  The faulty merges themselves are still there; they can just no longer be
+  reached from a data folder.
 - **Same-layer TCs discard `Input_layer_key` in `RecoveryModelOptimized`.**
   A component→component TC is read as "anything → that component", so the two
   engines disagree wherever a resource is routed within one layer.

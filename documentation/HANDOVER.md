@@ -102,11 +102,11 @@ context; repeated here because they gate the work.
    Carlo restructuring can silently move the deterministic answer and nobody
    will know. Compare with a tolerance rather than exactly — the LA engine
    varies by ~1.5 ULP between runs (DEFECTS.md §3.5).
-2. **Validate the input tables on load** (DEFECTS.md §5). One check catches
-   §2.1, §2.6 and §2.7 at the point where the error can still name the file,
-   the column and the value — instead of, respectively, inventing mass,
-   inventing mass, and either an unreadable `TypeError` or +4000 Mg of silent
-   phantom inflow. `02_check_mass_balance.py` already does work of this shape.
+2. ~~**Validate the input tables on load**~~ — **done 2026-08-17**,
+   `src/validate_inputs.py`, called from both engines before anything is
+   joined. Errors stop the run and name the file, column and value; the open
+   method questions (§2.1, §2.3, §2.5) warn and continue. Also checks the mass
+   unit and that shares are fractions rather than percentages (DEFECTS.md §5).
 3. **Fix the engine divergences** (DEFECTS.md §2.1, §2.2, §2.5), and settle
    §2.3 with whoever owns the method. Write the resolved semantics down — their
    absence is why §2.3 exists at all. §2.5 lands on the element-over-component

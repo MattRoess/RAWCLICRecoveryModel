@@ -63,6 +63,18 @@ class RunParams:
     # because it is the more correct of the two.
     engine: str = 'optimized'
 
+    # THE MASS UNIT THIS PROJECT WORKS IN.
+    # The model itself is unit-agnostic: it multiplies fractions, so it never
+    # looks at the unit. That is exactly why a wrong one is dangerous -- nothing
+    # downstream would notice. Every inflow row is checked against this, and a
+    # run stops if inputs.csv mixes two units in one file.
+    # Worth knowing: the upstream pipeline (04_02) delivers inflows in kt, and
+    # everything in this repository is written in Mg. That is a factor of 1000.
+    # Set this to whatever the inflow data actually is, and convert the data --
+    # do not change this to silence a warning.
+    # SAFE TO CHANGE: yes, but only together with the data itself.
+    expected_unit: str = 'Mg'
+
     # ALSO DRAW THE STRUCTURE DIAGRAM WHEN THE MODEL RUNS.
     # The structure diagram shows how the flows connect and the transfer
     # coefficients behind each arrow. It is not a picture of a result -- it

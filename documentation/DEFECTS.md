@@ -202,8 +202,12 @@ Exactly +1000, the mass of `F1/P1`, created from a row that says nothing. The
 LA engine is unaffected.
 
 **Severity: medium.** Same family as §2.1 — a filter that under-constrains
-which composition rows apply — and equally silent. A depth check on load
-catches it.
+which composition rows apply — and equally silent.
+
+**Caught since 2026-08-17** by `src/validate_inputs.py`: a composition row with
+a gap, or with only `Layer 1`, is now an error naming the file and the row. The
+underlying filter at `recovery_model_optimized.py:214` is still wrong; it can
+just no longer be reached.
 
 ### 2.7 Unknown keys: LA crashes unreadably, optimized swallows them
 
@@ -236,7 +240,12 @@ composition tree, and goes nowhere. No warning from either engine.
 
 **Severity: high for the optimized engine**, which is the one `01_run_model.py`
 uses and the one that fails silently; medium for LA, where the failure is loud
-but the message is useless. Both are the same missing loader check.
+but the message is useless.
+
+**Caught since 2026-08-17.** Both engines now refuse the input before reading
+it, naming the file, the column and the value. The `.replace()` encoding in the
+LA engine is unchanged — it is simply no longer reachable with an unknown key.
+Using `.map()` there is still the better fix and is not done.
 
 ---
 
@@ -273,8 +282,21 @@ of work ahead.
 ### 3.3 Units are declared and ignored
 
 `inputs.csv` has a `Unit` column. It is not in `InputDataFormat.input_columns`
-and is never read. The user guide states the model is unit-agnostic and the
-user must keep units consistent by hand. Nothing checks this.
+and is never read by either engine. The user guide states the model is
+unit-agnostic and the user must keep units consistent by hand.
+
+**Checked since 2026-08-17**, though still not *read*: the model continues to
+multiply fractions without ever converting anything, which is exactly why the
+unit is dangerous — a wrong one is wrong by a clean factor of 1000 and nothing
+in the output looks unusual. `src/validate_inputs.py` now refuses a file that
+mixes two units, names an unrecognised or ambiguous one ('ton' is 1000 kg in
+one country and 907 in another), and warns when the declared unit differs from
+`expected_unit` in `src/params_schema.py`.
+
+Worth acting on: HANDOVER.md §7 records that the upstream `04_02` pipeline
+delivers inflows **in kt**, while every data folder here is written in **Mg**.
+That is the factor of 1000 this check exists to catch, and it will fire the
+first time real upstream data arrives.
 
 ### 3.4 The solution's `Value` column is `object` dtype, in both engines
 
@@ -386,18 +408,35 @@ and looks like the remains of something that was meant to happen there.
 
 ---
 
-## 5. What ties §2.5–2.7 together
+## 5. Input validation — what ties §2.5–2.7 together
 
-All three, plus §2.1, are the same absence: **nothing validates the input
-tables before they are used.** Every one of them is catchable at load time,
-where the error can still name the file, the column and the value:
+All three, plus §2.1, were the same absence: **nothing validated the input
+tables before they were used.**
 
-- every `Substance_main_parent` and `Stock/Flow ID` in `inputs.csv` resolves
-  against `composition.csv` and `TCs.csv` (§2.7)
-- no composition row skips a layer (§2.6)
-- no two TCs for one process share a target key at the same layer (§2.5)
-- composition is defined per `Stock/ID`, and applied per `Stock/ID` (§2.1)
+**Built 2026-08-17** — `src/validate_inputs.py`, called from both engines'
+constructors before a single row is joined. At that point a bad key can still
+be reported with its file, its column and its value.
 
-`02_check_mass_balance.py` already does work of exactly this shape on the TC
-table. Extending it, and calling it on load, is the natural companion to the
-regression test that is step 1 of HANDOVER.md §5.
+### Errors — the run stops
+
+An input that cannot be read as meaning anything. Each one used to be silent:
+
+| Check | Was |
+|---|---|
+| Every `Substance_main_parent` resolves in `composition.csv` (§2.7) | +1000 Mg of inert product, or an unreadable `TypeError` |
+| Every `Stock/Flow ID` resolves in `TCs.csv` (§2.7) | +4000 Mg across 22 rows, going nowhere |
+| No composition row skips a layer (§2.6) | +1000 Mg invented from a row saying nothing |
+| Every TC key names a resource that exists | Unmatched TCs, silently zero |
+| One mass unit per file, and a recognised one (§3.3) | Unread — a clean factor of 1000, invisible in the output |
+| Shares and TCs are fractions in [0, 1] (§3.3) | 25 read as 25, not 0.25 — a 100-fold error |
+
+### Warnings — the run continues
+
+Inputs that are readable but that the two engines *disagree* about. These are
+open method questions (§2.1, §2.3, §2.5), not mistakes, and the answer belongs
+to whoever owns the method — so they are reported and the run proceeds. It is
+also what keeps `data_folder/defect_cases/` runnable, since those folders are
+built from exactly these patterns.
+
+Each defect case now reports precisely its own defect and nothing else;
+`basic_test` and `template` report nothing at all.
