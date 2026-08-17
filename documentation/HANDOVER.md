@@ -1,16 +1,20 @@
 # Handover
 
-State as of 2026-08-14. Everything below is either verified by running it or
-flagged as a decision still to be taken.
+State as of **2026-08-17**. Everything below is either verified by running it
+or flagged as a decision still to be taken.
+
+**Starting on the other Mac? Go straight to §7.**
 
 ## 1. Where things stand
 
-The model works, in the narrow sense that both engines reproduce the committed
-reference result exactly:
+The model works, and now works for the same reasons on both engines:
 
 ```bash
 ./.venv/bin/python compare_engines.py data_folder/basic_test
 # 180 rows, largest engine difference 8.9e-16
+
+./.venv/bin/python test_regression.py
+# 16 of 16 passed
 ```
 
 The core algebra — nested layers, composition expansion, TC application,
@@ -18,12 +22,18 @@ topological process ordering — is sound, and two independent implementations
 agreeing is real evidence for it.
 
 It did not run when inherited. Three pandas-3 breakages were fixed
-(DEFECTS.md §1). Beyond `basic_test`, **seven** divergences between the engines
-remain open and change results (DEFECTS.md §2). Four of those — §2.1 and
-§2.5–2.7 — are one absence: no input table is validated before use, so bad
-input is silently absorbed rather than rejected (DEFECTS.md §5).
+(DEFECTS.md §1). Seven engine divergences were then found, and **all seven are
+now closed** (DEFECTS.md §2): there is no input on which the two engines
+disagree. Three were plain bugs; two were unspecified semantics that needed a
+decision before any code could be right, and both decisions are written down
+together with the option not taken; two are refused at load.
 
-Nothing about uncertainty exists yet. That is the work ahead.
+Bad input is no longer absorbed. `src/validate_inputs.py` runs before either
+engine joins a row, and an unresolvable key, a composition row with a gap, a
+mixed or unrecognised mass unit, or a share written as a percentage each stop
+the run naming the file, the column and the value.
+
+**Nothing about uncertainty exists yet. That is the work ahead.**
 
 ## 2. Environment — decisions and why
 
@@ -31,26 +41,27 @@ Nothing about uncertainty exists yet. That is the work ahead.
 
 | Decision | Value | Why |
 |---|---|---|
-| Python | 3.14.2 | Already installed; avoids a mid-project migration. |
-| pandas | 3.0.5, pinned | See below — the pins are load-bearing. |
-| Editor | Positron | `.vscode/settings.json` is committed, so `.venv` is auto-selected. `ipykernel` is in requirements for the console. |
-| Repo | `MattRoess/RAWCLICRecoveryModel`, private | Empa research code; can be made public later. |
+| Python | 3.14.2, from python.org | Framework install at `/Library/Frameworks/Python.framework/Versions/3.14/` |
+| pandas | 3.0.5, pinned | The pins are load-bearing — see below |
+| matplotlib | 3.11.1, pinned | Added 2026-08-17; both figure scripts render through it |
+| Editor | Positron | `.vscode/settings.json` is committed, so `.venv` is auto-selected |
+| Repo | `MattRoess/RAWCLICRecoveryModel`, private | Empa research code; can be made public later |
 
-**Setting this up on another machine: see [SETUP.md](SETUP.md).** It covers
-installing Python 3.14 without conda, building the venv, selecting the
-interpreter in Positron, and the pyenv trap that bit us on the first machine.
-Verified reproducible from a clean clone.
+**Setting up on another machine: [SETUP.md](SETUP.md).** It covers Python 3.14
+without conda, the venv, the Positron interpreter, and two traps that have
+actually bitten: a stored pyenv interpreter selection overriding
+`python.defaultInterpreterPath`, and a venv broken by moving the project folder.
 
 The version pins are not caution for its own sake. The pandas copy-on-write
 change turned a `fillna` call into a silent no-op and inflated this model's
 intermediates 300,000-fold **without changing its output** (DEFECTS.md §1.3).
-Unpinned, that class of failure recurs invisibly. Do not relax the pins without
-running the comparison above.
+Unpinned, that class of failure recurs invisibly.
 
-Python 3.13 + pandas 2.2 was the considered alternative — everything would have
-run unmodified. Rejected because the code needed fixing either way, and
-migrating mid-project is worse than fixing now. `environment.yml` was deleted;
-it is recoverable from commit `cc82a0a` if ever needed.
+**The venv is not relocatable.** It records its creation path in
+`.venv/pyvenv.cfg` and hardcodes it into `bin/activate`, so moving the project
+folder breaks it — and the symptom is misleading, because `./.venv/bin/python`
+keeps working while the bare `python` name does not. SETUP.md §4 has the
+diagnosis and the one-minute rebuild.
 
 ## 3. Commits
 
@@ -58,123 +69,203 @@ it is recoverable from commit `cc82a0a` if ever needed.
 |---|---|
 | `cc82a0a` | The code exactly as inherited. Baseline for reviewing every later diff. |
 | `ee3fc6b` | Environment setup and the three pandas-3 fixes. |
-| `902b04c` | This documentation set, `compare_engines.py`, and the defect cases. |
-| `9cbbe8d` | Corrected the TC mass-balance grouping; added `02_check_mass_balance.py`. |
-| `f082c7b` | Positron terminal auto-activation. |
+| `902b04c` | The documentation set, `compare_engines.py`, and the defect cases. |
+| `9cbbe8d` | Corrected the TC mass-balance grouping; added the mass balance check. |
 | `f719d5f` | TC table schema proposal and the `template` worked example. |
-| `cf9b188` | `plot_flows.py` — mass-weighted Sankey figures. |
+| `cf9b188` | Mass-weighted Sankey figures. |
+| `e74504f` | Structure diagrams and SETUP.md. |
+| **2026-08-17** | |
+| `eec3644` | Recorded why a moved venv breaks. |
+| `5277377` | Four more engine divergences and two latent issues, from a full read. |
+| `68a9408` | Figures through matplotlib; Sankeys drawn as part of a run. |
+| `0799d6f` | Settings in code, `params.xlsx` generated; `plot_flows` on matplotlib. |
+| `e3e0a81` | Numbered workflow, settings file, regression test. |
+| `14ee1f4` | Every figure from step 1; `plot_structure` out of the workflow. |
+| `8230b80` | Input validation, units included. |
+| `5a83b37` | §2.1 and §2.2 fixed. |
+| `3db7597` | §2.5 settled: a same-layer transfer carries, it does not transform. |
+| `2363a1b` | §2.3 settled: overlapping rules resolve by specificity, and report. |
+| `859b719` | §2.4 fixed: exact year and scenario matching, from one shared rule. |
+| `c6faedc` | One scenario per run, each into its own output folder. |
+| `1e7a64f` | Year selection, with a step. |
 
 ## 4. Open questions — these need answers, not code
 
-These are method decisions. They are listed in DESIGN_monte_carlo.md §6 with
-context; repeated here because they gate the work.
-
 0. **What is the flow network?** Which processes exist, and what output flows
-   each one has. The real TC table does not exist yet (confirmed 2026-08-14),
-   so this is the gating question and it is entirely a method decision.
-   DESIGN_tc_table.md proposes the schema and the four rules; the network
-   itself is domain knowledge.
+   each one has. The real TC table does not exist yet, so this is the gating
+   question and it is entirely domain knowledge. DESIGN_tc_table.md proposes
+   the schema and the four rules; `data_folder/template` shows the *shape* of
+   an answer — seven flows, three processes, explicit loss flows — and is
+   **not a proposal about the content**.
 1. **Do losses get explicit flows?** Recommended yes — it is the only thing
-   that makes "everything sums to 1" true rather than aspirational, and it
-   turns mass balance into something assertable on every draw. The cost is
-   real and should be accepted knowingly: every resource then becomes a split
-   set, so the joint-constraint sampling in DESIGN_monte_carlo.md §4 becomes
-   the core of the design rather than a corner case.
-2. **How should overlapping TC specificity resolve?** The two engines disagree
-   by a factor of two and the user guide is silent. This must be settled
-   *before* element-layer TCs are layered over component-layer ones — which is
-   precisely what the new requirements ask for, so this will be hit immediately.
-3. **Which TCs are correlated?** `TCs.csv` already carries `process` and
+   that makes "everything sums to 1" true rather than aspirational. The cost is
+   real: every resource then becomes a split set, so the joint-constraint
+   sampling in DESIGN_monte_carlo.md §4 becomes the core of the design rather
+   than a corner case. One loss flow **per process**, not a shared sink — a
+   shared sink was measured breaking the nesting by 82 t on a 30 t parent.
+2. **Mg or kt?** Every data folder here is written in Mg; the upstream `04_02`
+   reports in **kilotonnes**. That is a factor of 1000, and because the model
+   only multiplies fractions, nothing in the output would look wrong.
+   `expected_unit` in `src/params_schema.py` is set to `Mg` and the loader now
+   warns on a mismatch — but which is correct is a data decision.
+3. **Where does composition come from?** If it is generated the way BEV
+   electronics was, it arrives as `(draws, years)` `.npy` arrays rather than a
+   table, and the deterministic run should take the mean of those same arrays
+   so the two cannot drift. Two pieces are domain knowledge: how grams per
+   vehicle become shares within a parent, and how the electronics segment
+   groups (AB/CD/EF) map onto products.
+4. **Which TCs are correlated?** `TCs.csv` already carries `process` and
    `technology` columns that the model reads and discards. They are the obvious
    grouping keys for common random numbers.
-4. **Is composition uncertain too, or only the TCs?**
 5. **Which rows need full per-draw traces**, versus summary statistics only?
    This sets the memory budget.
+
+Question 2 in the 2026-08-14 list — how overlapping TC specificity should
+resolve — was **answered on 2026-08-17** and is now DEFECTS.md §2.3.
 
 ## 5. Recommended order of work
 
 0. **Settle the TC table schema** (DESIGN_tc_table.md) and start collecting
-   into it. This is the long pole — it is data collection, it gates the Monte
-   Carlo entirely, and it can run in parallel with all the engineering below.
-1. **Regression test pinning `basic_test`.** Cheap, and the justification is
-   concrete: defect 1.3 was a 300,000x blow-up that stayed invisible for months
-   *because the output remained correct*. Without a pinned test, the Monte
-   Carlo restructuring can silently move the deterministic answer and nobody
-   will know. Compare with a tolerance rather than exactly — the LA engine
-   varies by ~1.5 ULP between runs (DEFECTS.md §3.5).
-2. ~~**Validate the input tables on load**~~ — **done 2026-08-17**,
-   `src/validate_inputs.py`, called from both engines before anything is
-   joined. Errors stop the run and name the file, column and value; the open
-   method questions (§2.1, §2.3, §2.5) warn and continue. Also checks the mass
-   unit and that shares are fractions rather than percentages (DEFECTS.md §5).
-3. **Fix the engine divergences.** §2.1 and §2.2 are **done 2026-08-17** —
-   both engines now agree exactly on those cases, and the regression test holds
-   them at zero. §2.5 remains and lands on the element-over-component layering
-   the new requirements ask for, so it will be hit early.
-
-   §2.3 is **resolved 2026-08-17**: a row naming the parent beats a row that
-   does not, resolved on the table before either engine sees it, and reported
-   — every override named, and every material running on a general rate
-   listed. The semantics are written down in DEFECTS.md §2.3, which is what
-   their absence had made impossible.
+   into it. The long pole: data collection, gating the Monte Carlo entirely,
+   and able to run in parallel with all the engineering below.
+1. ~~**Regression test pinning `basic_test`**~~ — **done**, `test_regression.py`,
+   16 checks.
+2. ~~**Validate the input tables on load**~~ — **done**, `src/validate_inputs.py`.
+3. ~~**Fix the engine divergences**~~ — **done**, all seven (DEFECTS.md §2).
 4. **Add the mass balance assertion on load**, once the table has loss flows.
    `02_check_mass_balance.py` already computes everything it needs; this is
-   promoting a report into a hard failure.
-5. **Then restructure for Monte Carlo** (DESIGN_monte_carlo.md §2): hoist the
-   join structure out, carry `Value` as `(n_rows x n_draws)`, chunk over draws.
+   promoting a report into a hard failure. Blocked on question 1.
+5. **Restructure for Monte Carlo** (DESIGN_monte_carlo.md §2): compute the join
+   structure once, carry `Value` as `(n_rows x n_draws)`, chunk over draws.
+   Build on `RecoveryModelOptimized` — 11x faster at realistic sizes and
+   scaling with populated rows rather than the product of layer cardinalities.
 
-Steps 1 to 3 are ordinary engineering and can start today. Step 0 is the long
-pole and is not engineering at all — it is a method decision followed by data
-collection, and nothing in step 5 can be finished without it. Step 5 should not
-start before step 1 exists.
+Step 5 is now unblocked on the engineering side: the deterministic answer is
+pinned, the engines agree, and the semantics are written down. What it still
+needs from step 0 is a real TC table to sample from.
 
-## 6. Picking up on Monday
+## 6. Three things worth knowing before touching the Monte Carlo
 
-Do these in order and you are back to where today ended in about ten minutes.
+- **Seed from `(draw index, TC identity)`**, not from a running generator.
+  Comparing scenarios wants the same draw in each, so the difference reflects
+  the scenario rather than noise. Seeding this way gives that across separate
+  runs, and survives chunking, reordering and reruns.
+- **A negative residual is a diagnostic, not a failure.** If sampled recovery
+  fractions sum past 1, count and report those draws; do not silently clip
+  (DESIGN_monte_carlo.md §4).
+- **The year axes do not line up.** `bev_draws` is 96 years from 1975, the
+  electronics composition draws are 51 from 2020. Align on year *value*, never
+  on position — and read the real draws rather than re-deriving them, which is
+  a mistake `04_02`'s own header records having made three times.
 
-1. **[SETUP.md](SETUP.md)** — Python 3.14, venv, Positron interpreter. Finish
-   with the verification block; if `compare_engines.py` prints *Engines agree*,
-   the environment is good.
-2. **Draw the structure figure and look at it.** Figures are no longer
-   committed — they are regenerated from the inputs and `params.xlsx`, so a
-   tracked copy would only ever be a stale one:
+## 7. Picking up on the other Mac
 
-   ```bash
-   ./.venv/bin/python plot_structure.py data_folder/template
-   ```
+The project folder syncs through iCloud, so the code is already there. Do these
+in order.
 
-   That writes `figures/template_structure.png` — one page showing every flow,
-   every process, and every transfer coefficient behind each arrow. It is the
-   fastest way back into how the model is wired.
-3. **Read [MODEL_MECHANICS.md](MODEL_MECHANICS.md) §1 and §4.** The nesting
-   rule and what a TC can meaningfully sum to. Both are counter-intuitive and
-   both were got wrong at least once during this session.
-4. **Then [DESIGN_tc_table.md](DESIGN_tc_table.md)**, which is where the work
-   actually resumes.
+**1. Let iCloud finish syncing** before anything else. A half-synced repo looks
+like a corrupt one.
+
+**2. Pull.** Some files were renamed on 2026-08-17 — `run_model.py`,
+`plot_flows.py` and `check_mass_balance.py` moved into `src/`, and the numbered
+stages replaced them. Any Positron tab open on an old path will point at
+nothing.
+
+```bash
+git pull
+```
+
+**3. Reinstall the requirements.** matplotlib is new since that machine last
+ran anything, and without it every figure fails.
+
+```bash
+./.venv/bin/pip install -r requirements.txt
+```
+
+If the venv there was built at a different path — for instance before the
+project moved into iCloud — it will be broken in the way SETUP.md §4 describes.
+Rebuild it:
+
+```bash
+rm -rf .venv && python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+```
+
+**4. Check the environment is right.**
+
+```bash
+./.venv/bin/python compare_engines.py data_folder/basic_test   # Engines agree, ~1e-15
+./.venv/bin/python test_regression.py                          # 16 of 16 passed
+```
+
+If both pass, that machine is in the same state as this one.
+
+**5. Run the model.**
+
+```bash
+./.venv/bin/python 01_run_model.py
+```
+
+That solves the case in the settings and writes every figure to `figures/`.
+
+**6. To change anything, edit `src/params_schema.py`** — which case, which
+years, which scenario, which engine, which figure formats. Every value has a
+plain comment above it. Then:
+
+```bash
+./.venv/bin/python 00_parameters.py
+```
+
+which rewrites `params.xlsx` and PARAMETER_REFERENCE.md. **Both are reports.**
+Editing either changes nothing; the settings file is the only input.
+
+**7. Read yourself back in**, in this order:
+
+- `figures/template_structure.png` from step 5 — every flow, every process, and
+  the transfer coefficients behind each arrow on one page. The fastest way back
+  into how the model is wired.
+- [MODEL_MECHANICS.md](MODEL_MECHANICS.md) §1 and §4 — the nesting rule, and
+  what a TC can meaningfully sum to. Both are counter-intuitive and both were
+  got wrong at least once.
+- [DEFECTS.md](DEFECTS.md) §2 — closed, but the reasoning behind §2.3 and §2.5
+  is the part that matters, because those were decisions rather than fixes.
+- [DESIGN_tc_table.md](DESIGN_tc_table.md) — where the work actually resumes.
 
 ### The one thing waiting on you, not on the code
 
-**The flow network.** Which processes exist, and what output flows each has.
-The real TC table does not exist yet, so nothing downstream can be finished
-without it, and it is entirely domain knowledge. `data_folder/template` is a
-worked example of the shape the answer takes — seven flows, three processes,
-explicit loss flows — not a proposal about the content.
+**The flow network.** Which processes exist and what each produces. Everything
+downstream is blocked on it, and it is entirely domain knowledge — no amount of
+engineering here substitutes for it.
 
-Everything else in §5 is engineering that can proceed in parallel.
+Give it as a plain list, and the TC table skeleton can be generated from it with
+the coefficients left blank to fill in:
+
+| From | To | Process | Keyed at which layer |
+|---|---|---|---|
+| collected | dismantled | dismantling | component |
+| collected | loss_dismantling | dismantling | component |
+| … | … | … | … |
+
+Two rules constrain the answer, both from DESIGN_tc_table.md: one loss flow per
+process rather than a shared sink, and each process keyed at the layer where
+its yield actually differs — dismantling separates components, refining and
+shredding differ per element.
 
 ### Known unfinished
 
-- **The structure figure needs a second pass.** `plot_structure.py` was written
-  at the end of the session in response to the note that the Sankey diagrams
-  did not answer "how is this set up". It is a first cut. If it is still hard
-  to follow, that is the figure to iterate on, not the Sankeys.
-- No regression test exists yet. It is step 1 of §5 and should come before any
-  Monte Carlo restructuring.
+- **No uncertainty of any kind.** `DQS` and `CV` are declared in the input
+  dtypes and read by nothing. This is the main body of work.
+- **The structure figure is a first cut.** If it is still hard to follow, that
+  is the figure to iterate on, not the Sankeys.
+- **`Value` is `object` dtype** in both engines' returned frames
+  (DEFECTS.md §3.4). Harmless today, blocking for vectorisation — fix it before
+  the Monte Carlo restructuring, not during.
 
-## 7. Upstream context
+## 8. Upstream context
 
 Inflows come from `04_02` in the separate pipeline: per-element inflow, outflow
-and collected in kt, at 200,000 draws, resolved by domain.
+and collected, **in kt**, at 200,000 draws, resolved by domain. The real draws
+are persisted as `(draws, years)` `.npy` arrays — `bev_draws/<scenario>/` —
+and are meant to be read rather than re-derived.
 
 Two things carried over from that work:
 
