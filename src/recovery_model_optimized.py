@@ -317,9 +317,16 @@ class RecoveryModelOptimized:
             Apply all TCs for the given input layer and target layer.
             """
             if input_layer==target_layer:
-                tcs_layer = tcs[(tcs["Input_layer"]==input_layer)&(tcs["TC_target_layer"]==target_layer)][["TC_target_key","value"]]
-                tcs_layer.rename(columns={ "TC_target_key": target_layer, "value": "TC"}, inplace=True)
-                process_outflow = process_inflow.merge(tcs_layer, on=[target_layer], how='left')
+                # A same-layer TC carries a resource to another flow unchanged --
+                # a component does not turn into a different component -- so the
+                # two keys must name the same resource, which the loader enforces
+                # (DEFECTS.md 2.5). Match on Input_layer_key: matching on
+                # TC_target_key instead, as this did, moved the WRONG resource
+                # whenever the two keys differed, silently and by whatever the
+                # two happened to hold.
+                tcs_layer = tcs[(tcs["Input_layer"]==input_layer)&(tcs["TC_target_layer"]==target_layer)][["Input_layer_key","value"]]
+                tcs_layer = tcs_layer.rename(columns={"Input_layer_key": input_layer, "value": "TC"})
+                process_outflow = process_inflow.merge(tcs_layer, on=[input_layer], how='left')
             else:
                 tcs_layer = tcs[(tcs["Input_layer"]==input_layer)&(tcs["TC_target_layer"]==target_layer)][["Input_layer_key","TC_target_key","value"]]
                 

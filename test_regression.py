@@ -300,6 +300,24 @@ def test_validation_rejects_bad_units() -> None:
             raise AssertionError(f'{description} was accepted')
 
 
+def test_validation_rejects_a_same_layer_transformation() -> None:
+    """
+    DEFECTS.md §2.5. A transfer within one layer carries a resource unchanged,
+    so its two keys must name the same resource.
+
+    Uses the committed case rather than a temporary one, because the point of
+    that folder is to hold an input the loader must refuse.
+    """
+    from src.validate_inputs import InputDataError, validate
+
+    try:
+        validate('data_folder/defect_cases/same_layer_key')
+    except InputDataError as error:
+        assert "'C1' -> 'C2'" in str(error), f'error does not name both keys: {error}'
+    else:
+        raise AssertionError("a same-layer TC reading C1 -> C2 was accepted")
+
+
 def test_validation_rejects_percentages() -> None:
     """A share written as 25 rather than 0.25 inflates the answer 100-fold."""
     from src.validate_inputs import InputDataError, validate

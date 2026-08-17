@@ -31,8 +31,8 @@ An ERROR means the input cannot be read as meaning anything: a key that names
 nothing, a row with a hole in it. The run stops.
 
 A WARNING means the input is readable but the two engines disagree about what
-it means. Those are open method questions (DEFECTS.md 2.3 and 2.5), not
-mistakes, and the answer belongs to whoever owns the method -- so they are
+it means. That is now only DEFECTS.md 2.3, an unspecified semantic whose answer
+belongs to whoever owns the method -- not a mistake, and the answer belongs to whoever owns the method -- so they are
 reported and the run continues. The defect-case folders are built from exactly
 these patterns and must stay runnable, which is the other reason they do not
 stop anything.
@@ -279,6 +279,32 @@ def check(folder: str) -> list[Problem]:
                 f"{mode[index]:g}, value_max {high[index]:g}. A triangular range needs "
                 f"value_min <= value <= value_max."))
 
+    # ---- 2.5  a same-layer TC carries a resource, it does not transform it --
+    # Decided 2026-08-17: a transfer within one layer moves a resource to
+    # another flow unchanged. A component does not become a different
+    # component, so the two keys have to name the same resource.
+    #
+    # This is enforced here rather than handled in the engines because neither
+    # engine can express a transformation: RecoveryModelLA reads only
+    # Input_layer_key and ignores the target, the optimized engine used to read
+    # only TC_target_key and ignored the input. They agreed solely because every
+    # same-layer TC written so far is an identity. DEFECTS.md §2.5 records what
+    # implementing the transformation reading would take, if it is ever wanted.
+    same_layer = tcs[tcs['Input_layer'] == tcs['TC_target_layer']]
+    for index, row in same_layer.iterrows():
+        source_key, target_key = row['Input_layer_key'], row['TC_target_key']
+        if source_key and target_key and source_key == target_key:
+            continue
+        problems.append(Problem(
+            'ERROR', '2.5',
+            f"TCs.csv row {index + 2}: {row['Input_FlowID']} -> {row['Output_FlowID']} "
+            f"stays within the {row['Input_layer']} layer but reads "
+            f"{source_key or '(blank)'!r} -> {target_key or '(blank)'!r}. A transfer "
+            f"within one layer moves a resource unchanged, so both keys must name "
+            f"the same resource. Write {target_key or source_key!r} on both sides, "
+            f"or target a deeper layer if the resource really does become "
+            f"something else."))
+
     # ---- 2.3 / 2.5  two TCs competing for one destination ------------------
     # A TC identifies its resource by BOTH keys -- "component C1 within product
     # P1" -- so two TCs reaching the same target key from different input keys
@@ -303,14 +329,6 @@ def check(folder: str) -> list[Problem]:
                 f"TCs.csv: {source} -> {target} has the same transfer coefficient "
                 f"written more than once for {layer} {key!r}. The optimized engine adds "
                 f"the duplicates together."))
-        elif layer in input_layers and len(set(group['Input_layer_key'])) > 1:
-            others = ', '.join(sorted(set(group['Input_layer_key'])))
-            problems.append(Problem(
-                'WARNING', '2.5',
-                f"TCs.csv: {source} -> {target} reaches {layer} {key!r} from several "
-                f"keys within that same layer ({others}). The optimized engine discards "
-                f"'Input_layer_key' on a same-layer transfer, so it cannot tell them "
-                f"apart and multiplies the rows instead."))
 
     return problems
 

@@ -177,35 +177,86 @@ containing a regex metacharacter raises or mismatches; year `"2020"` matches
 **Severity: medium** — silent cross-contamination between scenarios, but only
 with the LA engine and only with scenario names that are prefixes of others.
 
-### 2.5 Same-layer TCs ignore `Input_layer_key` in the optimized engine
+### 2.5 Same-layer TCs: each engine drops a different key — RESOLVED
 
-**Reproduce:** add to `basic_test/input_data/TCs.csv` a copy of the `F2 →  F4`
-component-level row keyed on `C1` instead of `C2`.
+**Reproduce:** `data_folder/defect_cases/same_layer_key`
 
-When `Input_layer == TC_target_layer`, `recovery_model_optimized.py:263-266`
-selects only `TC_target_key` and `value` and merges on the target column
-alone. **`Input_layer_key` is never used.** Two consequences:
+For a transfer that stays within one layer, **neither engine reads both keys,
+and they drop opposite ones**:
 
-- "C1 within P1 → C2" cannot be expressed as distinct from "C2 within P1 → C2";
-  both are read as "anything → C2".
-- Two TCs sharing a target key multiply rows in the merge rather than being
-  treated as alternatives.
-
-| | optimized | LA |
+| | reads | ignores |
 |---|---|---|
-| baseline | 7514.4575 | 7514.4575 |
-| with the added row | **7555.3611** | **7566.4055** |
+| `RecoveryModelLA` (`recovery_model_LA.py:297-299`) | `Input_layer_key` | `TC_target_key` |
+| `RecoveryModelOptimized` (was `:320-322`) | `TC_target_key` | `Input_layer_key` |
 
-Engines that agreed exactly now differ by 11.04.
+In LA, when `Input_layer == TC_target_layer` the `if row['Input_layer']==layer`
+branch wins and sets *both* the input and output key to `Input_layer_key`, so
+the target is never consulted. The optimized engine did the mirror image: it
+selected `TC_target_key` alone and merged on it, so it matched — and moved —
+whichever resource the *target* named, not the one the TC was about.
 
-This is **not** §2.3. That one is about cross-layer TCs at different
-specificities being added together; this is the input key being discarded
-*within* a single layer. `basic_test` hides it because its same-layer TCs
-happen to use identical input and target keys (`C2 → C2`), which is the one
-case where dropping the input key is harmless.
+They agreed only because **every same-layer TC written so far is an identity**:
+4 of 4 in `basic_test`, 2 of 2 in `composition_stock_id`, 1 of 1 in
+`tc_specificity`. Identity is the one case where dropping either key is
+harmless.
 
-**Severity: high**, and it lands directly on the element-over-component
-layering the new requirements ask for.
+The committed case is 100 Mg of P1, 60% C1 and 40% C2, with one TC reading
+`F2 component C1 → F3 component C2`. Three implementations, three answers:
+
+| | result |
+|---|---|
+| LA | `F3 / P1 / C1 = 60` — moves C1, keeps calling it C1 |
+| optimized, before | `F3 / P1 / C2 = **40**` — moves C2, the wrong resource |
+| a transformation reading | `F3 / P1 / C2 = 60` — moves C1, renames it C2 |
+
+**RESOLVED 2026-08-17: a same-layer transfer carries a resource unchanged.**
+A component does not become a different component, so the two keys must name
+the same resource. Two changes follow:
+
+- `src/validate_inputs.py` rejects a same-layer TC whose keys differ, naming
+  the row and both keys. This is an error, not a warning: it is not a
+  disagreement about a legal input, it is an input with no meaning.
+- The optimized engine now matches on `Input_layer_key` rather than
+  `TC_target_key`. With the loader enforcing identity the two are equal, so
+  this changes no result — but matching on the input key is the direction that
+  is *right* rather than accidentally equivalent, and it stops the old
+  behaviour of silently moving the wrong resource if the rule is ever relaxed.
+
+`basic_test` is unmoved at 8.88e-16.
+
+#### If the transformation reading is wanted later
+
+The rejected option — `C1 → C2` meaning "this component is reclassified as
+that one" — is strictly more expressive, and a process that re-sorts or
+re-grades material is a real thing. It was not chosen because nothing in the
+current data needs it and neither engine can express it. To implement it:
+
+1. **Loader** — drop the same-layer identity check in `validate_inputs.check`
+   (the block marked `2.5`). Both keys become legal again.
+2. **Optimized engine** — in `solve_process.process_outflow`, the same-layer
+   branch keeps `TC_target_key` alongside `Input_layer_key`, merges on the
+   input key, then rewrites the layer column to the target key for the rows
+   that matched:
+
+   ```python
+   became = process_outflow["TC_target_key"]
+   process_outflow[target_layer] = became.where(became.notna(),
+                                                process_outflow[target_layer])
+   ```
+
+   This was written and measured; it produces the 60 in the table above.
+3. **LA engine** — the harder half, and the reason this is not a small change.
+   `create_tcs_matrix` must stop letting the `Input_layer` branch win: the
+   matrix needs `Input_<layer> = Input_layer_key` and
+   `Output_<layer> = TC_target_key`, so the transfer is off-diagonal within the
+   layer rather than on it.
+4. **Nesting** — decide what happens to the subtree. A component carries its
+   materials and elements with it; if C1 becomes C2, do its children keep C1's
+   composition or take C2's? Neither engine currently has an answer, and this
+   is the question that makes the feature a method decision rather than a
+   coding one.
+
+Steps 1 and 2 alone would make the engines disagree again. All four are needed.
 
 ### 2.6 A composition row populating only Layer 1 invents mass
 
