@@ -49,6 +49,8 @@ If `python3` is not 3.14, point at the interpreter directly, for example:
 ```
 
 `.venv/` is gitignored and is meant to be rebuilt per machine. Never commit it.
+It is also not relocatable — moving the project folder breaks it, see the second
+troubleshooting note under step 4.
 
 ## 4. Positron
 
@@ -84,6 +86,41 @@ the current terminal only:
 ```bash
 source .venv/bin/activate
 ```
+
+### If the prompt shows `(.venv)` but `python` is not found
+
+The venv is not relocatable. A venv records the absolute path it was created at
+in `.venv/pyvenv.cfg` and hardcodes it into `.venv/bin/activate`, so **moving
+the project folder breaks it.** Activation then exports a `VIRTUAL_ENV` that no
+longer exists, prepends a dead directory to `PATH`, and still prints `(.venv)`
+in the prompt. macOS has no system `python`, so the symptom is:
+
+```
+(.venv) % which python
+python not found
+```
+
+This happened on 2026-08-17: the venv had been created while the project sat in
+`~/Documents/GitHub/`, and the folder was later moved into iCloud Drive. Note
+that `./.venv/bin/python` keeps working throughout — Python resolves its own
+prefix from the executable's location — so the scripts in step 5 all pass while
+the bare `python` name stays broken. Checking only those hides the problem.
+
+Confirm the diagnosis by comparing the recorded path against the real one:
+
+```bash
+grep "^command" .venv/pyvenv.cfg && pwd
+```
+
+The fix is to rebuild, which takes about a minute:
+
+```bash
+rm -rf .venv && python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+```
+
+Nothing is lost — everything in `.venv/` is reproducible from
+`requirements.txt`. Afterwards, close any terminal that was open before the
+rebuild: it still holds the stale `VIRTUAL_ENV` in its own environment.
 
 ## 5. Verify
 
