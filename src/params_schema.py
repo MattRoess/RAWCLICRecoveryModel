@@ -63,17 +63,16 @@ class RunParams:
     # because it is the more correct of the two.
     engine: str = 'optimized'
 
-    # DRAW THE SANKEY FIGURES AS PART OF A RUN.
-    # These show how much mass goes where, in total and per element.
-    # SAFE TO CHANGE: yes. Set to False to solve without drawing anything.
-    draw_flows: bool = True
-
-    # ALSO DRAW THE STRUCTURE DIAGRAM ON EVERY RUN.
-    # This shows how the flows connect and the transfer coefficients behind
-    # each arrow. Off by default because the structure only changes when the TC
-    # table changes, while the Sankeys change with every result.
-    # SAFE TO CHANGE: yes.
-    draw_structure: bool = False
+    # ALSO DRAW THE STRUCTURE DIAGRAM WHEN THE MODEL RUNS.
+    # The structure diagram shows how the flows connect and the transfer
+    # coefficients behind each arrow. It is not a picture of a result -- it
+    # only changes when the TC table changes -- so it is a switch rather than
+    # something that always happens.
+    # The Sankey figures are not a switch: they are drawn on every run,
+    # because they ARE the result and should never be out of step with it.
+    # SAFE TO CHANGE: yes. Set to False to skip the structure diagram; you can
+    # still draw it any time with:  ./.venv/bin/python plot_structure.py
+    draw_structure: bool = True
 
 
 @dataclass

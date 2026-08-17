@@ -1,20 +1,24 @@
 """
-03_plot_structure.py
-====================
+plot_structure.py
+=================
 
-STEP 3 -- draw HOW THE MODEL IS WIRED: one page showing every flow, every
-process, and the transfer coefficients behind each arrow.
+Draw HOW THE MODEL IS WIRED: one page showing every flow, every process, and
+the transfer coefficients behind each arrow.
 
-    ./.venv/bin/python 03_plot_structure.py
+    ./.venv/bin/python plot_structure.py
 
-Nothing on this diagram is scaled by mass. It answers "how is this set up",
-not "how much goes where" -- for that, see step 4.
+NOT a numbered step. `01_run_model.py` already draws this whenever
+`draw_structure` is True, which it is by default. This file is here for when
+you want the diagram on its own -- looking at a TC table you are still
+building, or redrawing after editing one -- without solving anything.
 
-This is also drawn automatically by step 1 if `draw_structure` is set to True
-in `src/params_schema.py`.
+That is also why it is the one figure that needs no result: it reads TCs.csv
+and nothing else. Nothing on it is scaled by mass. It answers "how is this set
+up", not "how much goes where".
 
-    ./.venv/bin/python 03_plot_structure.py --pick       choose from a list
-    ./.venv/bin/python 03_plot_structure.py <folder>     draw one case
+    ./.venv/bin/python plot_structure.py --pick       choose from a list
+    ./.venv/bin/python plot_structure.py <folder>     draw one case
+    ./.venv/bin/python plot_structure.py <TCs.csv>    draw any TC file
 
 The file formats written are set by `png`, `svg` and `pdf` in
 `src/params_schema.py`.

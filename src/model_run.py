@@ -30,10 +30,12 @@ ENGINES = {'optimized': RecoveryModelOptimized, 'LA': RecoveryModelLA}
 
 def solve_and_draw(folder: str, params: Params, show_table: bool = True) -> pd.DataFrame:
     """
-    Solve one case, write the solution, and draw whatever the settings ask for.
+    Solve one case, write the solution, and draw its figures.
 
-    The figures are drawn here rather than in a separate step so that a result
-    and the picture of it cannot drift apart.
+    The Sankeys are drawn unconditionally: they are the picture of this result,
+    and a run that produced a number without the matching picture is how the
+    two drift apart. The structure diagram is a switch, because it describes
+    the TC table rather than the result and only changes when that table does.
     """
     model = ENGINES[params.run.engine](data_folder=folder, layer_names=LAYER_NAMES)
     solution = model.solve_models_and_write_to_output()
@@ -45,9 +47,8 @@ def solve_and_draw(folder: str, params: Params, show_table: bool = True) -> pd.D
         print(solution.to_string(index=False))
     print(f'\n{len(solution)} rows written to {folder}/output_data/')
 
-    if params.run.draw_flows:
-        print()
-        plot_flows.draw(folder, params)
+    print()
+    plot_flows.draw(folder, params)
 
     if params.run.draw_structure:
         print()

@@ -37,18 +37,26 @@ To understand **how the model is wired** — every flow, every process, and the
 transfer coefficients behind each arrow, nothing scaled by mass:
 
 ```bash
-./.venv/bin/python 03_plot_structure.py data_folder/template
+./.venv/bin/python plot_structure.py data_folder/template
 ```
 
 To see **how much mass goes where**, as a Sankey, in total and per element:
+these are drawn by every run, so there is no separate command. Run the model
+and they appear in `figures/`.
 
 ```bash
-./.venv/bin/python 04_plot_flows.py data_folder/template
+./.venv/bin/python 01_run_model.py
 ```
 
+That is deliberate. The Sankeys are a picture of a *result*, so a run that
+produced numbers without the matching picture is exactly how the two drift
+apart. The structure diagram is different — it describes the TC table rather
+than a result, changes only when that table changes, and therefore has its own
+script and a `draw_structure` switch that decides whether a run also produces
+it.
+
 Both render through matplotlib, so every requested format comes from one
-drawing and they cannot disagree. Drawing the Sankeys is also part of a normal
-`01_run_model.py` run, so a result and the picture of it cannot drift apart.
+drawing and they cannot disagree.
 
 For the Sankeys, totals are taken at each flow's own shallowest depth, so the
 nesting described in MODEL_MECHANICS.md §1 is not double counted, and edge

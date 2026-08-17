@@ -134,7 +134,7 @@ Do these in order and you are back to where today ended in about ten minutes.
    tracked copy would only ever be a stale one:
 
    ```bash
-   ./.venv/bin/python 03_plot_structure.py data_folder/template
+   ./.venv/bin/python plot_structure.py data_folder/template
    ```
 
    That writes `figures/template_structure.png` — one page showing every flow,

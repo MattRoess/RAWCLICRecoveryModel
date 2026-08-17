@@ -167,8 +167,7 @@ Then the workflow itself, all of which should run clean:
 ```bash
 ./.venv/bin/python 01_run_model.py
 ./.venv/bin/python 02_check_mass_balance.py data_folder/template
-./.venv/bin/python 03_plot_structure.py data_folder/template
-./.venv/bin/python 04_plot_flows.py data_folder/template
+./.venv/bin/python plot_structure.py data_folder/template
 ```
 
 Once the interpreter is selected in Positron, `./.venv/bin/python` can be
