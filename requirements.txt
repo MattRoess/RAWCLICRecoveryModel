@@ -16,5 +16,10 @@ networkx==3.6.1
 # Reading the .docx user guide and any Excel-format input data.
 openpyxl==3.1.5
 
+# Figures. plot_structure.py renders through matplotlib so that one drawing
+# emits SVG, PNG and PDF from the same code; plot_flows.py still writes SVG
+# directly and needs nothing.
+matplotlib==3.11.1
+
 # Required by Positron to start a Python console or run notebooks.
 ipykernel==7.3.0

@@ -39,14 +39,21 @@ transfer coefficients behind each arrow, nothing scaled by mass:
 ./.venv/bin/python plot_structure.py data_folder/template
 ```
 
+Writes `figures/<case>_structure.{svg,png,pdf}`. It renders through matplotlib,
+so all three come from one drawing and cannot disagree. Run it with no argument
+to pick a case from a list, `--list` to see them, `--formats svg,png` to narrow
+the output, `--theme dark` for the dark palette, or point it straight at a
+`TCs.csv` anywhere on disk.
+
 To see **how much mass goes where**, as a Sankey, in total and per element:
 
 ```bash
 ./.venv/bin/python plot_flows.py data_folder/template
 ```
 
-Writes an SVG Sankey per case into `figures/` — one for total mass, one per
-element. Totals are taken at each flow's own shallowest depth, so the nesting
+Drawing these is also part of a normal `run_model.py` run, so a result and the
+picture of it cannot drift apart. Writes an SVG Sankey per case into
+`figures/` — one for total mass, one per element. Totals are taken at each flow's own shallowest depth, so the nesting
 described in MODEL_MECHANICS.md §1 is not double counted, and edge magnitudes
 are recomputed by replaying the model's own process loop rather than inferred
 from the solution file.

@@ -11,10 +11,10 @@ processes by transfer coefficients (TCs).
 - `data_folder/` — input data, one folder per case (`basic_test` is the mock reference case, `template` shows the proposed schema)
 - `documentation/` — how the model works, known defects, and the Monte Carlo design
 - `doc/User guide.docx` — input data format specification
-- `run_model.py` — entry point
+- `run_model.py` — entry point: solves a data folder and draws its Sankey figures
 - `compare_engines.py` — runs both engines over a data folder and diffs them
 - `check_mass_balance.py` — reports what a dataset's TCs and composition total to
-- `plot_structure.py` — draws how the flows connect and the TCs behind each arrow
+- `plot_structure.py` — draws how the flows connect and the TCs behind each arrow, as SVG, PNG and PDF
 - `plot_flows.py` — draws mass-weighted Sankey diagrams, in total and per element
 
 **Start at [documentation/README.md](documentation/README.md).** It indexes how
@@ -63,9 +63,16 @@ with three CSV files:
 - `composition.csv` — what each resource is made of
 - `TCs.csv` — the transfer coefficients between flows
 
-Point `data_folder` in `run_model.py` at your new folder and run it. Results
-are written to an `output_data/` folder alongside your inputs. The column
-definitions for all three files are in `doc/User guide.docx`.
+Then pass the folder as an argument — no file needs editing:
+
+```bash
+./.venv/bin/python run_model.py data_folder/my_case
+```
+
+Results are written to an `output_data/` folder alongside your inputs, and the
+Sankey figures to `figures/`. Run any script with `--list` to see the folders
+it can find, or with no argument at all to pick one from a menu. The column
+definitions for all three input files are in `doc/User guide.docx`.
 
 Real input data is not tracked by git; only the `basic_test` mock case is.
 
