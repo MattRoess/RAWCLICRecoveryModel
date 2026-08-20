@@ -116,6 +116,25 @@ class SamplingError(ValueError):
     """Raised when a coefficient's three numbers cannot describe a distribution."""
 
 
+def numeric_bounds(tcs: pd.DataFrame) -> pd.DataFrame:
+    """
+    Read the three columns as numbers, treating a blank bound as "no spread".
+
+    A row derived as the residual of its group carries no range of its own --
+    its spread follows from the rows it is derived from, so writing one would be
+    asserting something twice. Blank therefore means "this value exactly", and
+    the row becomes a point mass rather than an error.
+    """
+    tcs = tcs.copy()
+    tcs[MODE_COLUMN] = pd.to_numeric(tcs[MODE_COLUMN], errors='coerce')
+    for column in (MIN_COLUMN, MAX_COLUMN):
+        if column in tcs.columns:
+            tcs[column] = pd.to_numeric(
+                tcs[column].astype(str).str.strip().replace('', None),
+                errors='coerce').fillna(tcs[MODE_COLUMN])
+    return tcs
+
+
 def clamp_bounds(tcs: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     """
     Pull every bound into [0, 1], and report what moved.
@@ -130,7 +149,7 @@ def clamp_bounds(tcs: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     if MIN_COLUMN not in tcs.columns or MAX_COLUMN not in tcs.columns:
         return tcs, []
 
-    tcs = tcs.copy()
+    tcs = numeric_bounds(tcs)
     notes: list[str] = []
 
     for column in (MIN_COLUMN, MODE_COLUMN, MAX_COLUMN):

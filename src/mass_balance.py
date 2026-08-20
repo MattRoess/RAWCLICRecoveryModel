@@ -91,11 +91,28 @@ def report(folder: str) -> bool:
 
     read = dict(keep_default_na=False, na_values=[])
     tcs = pd.read_csv(f"{folder}/input_data/TCs.csv", **read)
+    # Coerce the three bound columns once, here, rather than at each use. A row
+    # derived as its group's residual carries no range of its own, so its bounds
+    # are blank -- and a blank read as a string turns every later comparison and
+    # subtraction into str arithmetic, which fails somewhere far from the cause.
+    if {'value_min', 'value_max'}.issubset(tcs.columns):
+        from src.sampling import numeric_bounds
+        tcs = numeric_bounds(tcs)
     composition = pd.read_csv(f"{folder}/input_data/composition.csv", **read)
+    # The engine derives a `rest` child for every parent whose known children
+    # fall short, so closure has to be judged on the table the engine actually
+    # solves. Reading the raw file reported "DOES NOT CLOSE" for exactly the
+    # parents the rest rows complete -- the check disagreeing with the model.
+    from src.rest import add_rest
+    composition, rest_notes = add_rest(composition)
     print(f"\n{folder}")
 
     closure = check_composition(composition)
     print("\nCOMPOSITION -- shares within each parent, which must sum to 1")
+    if rest_notes:
+        print(f"  {len(rest_notes)} parent(s) incomplete; a `rest` child was derived:")
+        for note in rest_notes:
+            print(f"    {note}")
     for _, row in closure.iterrows():
         closes = abs(row['min'] - 1) < TOLERANCE and abs(row['max'] - 1) < TOLERANCE
         print(f"  depth {int(row['depth'])}: {int(row['parents']):5d} parents, "

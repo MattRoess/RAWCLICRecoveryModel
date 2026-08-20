@@ -255,6 +255,12 @@ def draw(target: str | None = None, params: Params | None = None) -> None:
     params = params or current()
     tcs_path, case = resolve(target or params.run.data_folder)
     tcs = pd.read_csv(tcs_path, keep_default_na=False, na_values=[])
+    # A row derived as its group's residual has blank bounds, and a blank read as
+    # a string breaks the ':g' formatting in tc_blocks. Read blank as "no range",
+    # which is what a derived row has, before anything formats it.
+    if {'value_min', 'value_max'}.issubset(tcs.columns):
+        from src.sampling import numeric_bounds
+        tcs = numeric_bounds(tcs)
     figure = render(tcs, case, theme=params.figures.theme)
     for path in write(figure, params.figures.out_dir, f'{case}_structure',
                       params.figures.enabled(), params.figures.dpi):

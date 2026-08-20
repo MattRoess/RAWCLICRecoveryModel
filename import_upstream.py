@@ -104,7 +104,8 @@ def read_draws(folder: str, flow: str):
     return years, domain_mass, element_mass
 
 
-def build_tables(years, domain_mass, element_mass, year: int, draws: int):
+def build_tables(years, domain_mass, element_mass, year: int, draws: int,
+                 keep_domains: tuple[str, ...] = ()):
     """
     The three input tables, from the mean over draws.
 
@@ -123,6 +124,13 @@ def build_tables(years, domain_mass, element_mass, year: int, draws: int):
         return float(np.asarray(array[:draws, index], dtype=np.float64).mean())
 
     domains = sorted(domain_mass)
+    if keep_domains:
+        unknown = sorted(set(keep_domains) - set(domains))
+        if unknown:
+            raise ValueError(f'import_domains names {unknown}, which upstream did '
+                             f'not write. It has {domains}.')
+        domains = [d for d in domains if d in keep_domains]
+
     domain_totals = {domain: mean_of(domain_mass[domain]) for domain in domains}
     domains = [d for d in domains if domain_totals[d] > 0]
     product_total = sum(domain_totals[d] for d in domains)
@@ -180,8 +188,12 @@ def main() -> int:
         print(f'  NOTE: only {available:,} draws upstream; using all of them.')
         draws = available
 
+    keep = tuple(params.data.import_domains)
+    if keep:
+        print(f'Domains   : {", ".join(keep)}  (a restricted study, not all electronics)')
+
     inputs, composition, domain_totals, product_total = build_tables(
-        years, domain_mass, element_mass, year, draws)
+        years, domain_mass, element_mass, year, draws, keep_domains=keep)
 
     folder = os.path.join('data_folder', params.data.import_case)
     os.makedirs(os.path.join(folder, 'input_data'), exist_ok=True)

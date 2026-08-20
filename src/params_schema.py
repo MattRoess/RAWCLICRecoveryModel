@@ -53,7 +53,7 @@ class RunParams:
     # composition.csv and TCs.csv. The path is written from the project root.
     # SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
     # To see which folders qualify, run:  ./.venv/bin/python 01_run_model.py --list
-    data_folder: str = 'data_folder/template'
+    data_folder: str = 'data_folder/bev_electronics'
 
     # WHICH SCENARIO TO RUN.  Blank when the data has no scenario dimension,
     # which is the case for every data folder in this repository today.
@@ -200,7 +200,21 @@ class DataParams:
 
     # WHERE import_upstream.py WRITES THE CASE FOLDER, under data_folder/.
     # SAFE TO CHANGE: yes.
-    import_case: str = 'bev_electronics' 
+    import_case: str = 'bev_electronics'
+
+    # WHICH ELECTRONICS DOMAINS TO IMPORT.  Empty means all of them.
+    #
+    # Narrowing this is the honest way to start: every domain kept is a set of
+    # element yields somebody has to supply, and a study of wiring and motors
+    # that is properly sourced is worth more than one covering everything on
+    # guesses.
+    #
+    # The shares are recomputed over whatever is kept, so a restricted run is a
+    # self-contained study of those domains rather than a full one with holes in
+    # it. What it is NOT is a recovery rate for vehicle electronics as a whole --
+    # the domains left out are simply not in the answer.
+    # SAFE TO CHANGE: yes. Names must match upstream: Wiring, Motors, PCB, Sensors.
+    import_domains: tuple[str, ...] = () 
 
 
 @dataclass

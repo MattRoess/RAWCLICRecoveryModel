@@ -186,7 +186,20 @@ def _check_coefficients_present(tcs: pd.DataFrame) -> list[Problem]:
 def check(folder: str) -> list[Problem]:
     """Every problem with a case folder's three tables. Empty means clean."""
     inputs, composition, tcs = _load(folder)
-    known = _known_keys(composition)
+
+    # The engine derives a `rest` child for every parent whose known children
+    # fall short (src/rest.py), so `rest` is a legitimate key in TCs.csv -- and
+    # it has to be, because unspecified material is most of the mass. Checking
+    # against the raw composition refused it as an unknown element, which is
+    # the loader disagreeing with itself about what exists.
+    from src.rest import add_rest
+    try:
+        composition_with_rest, _ = add_rest(composition)
+    except Exception:
+        # A composition too broken to derive a rest from will be reported by the
+        # checks below on its own terms; do not fail here with a worse message.
+        composition_with_rest = composition
+    known = _known_keys(composition_with_rest)
     problems: list[Problem] = []
 
     # Before anything else: a table with no numbers in it cannot be checked for
