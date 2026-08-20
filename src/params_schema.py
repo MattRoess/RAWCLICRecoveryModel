@@ -130,6 +130,49 @@ class RunParams:
 
 
 @dataclass
+class DataParams:
+    """Where the upstream Monte Carlo draws are read from."""
+
+    # WHERE THE UPSTREAM PROJECT IS, as a path from this project's root.
+    # The two repositories sit side by side, so the default works on any machine
+    # that has both checked out, without hard-coding a home directory. Written
+    # relative rather than absolute deliberately: the absolute path differs
+    # between the two Macs this project is worked on, and did so again when the
+    # folder moved into iCloud.
+    # SAFE TO CHANGE: yes -- it must point at the RAWCLICStockAndFlow checkout.
+    upstream_root: str = '../RAWCLICStockAndFlow'
+
+    # WHERE THE PER-ELEMENT INFLOW DRAWS ARE, under `upstream_root`.
+    # One `.npy` per element per flow, each of shape (draws, years), in kt.
+    # The scenario named in `run.scenario` is appended to this path.
+    #
+    # THIS DOES NOT EXIST YET, and that is the current blocker. Stage 04_02 of
+    # the upstream pipeline computes exactly these numbers -- vehicles per year
+    # times grams per vehicle, multiplied draw by draw so both uncertainties
+    # carry through -- but it only persists a *summary* pickle and its figures.
+    # The per-draw element arrays are discarded when it finishes.
+    #
+    # The fix belongs upstream, not here: 04_02 gains a step that writes them.
+    # Recomputing them in this project would mean duplicating 04_02's segment
+    # splitting and draw pairing, and that pipeline's own header records three
+    # separate occasions where a stage reconstructed another stage's numbers and
+    # diverged silently. Read the real draws; do not re-derive them.
+    # SAFE TO CHANGE: yes -- it must name the folder 04_02 writes them to.
+    inflow_draws_dir: str = 'data/processed/element_draws'
+
+    # HOW MANY OF THE DRAWS TO USE.  The upstream arrays hold 200,000.
+    # Lower this while developing: the memory arithmetic in
+    # DESIGN_monte_carlo.md section 2 is unforgiving at full width, and a few
+    # thousand draws is enough to see whether the machinery is correct. Raise it
+    # for a result that will be reported.
+    # Draws are taken from the front of the array, never sampled at random, so
+    # that a run at 5,000 is a strict prefix of a run at 200,000 and the two can
+    # be compared directly.
+    # SAFE TO CHANGE: yes. A whole number above zero, at most what the arrays hold.
+    draws: int = 200_000
+
+
+@dataclass
 class FigureParams:
     """How the figures are written. Applies to both kinds of figure."""
 
@@ -188,9 +231,10 @@ class Params:
     """The whole parameter set."""
 
     run: RunParams = field(default_factory=RunParams)
+    data: DataParams = field(default_factory=DataParams)
     figures: FigureParams = field(default_factory=FigureParams)
 
-    SECTIONS = ('run', 'figures')
+    SECTIONS = ('run', 'data', 'figures')
 
     def validate(self) -> list[str]:
         """Return a list of plain-language problems. Empty means all is well."""
@@ -216,6 +260,16 @@ class Params:
         if not self.run.data_folder:
             issues.append('data_folder is empty -- it needs the name of a case folder')
 
+        if not isinstance(self.data.draws, int) or isinstance(self.data.draws, bool) \
+                or self.data.draws <= 0:
+            issues.append(f'draws is {self.data.draws!r}, but must be a whole number '
+                          f'above zero, such as 200000')
+
+        # Deliberately NOT checked here: whether the draw directories exist.
+        # current() runs at the start of every stage, including the ones that
+        # never touch the upstream draws, and a missing folder must not stop a
+        # deterministic run. `00_parameters.py --check` reports it instead.
+
         return issues
 
 
@@ -239,9 +293,42 @@ def current() -> Params:
 
 def describe(section_name: str, name: str) -> str:
     """The comment block written above the setting, as one line."""
-    section = {'run': RunParams, 'figures': FigureParams}[section_name]
+    section = {'run': RunParams, 'data': DataParams,
+               'figures': FigureParams}[section_name]
     return _FIELD_COMMENTS.get((section.__name__, name), '') or \
         f"Setting in section '{section_name}'."
+
+
+def draws_path(params: Params) -> str:
+    """
+    The folder the per-element inflow draws are read from, scenario included.
+
+    Assembled in one place so that every stage resolves it identically, and so
+    that `00_parameters.py --check` reports the same path a run would open.
+    """
+    import os
+    parts = [params.data.upstream_root, params.data.inflow_draws_dir]
+    if params.run.scenario:
+        parts.append(params.run.scenario)
+    return os.path.normpath(os.path.join(*parts))
+
+
+def data_status(params: Params) -> str:
+    """One plain-language line on whether the upstream draws are actually there."""
+    import glob
+    import os
+
+    path = draws_path(params)
+    if not os.path.isdir(path):
+        return (f'{path}\n'
+                f'      NOT FOUND. The Monte Carlo has nothing to read. See the comment\n'
+                f'      above inflow_draws_dir in src/params_schema.py -- these arrays are\n'
+                f'      written by stage 04_02 upstream, which does not persist them yet.')
+
+    arrays = glob.glob(os.path.join(path, '*.npy'))
+    if not arrays:
+        return f'{path}\n      found, but holds no .npy arrays.'
+    return f'{path}\n      found, {len(arrays)} arrays.'
 
 
 def flatten(params: Params) -> list[list]:

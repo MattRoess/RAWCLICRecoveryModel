@@ -25,7 +25,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.params_io import PARAMS_FILE, reference, save
-from src.params_schema import ParameterError, current, flatten
+from src.params_schema import ParameterError, current, data_status, flatten
 
 REFERENCE_FILE = os.path.join('documentation', 'PARAMETER_REFERENCE.md')
 
@@ -50,6 +50,10 @@ def main(argv=None) -> int:
         print('src/params_schema.py is valid. Values in force:')
         for _, _, key, value in rows:
             print(f'  {key:<28} {value}')
+        # A path that does not exist is not a settings error -- the deterministic
+        # stages never open it -- but it is the single thing most worth knowing
+        # before starting a Monte Carlo run, so --check says so plainly.
+        print(f'\nUpstream draws\n  {data_status(params)}')
         return 0
 
     save(params, args.path)

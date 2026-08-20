@@ -267,6 +267,41 @@ and collected, **in kt**, at 200,000 draws, resolved by domain. The real draws
 are persisted as `(draws, years)` `.npy` arrays — `bev_draws/<scenario>/` —
 and are meant to be read rather than re-derived.
 
+### Where the path is set
+
+`data.upstream_root` and `data.inflow_draws_dir` in `src/params_schema.py`,
+joined with `run.scenario`. To see the resolved path and whether it is actually
+there:
+
+```bash
+./.venv/bin/python 00_parameters.py --check
+```
+
+### Data availability, checked 2026-08-20 — this is the blocker
+
+| What | Where | State |
+|---|---|---|
+| Electronics composition draws | `RAWCLICVehicleElectronics/Composition/draws` | **live**, 15 arrays, 584 MB |
+| Element fraction draws | `RAWCLICVehicleElectronics/Composition/element_draws` | **live**, 24 arrays + labels, 316 MB |
+| Fleet draws `bev_draws/BAU` | `RAWCLICStockAndFlow/data/processed` | **in the iCloud Trash**, 2.6 GB, 37 arrays |
+| `04_02_*` outputs | `RAWCLICStockAndFlow/data/processed/intermediate` | **absent** — intermediate stops at `03_` |
+
+The electronics half is intact. The fleet half — `BEV_<segment>_{inflow,outflow,
+collected}.npy`, `(200000, 96)` float32, millions of vehicles — exists only in
+`~/Library/Mobile Documents/.Trash/processed/bev_draws`. Recoverable, but the
+Trash is not a storage location.
+
+**And even with both halves restored, there is still nothing for this model to
+read.** 04_02 multiplies them draw by draw and then persists only
+`04_02_bev_electronics_summary.pkl` plus figures — the per-element, per-draw
+arrays are computed and discarded. Its `OUTPUTS` header confirms it.
+
+So the work is upstream first: 04_02 gains a step that writes the element-level
+draws it already has in memory. Doing that multiplication here instead would
+duplicate its segment splitting (`split_pair_by_tilt`) and its draw pairing, and
+that pipeline's own header records three occasions where a stage rebuilt another
+stage's numbers and diverged silently.
+
 Two things carried over from that work:
 
 - Collection there is applied to **whole vehicles** — one rate, identical for
