@@ -62,6 +62,7 @@ from src.monte_carlo import solve_draws
 from src.params_schema import ParameterError, current
 from src.upstream import UpstreamError, load as refresh
 from src.plot_monte_carlo import draw_all
+from src.report import write as write_workbook
 from src.recovery_model_optimized import RecoveryModelOptimized
 
 LAYER_NAMES = ['product', 'component', 'material', 'element']
@@ -161,6 +162,14 @@ def main() -> int:
     path = model.output_path('monte_carlo_summary.csv')
     merged.to_csv(path, index=False)
     print(f'\n{path}: {len(merged):,} rows')
+
+    # Everything in one workbook: the headline totals, where the mass went, the
+    # mass balance, every result row, and the coefficient table with its source
+    # column, so the numbers and what produced them stay together.
+    workbook = model.output_path('recovery_results.xlsx')
+    sheets = write_workbook(workbook, params, run, merged, run.tcs,
+                            tables['composition'] if tables else pd.DataFrame())
+    print(f'{workbook}: {len(sheets)} sheets -- {", ".join(sheets)}')
 
     written = draw_all(run, determined, params.figures.out_dir,
                        params.figures.enabled(), params.figures.dpi,

@@ -379,6 +379,12 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
         ('mc_sensitivity', figure_sensitivity(run, theme)),
     ]
 
+    # One distribution figure per element: the histograms ARE the result, and
+    # a single combined panel hides which element is uncertain and which is not.
+    for element in sorted({e for e in run.keys['Layer 4'].unique() if e}):
+        figures.append((f'mc_pdf_{element}', figure_pdf(run, element, deterministic,
+                                                        theme, unit)))
+
     written = []
     for stem, figure in figures:
         if figure is None:
@@ -386,3 +392,83 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
         written.extend(write(figure, out_dir, stem, formats, dpi))
         plt.close(figure)
     return written
+
+
+# ----------------------------------------------------------------------
+#  6. The distribution itself, per element and per year
+# ----------------------------------------------------------------------
+
+def recovered_rows(run, element: str, year) -> np.ndarray:
+    """Row positions for one element recovered in one year, across all routes."""
+    keys = run.keys
+    recovered = [f for f in terminal_flows(run) if 'loss' not in f.lower()]
+    return np.flatnonzero(
+        keys['Stock/Flow ID'].isin(recovered).to_numpy()
+        & (keys['Layer 4'] == element).to_numpy()
+        & (keys['Year'].astype(str) == str(year)).to_numpy())
+
+
+def figure_pdf(run, element: str, deterministic: pd.DataFrame | None,
+               theme: str, unit: str):
+    """
+    The probability density of one element's recovered mass, one panel per year.
+
+    A histogram of the draws IS the distribution the Monte Carlo produced --
+    everything else in this module is a summary of it. Reading it next to the
+    deterministic line is the whole argument for running the Monte Carlo: a
+    single-value answer is one point inside a shape, and usually not its centre.
+    """
+    years = sorted(run.keys['Year'].astype(str).unique())
+    panels_with_data = [y for y in years if recovered_rows(run, element, y).size]
+    if not panels_with_data:
+        return None
+
+    columns = min(len(panels_with_data), 3)
+    rows = int(np.ceil(len(panels_with_data) / columns))
+    figure, axes, colours = chart(340 * columns, 260 * rows, theme, rows, columns)
+    panels = np.atleast_1d(axes).ravel()
+
+    for panel, year in zip(panels, panels_with_data):
+        positions = recovered_rows(run, element, year)
+        totals = run.values[positions].sum(axis=0)
+        scale, shown = scale_for(totals, unit)
+        totals = totals * scale
+
+        panel.hist(totals, bins=60, density=True, color=PALETTE[0],
+                   alpha=0.75, edgecolor='none')
+
+        low, _, median, _, high = _band(totals)
+        panel.axvspan(low, high, color=colours['meta'], alpha=0.10)
+        panel.axvline(totals.mean(), color=colours['title'], linewidth=1.5)
+
+        if deterministic is not None:
+            point = _deterministic_recovered(deterministic, run, element, year)
+            if point is not None:
+                panel.axvline(point * scale, color=PALETTE[3], linewidth=1.5,
+                              linestyle='--')
+
+        panel.set_title(f'{year}   median {median:,.3g} {shown}',
+                        color=colours['title'], fontsize=10, fontweight='bold')
+        panel.set_xlabel(f'{shown}', color=colours['meta'], fontsize=8.5)
+        panel.set_ylabel('density', color=colours['meta'], fontsize=8.5)
+
+    for panel in panels[len(panels_with_data):]:
+        panel.axis('off')
+
+    figure.suptitle(f'{element} recovered — the distribution, not a number',
+                    color=colours['title'], fontsize=13, fontweight='bold',
+                    x=0.01, ha='left')
+    figure.text(0.01, 0.945,
+                'solid line: Monte Carlo mean    dashed: deterministic run at the '
+                'modes    shaded: 90% interval',
+                color=colours['meta'], fontsize=8.5, ha='left')
+    figure.tight_layout(rect=[0, 0, 1, 0.93])
+    return figure
+
+
+def _deterministic_recovered(deterministic, run, element: str, year) -> float | None:
+    recovered = [f for f in terminal_flows(run) if 'loss' not in f.lower()]
+    rows = deterministic[(deterministic['Stock/Flow ID'].isin(recovered))
+                         & (deterministic['Layer 4'] == element)
+                         & (deterministic['Year'].astype(str) == str(year))]
+    return float(rows['Value'].sum()) if len(rows) else None
