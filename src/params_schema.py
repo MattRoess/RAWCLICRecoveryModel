@@ -182,6 +182,26 @@ class DataParams:
     # SAFE TO CHANGE: yes. A whole number above zero, at most what the arrays hold.
     draws: int = 20_000
 
+    # WHICH UPSTREAM FLOW IS THE INFLOW TO RECOVERY.
+    # Upstream reports three: what entered the fleet, what left it, and what was
+    # collected for recycling. Recovery starts from what was collected -- the
+    # other two are the fleet's own story and are not handed to a recycler.
+    # SAFE TO CHANGE: yes. One of 'collected', 'outflow', 'inflow'.
+    upstream_flow: str = 'collected'
+
+    # WHICH YEAR TO IMPORT.
+    # Must be one of the years upstream exported -- see
+    # bev_electronics_element_draws_years in the RAWCLICStockAndFlow settings.
+    # One year at a time is the normal way to work here: a recovery result is
+    # reported for a year, and the memory cost is linear in how many are held.
+    # `run.years` then selects within whatever the case folder holds.
+    # SAFE TO CHANGE: yes, together with the upstream export.
+    import_year: int = 2040
+
+    # WHERE import_upstream.py WRITES THE CASE FOLDER, under data_folder/.
+    # SAFE TO CHANGE: yes.
+    import_case: str = 'bev_electronics' 
+
 
 @dataclass
 class MonteCarloParams:
