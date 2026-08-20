@@ -212,13 +212,24 @@ def check(folder: str, tables: dict | None = None) -> list[Problem]:
     # it has to be, because unspecified material is most of the mass. Checking
     # against the raw composition refused it as an unknown element, which is
     # the loader disagreeing with itself about what exists.
-    from src.rest import add_rest
-    try:
-        composition_with_rest, _ = add_rest(composition)
-    except Exception:
-        # A composition too broken to derive a rest from will be reported by the
-        # checks below on its own terms; do not fail here with a worse message.
+    # A share written as 25 rather than 0.25 is the classic mistake here, and it
+    # has to be diagnosed BEFORE the rest is derived: 25 exceeds the whole, so
+    # add_rest refuses first and reports "the parts sum to more than the whole",
+    # which is true but says nothing about the actual error.
+    out_of_range = pd.to_numeric(composition['Value'], errors='coerce')
+    if ((out_of_range > 1) | (out_of_range < 0)).any():
         composition_with_rest = composition
+    else:
+        from src.rest import RestError, add_rest
+        try:
+            composition_with_rest, _ = add_rest(composition)
+        except RestError as error:
+            # Swallowing this hid a real bug once: a composition given per year
+            # was grouped without the year, its shares summed to the number of
+            # years, add_rest refused, and the only symptom was `rest` being
+            # reported as an unknown element. Say what actually happened.
+            raise InputDataError(f'The composition cannot be completed:\n\n  {error}')
+
     known = _known_keys(composition_with_rest)
     problems: list[Problem] = []
 

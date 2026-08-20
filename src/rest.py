@@ -72,9 +72,18 @@ class RestError(ValueError):
     """Raised when the known parts of a parent exceed the whole."""
 
 
-def _parent_columns(depth: int) -> list[str]:
+# A composition may be given per year, scenario, location or specification.
+# Those columns are part of what identifies a parent: the same component has a
+# different element split in 2030 and in 2050, and grouping without them adds
+# every year together, so a parent's shares sum to the number of years rather
+# than to 1.
+DIMENSIONS = ['Year', 'Scenario', 'Location', 'additionalSpecification']
+
+
+def _parent_columns(depth: int, frame: pd.DataFrame) -> list[str]:
     """The columns identifying the parent of a row at this depth."""
-    return ['Stock/ID'] + LAYERS[:depth - 1]
+    present = [column for column in DIMENSIONS if column in frame.columns]
+    return present + ['Stock/ID'] + LAYERS[:depth - 1]
 
 
 def validate_rest_name(composition: pd.DataFrame) -> None:
@@ -113,7 +122,7 @@ def add_rest(composition: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
         if at_level.empty:
             continue
 
-        parent = _parent_columns(level)
+        parent = _parent_columns(level, composition)
         totals = at_level.groupby(parent, sort=False)['Value'].sum()
 
         for key, total in totals.items():

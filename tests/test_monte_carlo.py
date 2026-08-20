@@ -18,7 +18,21 @@ The rest check the claims the engine makes on top of that: that chunking is
 safe, that a constrained table conserves mass on every draw, and that the
 nesting invariant survives sampling.
 """
+
 from __future__ import annotations
+
+import os
+import sys
+
+# Run under the project interpreter whatever was typed, and put the repo
+# root on the path. Must come before any third-party import.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+                in ('tests', 'tools')
+                else os.path.dirname(os.path.abspath(__file__)))
+from src.bootstrap import ensure_venv
+ensure_venv()
+
 
 import os
 import sys
@@ -27,7 +41,6 @@ import traceback
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.monte_carlo import Structure, solve_draws
 from src.recovery_model_optimized import RecoveryModelOptimized
@@ -39,7 +52,7 @@ NAMES = ['product', 'component', 'material', 'element']
 
 def _deterministic(case: str) -> pd.DataFrame:
     solution = RecoveryModelOptimized(
-        data_folder=f'data_folder/reference/{case}', layer_names=NAMES
+        data_folder=f'data_folder/reference/{case}', layer_names=NAMES, years=''
     ).solve_models_and_write_to_output()
     solution['Value'] = pd.to_numeric(solution['Value'])
     solution['Year'] = solution['Year'].astype(str)
@@ -47,6 +60,7 @@ def _deterministic(case: str) -> pd.DataFrame:
 
 
 def _monte_carlo(case: str, draws: int = 500, **kwargs):
+    kwargs.setdefault('years', '')
     run = solve_draws(f'data_folder/reference/{case}', NAMES, draws=draws, **kwargs)
     run.keys['Year'] = run.keys['Year'].astype(str)
     return run.keys, run.values, run.report

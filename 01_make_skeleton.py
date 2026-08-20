@@ -76,14 +76,27 @@ is what makes mass balance checkable rather than aspirational. Check it with:
 
     ./.venv/bin/python 02_check_inputs.py <case>
 """
+
 from __future__ import annotations
+
+import os
+import sys
+
+# Run under the project interpreter whatever was typed, and put the repo
+# root on the path. Must come before any third-party import.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+                in ('tests', 'tools')
+                else os.path.dirname(os.path.abspath(__file__)))
+from src.bootstrap import ensure_venv
+ensure_venv()
+
 
 import os
 import sys
 
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.rest import REST, add_rest
 

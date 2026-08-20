@@ -8,7 +8,21 @@ The model multiplies fractions, so every ratio in the output stays correct
 whatever unit went in. Nothing about a solution in the wrong unit looks odd --
 which is exactly why the conversion needs pinning rather than trusting.
 """
+
 from __future__ import annotations
+
+import os
+import sys
+
+# Run under the project interpreter whatever was typed, and put the repo
+# root on the path. Must come before any third-party import.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+                in ('tests', 'tools')
+                else os.path.dirname(os.path.abspath(__file__)))
+from src.bootstrap import ensure_venv
+ensure_venv()
+
 
 import os
 import sys
@@ -17,7 +31,6 @@ import traceback
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.recovery_model_LA import RecoveryModelLA
 from src.recovery_model_optimized import RecoveryModelOptimized
@@ -29,7 +42,7 @@ KEYS = ['Stock/Flow ID', 'Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
 
 def _solve(case: str, unit: str, engine=RecoveryModelOptimized) -> pd.DataFrame:
     frame = engine(data_folder=f'data_folder/reference/{case}', layer_names=LAYER_NAMES,
-                   working_unit=unit).solve_models_and_write_to_output()
+                   working_unit=unit, years='').solve_models_and_write_to_output()
     frame['Value'] = pd.to_numeric(frame['Value'])
     for key in KEYS:
         frame[key] = frame[key].astype(str)

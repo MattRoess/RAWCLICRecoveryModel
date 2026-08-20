@@ -23,11 +23,23 @@ up", not "how much goes where".
 The file formats written are set by `png`, `svg` and `pdf` in
 `src/params_schema.py`.
 """
+
+import os
+import sys
+
+# Run under the project interpreter whatever was typed, and put the repo
+# root on the path. Must come before any third-party import.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+                in ('tests', 'tools')
+                else os.path.dirname(os.path.abspath(__file__)))
+from src.bootstrap import ensure_venv
+ensure_venv()
+
 import argparse
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.params_schema import ParameterError, current
 from src.plot_structure import choose, draw, find_cases

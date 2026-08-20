@@ -95,7 +95,7 @@ class RunParams:
     # problem in DESIGN_monte_carlo.md section 2, and the year axis is the most
     # direct lever on it.
     # SAFE TO CHANGE: yes -- it must match at least one year present in the data.
-    years: str = ''
+    years: str = '2030-2050'
 
     # WHICH OF THE TWO ENGINES SOLVES THE SYSTEM: 'optimized' or 'LA'.
     # SAFE TO CHANGE: yes, but read this first. The two engines disagree beyond
@@ -398,10 +398,12 @@ def draws_path(params: Params) -> str:
     that `00_parameters.py --check` reports the same path a run would open.
     """
     import os
-    parts = [params.data.upstream_root, params.data.inflow_draws_dir]
-    if params.run.scenario:
-        parts.append(params.run.scenario)
-    return os.path.normpath(os.path.join(*parts))
+    # 'BAU' when no scenario is set, matching src/upstream.source_dir. Two
+    # spellings of the same path is how a status report ends up describing a
+    # folder the model never opens.
+    return os.path.normpath(os.path.join(
+        params.data.upstream_root, params.data.inflow_draws_dir,
+        params.run.scenario or 'BAU'))
 
 
 def data_status(params: Params) -> str:
@@ -416,10 +418,17 @@ def data_status(params: Params) -> str:
                 f'      above inflow_draws_dir in src/params_schema.py -- these arrays are\n'
                 f'      written by stage 04_02 upstream, which does not persist them yet.')
 
-    arrays = glob.glob(os.path.join(path, '*.npy'))
+    # The arrays sit one level down, under the flow: <scenario>/<flow>/*.npy.
+    arrays = glob.glob(os.path.join(path, '*', '*.npy'))
     if not arrays:
         return f'{path}\n      found, but holds no .npy arrays.'
-    return f'{path}\n      found, {len(arrays)} arrays.'
+
+    import numpy as np
+    years_path = os.path.join(path, 'years.npy')
+    years = np.load(years_path).tolist() if os.path.exists(years_path) else '?'
+    flows = sorted(d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d)))
+    return (f'{path}\n      {len(arrays)} arrays, years {years}, '
+            f'flows {", ".join(flows)}')
 
 
 def flatten(params: Params) -> list[list]:

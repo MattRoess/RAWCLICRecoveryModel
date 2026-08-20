@@ -31,7 +31,21 @@ WHAT IS PINNED
    resolve to the specific one, and a scenario is matched exactly rather than
    by prefix.
 """
+
 from __future__ import annotations
+
+import os
+import sys
+
+# Run under the project interpreter whatever was typed, and put the repo
+# root on the path. Must come before any third-party import.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+                in ('tests', 'tools')
+                else os.path.dirname(os.path.abspath(__file__)))
+from src.bootstrap import ensure_venv
+ensure_venv()
+
 
 import os
 import sys
@@ -39,10 +53,6 @@ import traceback
 
 import pandas as pd
 
-# tests/ is not the repo root, so put the root on the path before
-# importing src.
-sys.path.insert(0, os.path.dirname(os.path.dirname(
-    os.path.abspath(__file__))))
 
 from src.recovery_model_LA import RecoveryModelLA
 from src.recovery_model_optimized import RecoveryModelOptimized
@@ -94,11 +104,16 @@ SCENARIO_FOR = {'data_folder/reference/defect_cases/scenario_prefix': 'BAU'}
 # test_units.py is where the conversion itself is pinned.
 REFERENCE_UNIT = 'Mg'
 
+# Blank means 'every year in the file'. Pinned here for the same reason as the
+# unit: these tests pin the ALGEBRA, and inheriting run.years made all sixteen
+# fail the moment the live setting moved to a range the reference does not hold.
+REFERENCE_YEARS = ''
+
 
 def solve(engine, folder: str) -> pd.DataFrame:
     model = engine(data_folder=folder, layer_names=LAYER_NAMES,
                    scenario=SCENARIO_FOR.get(folder),
-                   working_unit=REFERENCE_UNIT)
+                   working_unit=REFERENCE_UNIT, years=REFERENCE_YEARS)
     frame = model.solve_models_and_write_to_output()
     for key in KEYS:
         frame[key] = frame[key].astype(str)
@@ -164,7 +179,7 @@ def test_no_intermediate_blowup() -> None:
     showed up as memory and time.
     """
     model = RecoveryModelOptimized(data_folder=CASE, layer_names=LAYER_NAMES,
-                                   working_unit=REFERENCE_UNIT)
+                                   working_unit=REFERENCE_UNIT, years=REFERENCE_YEARS)
     entry = model.input_data[0]
     tcs = entry['tcs_df']
     result = model.create_initial_flows(inflows_df=entry['inflows_df'],
@@ -387,7 +402,8 @@ def test_a_scenario_must_be_chosen() -> None:
 
     folder = 'data_folder/reference/defect_cases/scenario_prefix'
     try:
-        RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES, scenario='')
+        RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES,
+                               scenario='', years=REFERENCE_YEARS)
     except InputDataError as error:
         assert 'BAU' in str(error), f'error does not list what it found: {error}'
     else:
@@ -395,7 +411,7 @@ def test_a_scenario_must_be_chosen() -> None:
 
     try:
         RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES,
-                               scenario='not_a_scenario')
+                               scenario='not_a_scenario', years=REFERENCE_YEARS)
     except InputDataError as error:
         assert 'not_a_scenario' in str(error)
     else:

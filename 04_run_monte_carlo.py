@@ -35,7 +35,21 @@ result is reported as. Draws are processed in chunks and the statistics
 accumulated as they go; if per-draw traces are ever needed for a few named
 rows, that is a narrow addition rather than a change of approach.
 """
+
 from __future__ import annotations
+
+import os
+import sys
+
+# Run under the project interpreter whatever was typed, and put the repo
+# root on the path. Must come before any third-party import.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+                in ('tests', 'tools')
+                else os.path.dirname(os.path.abspath(__file__)))
+from src.bootstrap import ensure_venv
+ensure_venv()
+
 
 import os
 import sys
@@ -43,7 +57,6 @@ import sys
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.monte_carlo import solve_draws
 from src.params_schema import ParameterError, current

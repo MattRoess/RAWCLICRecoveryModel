@@ -9,12 +9,22 @@ are reproduced:
 
 With no argument it runs data_folder/reference/basic_test, where the two agree exactly.
 """
+
 import os
 import sys
 
-# tools/ is not the repo root, so put the root on the path before
-# importing src.
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Run under the project interpreter whatever was typed, and put the repo
+# root on the path. Must come before any third-party import.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+                in ('tests', 'tools')
+                else os.path.dirname(os.path.abspath(__file__)))
+from src.bootstrap import ensure_venv
+ensure_venv()
+
+import os
+import sys
+
 
 import os
 import sys

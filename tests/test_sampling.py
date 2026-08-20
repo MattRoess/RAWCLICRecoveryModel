@@ -24,7 +24,21 @@ code against an independent statement of what it should produce.
     the unconstrained one (`basic_test`), because the interesting failure is
     normalising a table that was never meant to sum to 1.
 """
+
 from __future__ import annotations
+
+import os
+import sys
+
+# Run under the project interpreter whatever was typed, and put the repo
+# root on the path. Must come before any third-party import.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+                in ('tests', 'tools')
+                else os.path.dirname(os.path.abspath(__file__)))
+from src.bootstrap import ensure_venv
+ensure_venv()
+
 
 import os
 import sys
@@ -33,7 +47,6 @@ import traceback
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.sampling import (SamplingError, clamp_bounds, check_ordering,
                           constrained_groups, sample, triangular_quantile, uniforms)

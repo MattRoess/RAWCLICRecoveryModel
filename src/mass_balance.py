@@ -69,8 +69,13 @@ def check_composition(composition: pd.DataFrame) -> pd.DataFrame:
 
     results = []
     for depth in sorted(composition['depth'].unique()):
-        # The parent is everything to the left of the layer being described.
-        parent = ['Stock/ID'] + layers[:depth - 1]
+        # The parent is everything to the left of the layer being described --
+        # including the year, scenario or location when the composition carries
+        # them. Grouping without those adds every year's shares together, so a
+        # five-year table reports totals of 5 and "DOES NOT CLOSE" for data that
+        # closes perfectly. Same rule as src/rest.py, which derives the rests.
+        from src.rest import _parent_columns
+        parent = _parent_columns(depth, composition)
         totals = composition[composition['depth'] == depth].groupby(parent)['Value'].sum()
         results.append({'depth': depth, 'parents': len(totals),
                         'min': totals.min(), 'max': totals.max()})

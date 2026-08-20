@@ -13,7 +13,21 @@ this existed, a laminate parent read 400 with children summing to 340 and the
 missing 60 had no row at all -- nothing on the page was wrong, the mass was
 simply gone.
 """
+
 from __future__ import annotations
+
+import os
+import sys
+
+# Run under the project interpreter whatever was typed, and put the repo
+# root on the path. Must come before any third-party import.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+                in ('tests', 'tools')
+                else os.path.dirname(os.path.abspath(__file__)))
+from src.bootstrap import ensure_venv
+ensure_venv()
+
 
 import os
 import shutil
@@ -24,7 +38,6 @@ import traceback
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.recovery_model_optimized import RecoveryModelOptimized
 from src.rest import REST, LAYERS, RestError, add_rest, is_rest, stranded
@@ -52,7 +65,7 @@ def _case(drop_element: str | None = None) -> str:
 
 def _solve(folder: str) -> pd.DataFrame:
     solution = RecoveryModelOptimized(
-        data_folder=folder, layer_names=NAMES, working_unit='Mg'
+        data_folder=folder, layer_names=NAMES, working_unit='Mg', years=''
     ).solve_models_and_write_to_output()
     solution['Value'] = pd.to_numeric(solution['Value'])
     return solution
@@ -167,7 +180,7 @@ def test_stranded_rest_is_detected() -> None:
     """
     folder = _case(drop_element='Au')
     model = RecoveryModelOptimized(data_folder=folder, layer_names=NAMES,
-                                   working_unit='Mg')
+                                   working_unit='Mg', years='')
     solution = model.solve_models_and_write_to_output()
     solution['Value'] = pd.to_numeric(solution['Value'])
     # The model's own coefficient table, layers already renamed. The raw CSV
@@ -187,7 +200,7 @@ def test_nothing_strands_when_composition_is_complete() -> None:
     """The companion: a complete table has no rest, so nothing can strand."""
     folder = _case()
     model = RecoveryModelOptimized(data_folder=folder, layer_names=NAMES,
-                                   working_unit='Mg')
+                                   working_unit='Mg', years='')
     solution = model.solve_models_and_write_to_output()
     solution['Value'] = pd.to_numeric(solution['Value'])
     assert not len(stranded(solution, model.input_data[0]['tcs_df'])), \
