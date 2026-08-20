@@ -33,6 +33,7 @@ import numpy as np
 import pandas as pd
 
 from src.figure_style import PALETTE, chart, write
+from src.units import scale_for
 
 LAYERS = ['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
 
@@ -106,6 +107,12 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
             if rows.size:
                 totals += run.values[rows].sum(axis=0)
 
+        # Each panel picks its own unit. Gold and copper differ by two orders
+        # of magnitude here and by more on real data, so one shared unit would
+        # leave one of them unreadable (src/units.py).
+        scale, shown = scale_for(totals, unit)
+        totals = totals * scale
+
         panel.hist(totals, bins=60, color=PALETTE[index % len(PALETTE)],
                    alpha=0.75, edgecolor='none')
 
@@ -124,7 +131,7 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
 
         panel.set_title(f'{element} recovered', color=colours['title'],
                         fontsize=11, fontweight='bold')
-        panel.set_xlabel(f'mass ({unit})', color=colours['meta'], fontsize=9)
+        panel.set_xlabel(f'mass ({shown})', color=colours['meta'], fontsize=9)
         panel.set_ylabel('draws' if index == 0 else '', color=colours['meta'], fontsize=9)
         legend = panel.legend(fontsize=7.5, frameon=False, loc='upper right')
         for text in legend.get_texts():
@@ -158,9 +165,11 @@ def figure_spread(run, theme: str, unit: str):
     if not totals:
         return None
 
+    scale, shown = scale_for(np.concatenate(list(totals.values())), unit)
+
     entries = []
     for (flow, element), values in totals.items():
-        low, q1, median, q3, high = _band(values)
+        low, q1, median, q3, high = _band(values * scale)
         relative = (high - low) / median if median > 0 else 0.0
         entries.append((f'{flow}  ·  {element}', low, q1, median, q3, high, relative))
     entries.sort(key=lambda item: item[-1])
@@ -179,7 +188,7 @@ def figure_spread(run, theme: str, unit: str):
     panel.set_yticks(range(len(entries)))
     panel.set_yticklabels([entry[0] for entry in entries], fontsize=8.5,
                           color=colours['node'])
-    panel.set_xlabel(f'mass ({unit})   —   bar is the 50% interval, line the 90%',
+    panel.set_xlabel(f'mass ({shown})   —   bar is the 50% interval, line the 90%',
                      color=colours['meta'], fontsize=9)
     panel.set_title('How uncertain each result is', color=colours['title'],
                     fontsize=12, fontweight='bold', loc='left')
@@ -205,6 +214,8 @@ def figure_mode_vs_mean(run, deterministic: pd.DataFrame, theme: str, unit: str)
     if not totals or deterministic is None:
         return None
 
+    scale, shown = scale_for(np.concatenate(list(totals.values())), unit)
+
     entries = []
     for (flow, element), values in totals.items():
         rows = deterministic[(deterministic['Stock/Flow ID'] == flow)
@@ -215,7 +226,7 @@ def figure_mode_vs_mean(run, deterministic: pd.DataFrame, theme: str, unit: str)
         mean = float(values.mean())
         if mean > 0:
             entries.append((f'{flow}  ·  {element}', 100.0 * (point - mean) / mean,
-                            point, mean))
+                            point * scale, mean * scale))
     if not entries:
         return None
     entries.sort(key=lambda item: item[1])
@@ -225,7 +236,7 @@ def figure_mode_vs_mean(run, deterministic: pd.DataFrame, theme: str, unit: str)
         colour = PALETTE[3] if percent < 0 else PALETTE[2]
         panel.barh(position, percent, height=0.62, color=colour, alpha=0.85)
         offset = 0.4 if percent >= 0 else -0.4
-        panel.text(percent + offset, position, f'  {point:,.1f} vs {mean:,.1f} {unit}',
+        panel.text(percent + offset, position, f'  {point:,.1f} vs {mean:,.1f} {shown}',
                    color=colours['meta'], fontsize=7.5, va='center',
                    ha='left' if percent >= 0 else 'right')
 
@@ -266,6 +277,8 @@ def figure_convergence(run, theme: str, unit: str):
 
     # The largest flow: the one whose convergence anyone will care about.
     name, values = max(totals.items(), key=lambda item: item[1].mean())
+    scale, shown = scale_for(values, unit)
+    values = values * scale
     steps = np.unique(np.geomspace(20, run.draws, 60).astype(int))
 
     running_mean = np.array([values[:n].mean() for n in steps])
@@ -282,7 +295,7 @@ def figure_convergence(run, theme: str, unit: str):
     panel.axhline(values.mean(), color=colours['meta'], linewidth=0.9, linestyle='--')
     panel.set_xscale('log')
     panel.set_xlabel('draws used', color=colours['meta'], fontsize=9)
-    panel.set_ylabel(f'{name[0]} · {name[1]}  ({unit})', color=colours['meta'], fontsize=9)
+    panel.set_ylabel(f'{name[0]} · {name[1]}  ({shown})', color=colours['meta'], fontsize=9)
     panel.set_title('How many draws the answer needs', color=colours['title'],
                     fontsize=12, fontweight='bold', loc='left')
     legend = panel.legend(fontsize=8, frameon=False)

@@ -106,16 +106,27 @@ class RunParams:
     engine: str = 'optimized'
 
     # THE MASS UNIT THIS PROJECT WORKS IN.
-    # The model itself is unit-agnostic: it multiplies fractions, so it never
-    # looks at the unit. That is exactly why a wrong one is dangerous -- nothing
-    # downstream would notice. Every inflow row is checked against this, and a
-    # run stops if inputs.csv mixes two units in one file.
-    # Worth knowing: the upstream pipeline (04_02) delivers inflows in kt, and
-    # everything in this repository is written in Mg. That is a factor of 1000.
-    # Set this to whatever the inflow data actually is, and convert the data --
-    # do not change this to silence a warning.
-    # SAFE TO CHANGE: yes, but only together with the data itself.
-    expected_unit: str = 'Mg'
+    # Every inflow is converted into this on load, from whatever its own file
+    # declares in the 'Unit' column, and every number the model writes is in it.
+    #
+    # This used to be a check rather than a conversion: a file in another unit
+    # was reported and left alone, and converting it was a manual step. That is
+    # a poor arrangement when three units are genuinely in play -- the data
+    # folders here are written in Mg, the upstream pipeline delivers kt, and
+    # results are wanted in kg -- because the manual step can be forgotten and
+    # forgetting it is invisible. The model multiplies fractions, so a factor
+    # of 1000 leaves every ratio in the output looking perfectly reasonable.
+    #
+    # Data files are NOT edited to match this. They keep saying what they are;
+    # this says what the answer should be in.
+    #
+    # Worth knowing: no single unit suits both ends of this model. A year's
+    # collected fleet is around 500 kt and the gold in it is a few tonnes --
+    # 500,000,000 kg against 3,000 kg. Figures therefore choose their own
+    # display unit per panel (src/units.py, scale_for); this setting governs
+    # the arithmetic and the output files.
+    # SAFE TO CHANGE: yes. Any unit in MASS_UNITS in src/units.py.
+    working_unit: str = 'kg' 
 
     # ALSO DRAW THE STRUCTURE DIAGRAM WHEN THE MODEL RUNS.
     # The structure diagram shows how the flows connect and the transfer
@@ -292,6 +303,14 @@ class Params:
 
         if not self.run.data_folder:
             issues.append('data_folder is empty -- it needs the name of a case folder')
+
+        from src.units import AMBIGUOUS_UNITS, MASS_UNITS
+        if self.run.working_unit not in MASS_UNITS:
+            known = ', '.join(sorted(MASS_UNITS))
+            extra = (' It names more than one quantity depending on where it is written.'
+                     if self.run.working_unit in AMBIGUOUS_UNITS else '')
+            issues.append(f'working_unit is {self.run.working_unit!r}, which is not a '
+                          f'mass unit this project recognises.{extra} Known: {known}')
 
         if not isinstance(self.data.draws, int) or isinstance(self.data.draws, bool) \
                 or self.data.draws <= 0:

@@ -126,7 +126,7 @@ def main() -> int:
 
     written = draw_all(run, determined, params.figures.out_dir,
                        params.figures.enabled(), params.figures.dpi,
-                       params.figures.theme, params.run.expected_unit)
+                       params.figures.theme, params.run.working_unit)
     for figure_path in written:
         print(f'{figure_path}')
 

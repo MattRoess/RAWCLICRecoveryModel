@@ -81,9 +81,18 @@ DOCUMENTED_DIVERGENCES = {
 SCENARIO_FOR = {'data_folder/defect_cases/scenario_prefix': 'BAU'}
 
 
+# The committed reference and the defect cases are all written in Mg, so they
+# are solved in Mg. The project's working_unit is a reporting choice, and
+# letting it reach these tests would make changing it look like the algebra had
+# moved -- every pinned number would shift by a clean factor of 1000.
+# test_units.py is where the conversion itself is pinned.
+REFERENCE_UNIT = 'Mg'
+
+
 def solve(engine, folder: str) -> pd.DataFrame:
     model = engine(data_folder=folder, layer_names=LAYER_NAMES,
-                   scenario=SCENARIO_FOR.get(folder))
+                   scenario=SCENARIO_FOR.get(folder),
+                   working_unit=REFERENCE_UNIT)
     frame = model.solve_models_and_write_to_output()
     for key in KEYS:
         frame[key] = frame[key].astype(str)
@@ -148,7 +157,8 @@ def test_no_intermediate_blowup() -> None:
     against defect 1.3, which was invisible in the output and only ever
     showed up as memory and time.
     """
-    model = RecoveryModelOptimized(data_folder=CASE, layer_names=LAYER_NAMES)
+    model = RecoveryModelOptimized(data_folder=CASE, layer_names=LAYER_NAMES,
+                                   working_unit=REFERENCE_UNIT)
     entry = model.input_data[0]
     tcs = entry['tcs_df']
     result = model.create_initial_flows(inflows_df=entry['inflows_df'],

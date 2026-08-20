@@ -85,22 +85,10 @@ def _known_keys(composition: pd.DataFrame) -> dict[str, set[str]]:
             for name, column in zip(LAYER_NAMES, LAYERS)}
 
 
-# Mass units the inflow file may declare, with what each one is in kilograms.
-# The model never converts -- it multiplies fractions and is unit-agnostic --
-# so this table exists to name the unit and to state the size of the mistake
-# when the wrong one turns up.
-MASS_UNITS = {
-    'mg': 1e-6, 'g': 1e-3, 'kg': 1.0,
-    't': 1e3, 'tonne': 1e3, 'tonnes': 1e3, 'Mg': 1e3,     # 1 Mg = 1 tonne
-    'kt': 1e6, 'Gg': 1e6,                                  # 1 kt = 1 Gg
-    'Mt': 1e9, 'Tg': 1e9,
-    'Gt': 1e12,
-}
-
-# Units that name more than one quantity. 'ton' is 1000 kg in one country and
-# 907 or 1016 in others, which is a 10% error that looks like a rounding
-# difference rather than a unit mistake.
-AMBIGUOUS_UNITS = {'ton', 'tons', 'T', 'MT', 'KT'}
+# The unit table and the conversion itself live in src/units.py, so that the
+# check here and the conversion done on load cannot disagree about what a
+# unit means.
+from src.units import AMBIGUOUS_UNITS, MASS_UNITS
 
 
 def _check_units(inputs: pd.DataFrame) -> list[Problem]:
@@ -108,11 +96,15 @@ def _check_units(inputs: pd.DataFrame) -> list[Problem]:
     The unit of the inflow data.
 
     The model multiplies fractions and never reads the unit, which is precisely
-    why a wrong one is dangerous: every number downstream is wrong by a clean
-    factor of 1000 and nothing about the output looks unusual.
+    why an unreadable one is dangerous: every number downstream would be wrong
+    by a clean factor of 1000 and nothing about the output would look unusual.
+
+    The unit no longer has to *match* the project's -- the loader converts it.
+    What this checks is that it can be converted at all: exactly one unit per
+    file, recognised, and not one of the ambiguous names.
     """
     from src.params_schema import Params
-    expected = Params().run.expected_unit
+    expected = Params().run.working_unit
     problems: list[Problem] = []
 
     if 'Unit' not in inputs.columns:
@@ -153,14 +145,11 @@ def _check_units(inputs: pd.DataFrame) -> list[Problem]:
             'ERROR', '3.3',
             f"inputs.csv, column 'Unit': {unit!r} is not a mass unit this project "
             f"recognises. Known: {', '.join(sorted(MASS_UNITS))}."))
-    elif unit != expected:
-        factor = MASS_UNITS[unit] / MASS_UNITS[expected]
-        problems.append(Problem(
-            'WARNING', '3.3',
-            f"inputs.csv is in {unit!r} but this project expects {expected!r} "
-            f"(expected_unit in src/params_schema.py). That is a factor of {factor:g}. "
-            f"Nothing here converts it -- either convert the data, or change the "
-            f"setting if {unit!r} is genuinely what the project now works in."))
+    # A unit that differs from the working one is NOT a problem any more. The
+    # loader converts it (src/units.py), so a file in kt and a project working
+    # in kg are a normal combination rather than a mistake to report. What is
+    # still refused is a unit that cannot be converted safely: unknown,
+    # ambiguous, or more than one in the same file.
 
     return problems
 

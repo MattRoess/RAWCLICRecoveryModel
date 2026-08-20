@@ -67,7 +67,8 @@ class InputDataFormat:
 class RecoveryModelLA:
     """Class representing the Linear Algebra based recovery model, as documented in the doc/Recovery_model_documentation.pdf"""
     def __init__(self, data_folder: str, layer_names: List[str],
-                 scenario: str | None = None, years: str | None = None):
+                 scenario: str | None = None, years: str | None = None,
+                 working_unit: str | None = None):
         """
         Initialize the System class.
          - Defines and creates folder structure
@@ -82,6 +83,12 @@ class RecoveryModelLA:
         # call, which is what the tests and a one-off run need.
         self._scenario_override = scenario
         self._years_override = years
+        # Likewise for the unit. The regression test pins the inherited
+        # reference, which is written in the unit that data declares, so it
+        # solves in that unit rather than in whatever the project currently
+        # works in -- otherwise changing working_unit would look like the
+        # algebra had changed.
+        self._unit_override = working_unit
 
         # Check the input tables before anything is encoded. This engine maps
         # every key to an integer with .replace(), which leaves an unknown key
@@ -109,6 +116,18 @@ class RecoveryModelLA:
             keep_default_na=False,
             na_values=[]
         )
+        # The inflow is re-expressed in the unit this project works in
+        # (working_unit in src/params_schema.py). Composition and TCs are
+        # fractions and carry no unit. Done here, before anything is joined, so
+        # that every number after this point is in one unit -- the model
+        # multiplies fractions and would otherwise never notice.
+        from src.params_schema import Params
+        from src.units import convert_inflows
+        wanted_unit = (self._unit_override if self._unit_override is not None
+                       else Params().run.working_unit)
+        inflows_df, self.unit_note = convert_inflows(inflows_df, wanted_unit)
+        self.working_unit = wanted_unit
+
         composition_df = pd.read_csv(
             os.path.join(self.data_folder, INPUT_DATA_FOLDER_NAME, COMPOSITION_FILENAME),
             dtype=InputDataFormat.dtypes,
