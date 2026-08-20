@@ -90,3 +90,31 @@ def write(figure, out_dir: str, stem: str, formats, dpi: int) -> list[str]:
                        facecolor=figure.get_facecolor(), edgecolor='none')
         written.append(path)
     return written
+
+
+def chart(width: float, height: float, theme: str, rows: int = 1, columns: int = 1):
+    """
+    Ordinary axes for a statistical chart, themed to match the diagrams.
+
+    `canvas` above is for the flow diagrams: its coordinates are points and its
+    y axis runs downward, which suits a hand-laid-out drawing and suits nothing
+    else. A histogram wants real data coordinates and a y axis the right way up.
+
+    Returns (figure, axes, colours). `axes` is a single Axes when one panel is
+    asked for, and an array of them otherwise.
+    """
+    colours = THEMES[theme]
+    figure, axes = plt.subplots(rows, columns, figsize=(width / 72, height / 72))
+    figure.patch.set_facecolor(colours['bg'])
+
+    for panel in (axes.ravel() if hasattr(axes, 'ravel') else [axes]):
+        panel.set_facecolor(colours['bg'])
+        for side in ('top', 'right'):
+            panel.spines[side].set_visible(False)
+        for side in ('left', 'bottom'):
+            panel.spines[side].set_color(colours['box_line'])
+        panel.tick_params(colors=colours['meta'], labelsize=8)
+        panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7, alpha=0.9)
+        panel.set_axisbelow(True)
+
+    return figure, axes, colours

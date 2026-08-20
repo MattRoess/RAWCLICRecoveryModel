@@ -46,9 +46,9 @@ def _deterministic(case: str) -> pd.DataFrame:
 
 
 def _monte_carlo(case: str, draws: int = 500, **kwargs):
-    keys, values, report = solve_draws(f'data_folder/{case}', NAMES, draws=draws, **kwargs)
-    keys['Year'] = keys['Year'].astype(str)
-    return keys, values, report
+    run = solve_draws(f'data_folder/{case}', NAMES, draws=draws, **kwargs)
+    run.keys['Year'] = run.keys['Year'].astype(str)
+    return run.keys, run.values, run.report
 
 
 def test_zero_width_ranges_reproduce_the_deterministic_answer() -> None:

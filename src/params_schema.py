@@ -169,7 +169,39 @@ class DataParams:
     # that a run at 5,000 is a strict prefix of a run at 200,000 and the two can
     # be compared directly.
     # SAFE TO CHANGE: yes. A whole number above zero, at most what the arrays hold.
-    draws: int = 200_000
+    draws: int = 20_000
+
+
+@dataclass
+class MonteCarloParams:
+    """How the Monte Carlo is run."""
+
+    # RUN THE MONTE CARLO AT ALL.
+    # Off by default: a data folder whose TCs.csv has no value_min / value_max
+    # columns has nothing to sample, and every draw would return the same
+    # number. Stage 03 says so plainly rather than producing a flat histogram.
+    # SAFE TO CHANGE: yes.
+    enabled: bool = True
+
+    # THE SEED.  Shifts every coefficient's stream together.
+    # Draw i of a given coefficient is fixed by its identity and this seed, not
+    # by a running generator, so it is the same number however the run is
+    # chunked and whatever order the table is in. That is what lets two
+    # scenarios be compared: the same draw index means the same underlying
+    # randomness in both, so the difference between them is the scenario rather
+    # than noise. Change it only for a genuinely independent repeat.
+    # SAFE TO CHANGE: yes, but a different seed means results that cannot be
+    # compared draw by draw with earlier ones.
+    seed: int = 0
+
+    # HOW MANY DRAWS TO HOLD IN MEMORY AT ONCE.
+    # The whole result is rows x draws x 8 bytes; at full width that is larger
+    # than any machine here has. Draws are therefore processed in blocks and
+    # reduced as they go. Lower this if a run runs out of memory; raise it for
+    # a little more speed on a small case.
+    # SAFE TO CHANGE: yes. It changes nothing about the answer -- a chunked run
+    # reproduces an unchunked one exactly, which test_monte_carlo.py checks.
+    chunk: int = 20_000
 
 
 @dataclass
@@ -232,9 +264,10 @@ class Params:
 
     run: RunParams = field(default_factory=RunParams)
     data: DataParams = field(default_factory=DataParams)
+    monte_carlo: MonteCarloParams = field(default_factory=MonteCarloParams)
     figures: FigureParams = field(default_factory=FigureParams)
 
-    SECTIONS = ('run', 'data', 'figures')
+    SECTIONS = ('run', 'data', 'monte_carlo', 'figures')
 
     def validate(self) -> list[str]:
         """Return a list of plain-language problems. Empty means all is well."""
@@ -265,6 +298,10 @@ class Params:
             issues.append(f'draws is {self.data.draws!r}, but must be a whole number '
                           f'above zero, such as 200000')
 
+        if not isinstance(self.monte_carlo.chunk, int) or self.monte_carlo.chunk <= 0:
+            issues.append(f'chunk is {self.monte_carlo.chunk!r}, but must be a whole '
+                          f'number above zero, such as 20000')
+
         # Deliberately NOT checked here: whether the draw directories exist.
         # current() runs at the start of every stage, including the ones that
         # never touch the upstream draws, and a missing folder must not stop a
@@ -294,6 +331,7 @@ def current() -> Params:
 def describe(section_name: str, name: str) -> str:
     """The comment block written above the setting, as one line."""
     section = {'run': RunParams, 'data': DataParams,
+               'monte_carlo': MonteCarloParams,
                'figures': FigureParams}[section_name]
     return _FIELD_COMMENTS.get((section.__name__, name), '') or \
         f"Setting in section '{section_name}'."

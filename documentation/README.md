@@ -10,7 +10,7 @@ rather than from anyone's recollection.
 | [MODEL_MECHANICS.md](MODEL_MECHANICS.md) | How the model actually computes a result. The nesting rule, how composition and TCs are applied, what the two engines do differently by design. Read this first. |
 | [DEFECTS.md](DEFECTS.md) | Every defect and engine divergence found, each with a measurement and a one-command reproduction. |
 | [DESIGN_tc_table.md](DESIGN_tc_table.md) | How to build the TC table so that sum-to-1 holds by construction. Proposal, with a worked example in `data_folder/template`. The real table does not exist yet, so read this before collecting data. |
-| [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | The design problem for the Monte Carlo version: architecture, the compute budget, sampling asymmetric triangulars, and how to sample under the sum-to-1 constraint. Not yet built. |
+| [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | The design problem for the Monte Carlo version: architecture, the compute budget, sampling asymmetric triangulars, and how to sample under the sum-to-1 constraint. **Built 2026-08-20** — see `src/monte_carlo.py`. |
 | [HANDOVER.md](HANDOVER.md) | Current state, decisions taken and why, open questions, and the recommended order of work. |
 | [PARAMETER_REFERENCE.md](PARAMETER_REFERENCE.md) | Every setting, its current value, and what changing it does. Generated from `src/params_schema.py` — do not edit by hand; edit the settings file. |
 
@@ -30,6 +30,16 @@ composition closes to 1:
 
 Read MODEL_MECHANICS.md §4 first — the grouping this uses is not the obvious
 one, and the obvious one produces numbers that are not quantities.
+
+## Running the Monte Carlo
+
+```bash
+./.venv/bin/python 03_run_monte_carlo.py
+```
+
+Writes `monte_carlo_summary.csv` next to the case's other output, and five
+figures into `figures/`. Start with `mc_mode_vs_mean` — it says whether the
+Monte Carlo *changed* the answer or only put error bars on it.
 
 ## Seeing the flows
 

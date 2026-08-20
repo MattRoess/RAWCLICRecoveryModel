@@ -45,6 +45,8 @@ change of input, not of engine.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
 
@@ -242,23 +244,39 @@ class Structure:
         return result
 
 
+@dataclass
+class MonteCarloRun:
+    """
+    Everything one Monte Carlo run produced.
+
+    The sampled coefficients are kept, not just the results. Sensitivity
+    analysis needs to correlate an output against the coefficient draws that
+    produced it, and re-drawing them afterwards would answer a different
+    question than the one the results came from.
+    """
+
+    keys: pd.DataFrame          # Year + the five key columns, one row per result row
+    values: np.ndarray          # (n_rows, draws)
+    report: dict                # what the sampler clamped and constrained
+    tcs: pd.DataFrame           # the coefficient table actually sampled
+    tc_values: np.ndarray       # (n_coefficients, draws), as drawn
+
+    @property
+    def draws(self) -> int:
+        return self.values.shape[1]
+
+
 def solve_draws(data_folder: str, layer_names: list[str], draws: int,
                 start: int = 0, seed: int = 0, scenario: str | None = None,
-                years: str | None = None):
-    """
-    Run the model over a block of draws, for every year in the selection.
-
-    Returns:
-        (keys, values, report) where `keys` has the year and the five key
-        columns, `values` is (n_rows, draws), and `report` is the sampler's
-        account of what it clamped and constrained.
-    """
+                years: str | None = None) -> MonteCarloRun:
+    """Run the model over a block of draws, for every year in the selection."""
     from src.sampling import sample
 
     model = RecoveryModelOptimized(data_folder=data_folder, layer_names=layer_names,
                                    scenario=scenario, years=years)
 
     key_frames, value_blocks, report = [], [], {}
+    sampled_tcs, sampled_values = None, None
     for entry in model.input_data:
         structure = Structure(entry['inflows_df'], entry['composition_df'], entry['tcs_df'])
 
@@ -268,6 +286,9 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
             (len(entry['inflows_df']), draws))
 
         block = structure.evaluate(inflow_values, tc_values)
+        # Kept from the last year solved. Every year shares one coefficient
+        # table here; when they stop doing so this becomes per year.
+        sampled_tcs, sampled_values = entry['tcs_df'], tc_values
 
         keys = structure.result_keys.copy()
         keys.insert(0, 'Year', entry['Year'])
@@ -277,5 +298,6 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
     if not key_frames:
         raise ValueError(f'{data_folder} produced no years to solve.')
 
-    return (pd.concat(key_frames, ignore_index=True),
-            np.vstack(value_blocks), report)
+    return MonteCarloRun(keys=pd.concat(key_frames, ignore_index=True),
+                         values=np.vstack(value_blocks), report=report,
+                         tcs=sampled_tcs, tc_values=sampled_values)

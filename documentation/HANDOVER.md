@@ -1,6 +1,6 @@
 # Handover
 
-State as of **2026-08-17**. Everything below is either verified by running it
+State as of **2026-08-20**. Everything below is either verified by running it
 or flagged as a decision still to be taken.
 
 **Starting on the other Mac? Go straight to §7.**
@@ -33,7 +33,18 @@ engine joins a row, and an unresolvable key, a composition row with a gap, a
 mixed or unrecognised mass unit, or a share written as a percentage each stop
 the run naming the file, the column and the value.
 
-**Nothing about uncertainty exists yet. That is the work ahead.**
+**The Monte Carlo exists as of 2026-08-20** and is checked against the
+deterministic model: a table whose ranges have zero width reproduces the
+deterministic answer exactly, mass is conserved on every draw, and a chunked
+run matches an unchunked one value for value.
+
+What it still lacks is real data. Coefficients are sampled from the ranges in
+`TCs.csv`; inflows and composition are held at their stated values, because
+the upstream per-draw arrays are not readable yet (§8).
+
+```bash
+./.venv/bin/python 03_run_monte_carlo.py
+```
 
 ## 2. Environment — decisions and why
 
@@ -135,10 +146,16 @@ resolve — was **answered on 2026-08-17** and is now DEFECTS.md §2.3.
 4. **Add the mass balance assertion on load**, once the table has loss flows.
    `02_check_mass_balance.py` already computes everything it needs; this is
    promoting a report into a hard failure. Blocked on question 1.
-5. **Restructure for Monte Carlo** (DESIGN_monte_carlo.md §2): compute the join
-   structure once, carry `Value` as `(n_rows x n_draws)`, chunk over draws.
-   Build on `RecoveryModelOptimized` — 11x faster at realistic sizes and
-   scaling with populated rows rather than the product of layer cardinalities.
+5. ~~**Restructure for Monte Carlo**~~ — **done 2026-08-20**. `src/sampling.py`
+   draws the coefficients, `src/monte_carlo.py` solves every draw at once,
+   `03_run_monte_carlo.py` runs it and `src/plot_monte_carlo.py` draws five
+   figures. 24 + 7 checks in `test_sampling.py` and `test_monte_carlo.py`.
+6. **Feed it the real inflow draws.** The engine already takes inflows as a
+   `(rows, draws)` array — it is handed a repeated column today only because
+   the upstream per-element arrays do not exist yet (§8). That is a change of
+   input, not of engine.
+7. **Decide whether composition is uncertain.** Same shape of change:
+   `Structure.evaluate` already accepts `composition_values` as an array.
 
 Step 5 is now unblocked on the engineering side: the deterministic answer is
 pinned, the engines agree, and the semantics are written down. What it still
