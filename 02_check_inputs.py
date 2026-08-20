@@ -1,10 +1,10 @@
 """
-03_check_inputs.py
+02_check_inputs.py
 ========================
 
 STEP 2 -- check that a dataset's numbers add up, before trusting a result.
 
-    ./.venv/bin/python 03_check_inputs.py
+    ./.venv/bin/python 02_check_inputs.py
 
 Reports three things about the case named in `src/params_schema.py`:
 
@@ -18,7 +18,7 @@ Reports three things about the case named in `src/params_schema.py`:
 
 Nothing here changes any file. It only reports.
 
-    ./.venv/bin/python 03_check_inputs.py <folder>   check one case
+    ./.venv/bin/python 02_check_inputs.py <folder>   check one case
 """
 import argparse
 import os
@@ -28,6 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.mass_balance import report
 from src.params_schema import ParameterError, current
+from src.upstream import UpstreamError, load as refresh
 from src.plot_structure import choose, find_cases
 from src.validate_inputs import InputDataError, validate
 
@@ -57,13 +58,14 @@ def main(argv=None) -> int:
     # Check the tables before totalling them. Without this a freshly generated
     # skeleton -- rows present, values blank -- reaches the arithmetic and comes
     # back as a TypeError from inside pandas, naming neither the file nor the row.
+    tables = refresh(params, folder)
     try:
-        validate(folder)
+        validate(folder, tables)
     except InputDataError as error:
         print(error, file=sys.stderr)
         return 1
 
-    return 0 if report(folder) else 1
+    return 0 if report(folder, tables) else 1
 
 
 if __name__ == '__main__':

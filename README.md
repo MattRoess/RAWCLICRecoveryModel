@@ -13,8 +13,8 @@ the settings and run step 1.
 | Step | What it does |
 |---|---|
 | `00_parameters.py` | Rewrites `params.xlsx` and the parameter reference from the settings. Run after changing a setting. |
-| `04_run_model.py` | **The main one.** Solves the case and draws every figure. |
-| `03_check_inputs.py` | Checks that a dataset's numbers add up, before you trust a result. |
+| `03_run_model.py` | **The main one.** Solves the case and draws every figure. |
+| `02_check_inputs.py` | Checks that a dataset's numbers add up, before you trust a result. |
 
 Every figure comes out of step 1 — the Sankeys always, the structure diagram
 whenever `draw_structure` is on. Nothing else has to be run to get a picture.
@@ -64,7 +64,7 @@ In Positron, select `.venv` as the interpreter (it is picked up automatically
 from `.vscode/settings.json`). Then run the model from the project root:
 
 ```bash
-./.venv/bin/python 04_run_model.py
+./.venv/bin/python 03_run_model.py
 ```
 
 **To change a setting**, open `src/params_schema.py`. Every value is written
@@ -98,7 +98,7 @@ step 1. For a one-off run of a different case without changing the setting,
 pass it as an argument instead:
 
 ```bash
-./.venv/bin/python 04_run_model.py data_folder/my_case
+./.venv/bin/python 03_run_model.py data_folder/my_case
 ```
 
 Results are written to an `output_data/` folder alongside your inputs, and the
@@ -139,7 +139,7 @@ on 2026-08-17 and are recorded there as §2.1 and §2.2.
 - **There is no mass balance check.** A TC is a retention fraction for one
   resource into one destination flow, so the meaningful total is per resource
   over the output flows it reaches. Nothing verifies it. Run
-  `03_check_inputs.py` to see it for any dataset: on `basic_test` the totals
+  `02_check_inputs.py` to see it for any dataset: on `basic_test` the totals
   range [0, 0.66] and the unaccounted 78% has no residual flow — it simply
   leaves the system unrecorded.
 - **Everything is deterministic.** The `DQS` and `CV` columns are declared in

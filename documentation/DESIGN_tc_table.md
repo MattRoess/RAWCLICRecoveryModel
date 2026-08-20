@@ -22,7 +22,7 @@ rest vanishes unrecorded, and no sum-to-1 rule can be enforced without
 inventing recovery. With them, mass balance becomes a property you can assert
 on load and check on every Monte Carlo draw.
 
-The contrast, from `03_check_inputs.py`:
+The contrast, from `02_check_inputs.py`:
 
 | | `basic_test` (mock, no loss flows) | `template` (proposed schema) |
 |---|---|---|
@@ -56,7 +56,7 @@ rather than independently.
 
 ## 3. The four rules a TC table must obey
 
-`03_check_inputs.py` checks all four.
+`02_check_inputs.py` checks all four.
 
 ### R1 — Each resource's coefficients total exactly 1
 

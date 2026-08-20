@@ -165,8 +165,8 @@ Expected: `6 of 6 passed`.
 Then the workflow itself, all of which should run clean:
 
 ```bash
-./.venv/bin/python 04_run_model.py
-./.venv/bin/python 03_check_inputs.py data_folder/reference/template
+./.venv/bin/python 03_run_model.py
+./.venv/bin/python 02_check_inputs.py data_folder/reference/template
 ./.venv/bin/python tools/plot_structure.py data_folder/reference/template
 ```
 

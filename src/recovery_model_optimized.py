@@ -75,7 +75,8 @@ class RecoveryModelOptimized:
     """Class representing the optimized recovery model, which processes TCs one-by one using dataframe operations"""
     def __init__(self, data_folder: str, layer_names: List[str],
                  scenario: str | None = None, years: str | None = None,
-                 working_unit: str | None = None):
+                 working_unit: str | None = None,
+                 tables: dict | None = None):
         """
         Initialize the System class.
          - Defines and creates folder structure
@@ -97,12 +98,17 @@ class RecoveryModelOptimized:
         # works in -- otherwise changing working_unit would look like the
         # algebra had changed.
         self._unit_override = working_unit
+        # The inflow and composition can be handed over in memory rather than
+        # read from CSVs. That is how the upstream data reaches the model: it
+        # lives in .npy arrays, and writing a copy of it to disk on the way past
+        # would be a second version of the truth that goes stale.
+        self._tables = tables
 
         # Check the input tables before anything is joined. At this point a bad
         # key can still be reported with its file, column and value; a few lines
         # later it is either silent phantom mass or an unreadable TypeError.
         # See src/validate_inputs.py and documentation/DEFECTS.md section 5.
-        validate(data_folder)
+        validate(data_folder, tables)
 
         if not os.path.exists(os.path.join(self.data_folder, OUTPUT_DATA_FOLDER_NAME)):
             os.makedirs(os.path.join(self.data_folder, OUTPUT_DATA_FOLDER_NAME))
@@ -119,12 +125,14 @@ class RecoveryModelOptimized:
             additionalSpecification
         """
         # Load the input files
-        inflows_df = pd.read_csv(
-            os.path.join(self.data_folder, INPUT_DATA_FOLDER_NAME, INPUTS_FILENAME),
-            dtype=InputDataFormat.dtypes,
-            keep_default_na=False,
-            na_values=[]
-        )
+        read = dict(dtype=InputDataFormat.dtypes, keep_default_na=False, na_values=[])
+        given = self._tables or {}
+        inflows_df = given.get('inputs')
+        if inflows_df is None:
+            inflows_df = pd.read_csv(
+                os.path.join(self.data_folder, INPUT_DATA_FOLDER_NAME, INPUTS_FILENAME),
+                **read)
+        inflows_df = inflows_df.copy()
         # The inflow is re-expressed in the unit this project works in
         # (working_unit in src/params_schema.py). Composition and TCs are
         # fractions and carry no unit. Done here, before anything is joined, so
@@ -137,18 +145,18 @@ class RecoveryModelOptimized:
         inflows_df, self.unit_note = convert_inflows(inflows_df, wanted_unit)
         self.working_unit = wanted_unit
 
-        composition_df = pd.read_csv(
-            os.path.join(self.data_folder, INPUT_DATA_FOLDER_NAME, COMPOSITION_FILENAME),
-            dtype=InputDataFormat.dtypes,
-            keep_default_na=False,
-            na_values=[]
-        )
-        tcs_df = pd.read_csv(
-            os.path.join(self.data_folder, INPUT_DATA_FOLDER_NAME, TCS_FILENAME),     
-            dtype=InputDataFormat.dtypes,
-            keep_default_na=False,
-            na_values=[]
-        )
+        composition_df = given.get('composition')
+        if composition_df is None:
+            composition_df = pd.read_csv(
+                os.path.join(self.data_folder, INPUT_DATA_FOLDER_NAME,
+                             COMPOSITION_FILENAME), **read)
+        composition_df = composition_df.copy()
+        tcs_df = given.get('tcs')
+        if tcs_df is None:
+            tcs_df = pd.read_csv(
+                os.path.join(self.data_folder, INPUT_DATA_FOLDER_NAME, TCS_FILENAME),
+                **read)
+        tcs_df = tcs_df.copy()
 
         # Real composition data is incomplete: the copper in a wire is often
         # known when the wire's own weight is not. A parent is therefore the sum

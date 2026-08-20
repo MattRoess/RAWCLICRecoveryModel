@@ -44,14 +44,15 @@ def depth_of(frame: pd.DataFrame) -> pd.Series:
     return (frame[LAYERS] != '').sum(axis=1)
 
 
-def replay(folder: str):
+def replay(folder: str, tables: dict | None = None):
     """
     Re-run the model's process loop, recording the mass on every edge.
 
     Returns (edges, flows) where edges maps (source, target) -> dataframe of
     the transferred rows, and flows maps flow id -> dataframe of its contents.
     """
-    model = RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES)
+    model = RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES,
+                                   tables=tables)
     entry = model.input_data[0]
     inflows, composition, tcs = entry['inflows_df'], entry['composition_df'], entry['tcs_df']
 
@@ -198,16 +199,23 @@ def figure_for(case: str, edges, flows, element: str | None, unit: str, theme: s
     return render(nodes, links, assign_columns(list(nodes), links), title, subtitle, theme)
 
 
-def draw(folder: str | None = None, params: Params | None = None) -> None:
+def draw(folder: str | None = None, params: Params | None = None,
+         tables: dict | None = None) -> None:
     params = params or current()
     folder = folder or params.run.data_folder
 
+    # The inflow may be handed over in memory rather than read from a CSV --
+    # that is how the upstream draws reach the model, with nothing written in
+    # between (src/upstream.py).
     unit = 'Mg'
-    inputs = pd.read_csv(f'{folder}/input_data/inputs.csv', keep_default_na=False, na_values=[])
+    inputs = (tables or {}).get('inputs')
+    if inputs is None:
+        inputs = pd.read_csv(f'{folder}/input_data/inputs.csv',
+                             keep_default_na=False, na_values=[])
     if 'Unit' in inputs.columns and inputs['Unit'].nunique() == 1:
         unit = inputs['Unit'].iloc[0]
 
-    edges, flows = replay(folder)
+    edges, flows = replay(folder, tables)
     case = os.path.basename(folder.rstrip('/'))
 
     elements = [None]

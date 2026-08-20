@@ -3,7 +3,7 @@ src/model_run.py
 ================
 
 Solving a case and drawing its figures. The stage that calls this is
-`04_run_model.py`; the logic lives here because a file whose name starts with
+`03_run_model.py`; the logic lives here because a file whose name starts with
 a digit cannot be imported by another file.
 
 What is solved, with which engine, and which figures are drawn are all settings
@@ -17,6 +17,7 @@ import pandas as pd
 
 from src import plot_flows, plot_structure
 from src.params_schema import Params
+from src.upstream import load as load_upstream
 from src.recovery_model_LA import RecoveryModelLA
 from src.recovery_model_optimized import RecoveryModelOptimized
 
@@ -37,7 +38,13 @@ def solve_and_draw(folder: str, params: Params, show_table: bool = True) -> pd.D
     two drift apart. The structure diagram is a switch, because it describes
     the TC table rather than the result and only changes when that table does.
     """
-    model = ENGINES[params.run.engine](data_folder=folder, layer_names=LAYER_NAMES)
+    # The inflow and composition come straight from the upstream draws, in
+    # memory. Nothing is written between there and here: a copy on disk is a
+    # second version of the truth, and it goes stale the moment upstream re-runs.
+    tables = load_upstream(params, folder)
+
+    model = ENGINES[params.run.engine](data_folder=folder, layer_names=LAYER_NAMES,
+                                       tables=tables)
     solution = model.solve_models_and_write_to_output()
 
     print(f'\nCase   : {folder}')
@@ -48,7 +55,7 @@ def solve_and_draw(folder: str, params: Params, show_table: bool = True) -> pd.D
     print(f'\n{len(solution)} rows written to {folder}/output_data/')
 
     print()
-    plot_flows.draw(folder, params)
+    plot_flows.draw(folder, params, tables)
 
     if params.run.draw_structure:
         print()

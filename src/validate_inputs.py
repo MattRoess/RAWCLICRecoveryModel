@@ -66,7 +66,27 @@ class Problem:
         return f'  {self.severity:<7} [{self.defect}] {self.message}'
 
 
-def _load(folder: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def _load(folder: str, tables: dict | None = None
+          ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Read the three tables, or take the ones already in memory."""
+    if tables is not None:
+        # The inflow and composition come straight from the upstream draws and
+        # are never written to disk; only TCs.csv is a file anyone keeps.
+        path = os.path.join(folder, 'input_data')
+        tcs = tables.get('tcs')
+        if tcs is None:
+            tcs_path = os.path.join(path, 'TCs.csv')
+            if not os.path.exists(tcs_path):
+                raise InputDataError(
+                    f"{tcs_path} does not exist.\nThe transfer coefficients are the "
+                    f"one table you write; run 01_make_skeleton.py to generate it.")
+            tcs = pd.read_csv(tcs_path, **READ)
+        return tables['inputs'], tables['composition'], tcs
+
+    return _load_from_disk(folder)
+
+
+def _load_from_disk(folder: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     path = os.path.join(folder, 'input_data')
     missing = [name for name in ('inputs.csv', 'composition.csv', 'TCs.csv')
                if not os.path.exists(os.path.join(path, name))]
@@ -158,7 +178,7 @@ def _check_coefficients_present(tcs: pd.DataFrame) -> list[Problem]:
     """
     Every transfer coefficient has to be a number.
 
-    A skeleton written by 02_make_skeleton.py has the rows and no values, which
+    A skeleton written by 01_make_skeleton.py has the rows and no values, which
     is the point -- but it must be said plainly. Left to reach the arithmetic, a
     blank value is read as the empty string and surfaces as
     "unsupported operand type(s) for -: 'str' and 'int'" from somewhere deep in
@@ -183,9 +203,9 @@ def _check_coefficients_present(tcs: pd.DataFrame) -> list[Problem]:
         f"value, and value_min/value_max if the coefficient is uncertain.")]
 
 
-def check(folder: str) -> list[Problem]:
-    """Every problem with a case folder's three tables. Empty means clean."""
-    inputs, composition, tcs = _load(folder)
+def check(folder: str, tables: dict | None = None) -> list[Problem]:
+    """Every problem with a case's three tables. Empty means clean."""
+    inputs, composition, tcs = _load(folder, tables)
 
     # The engine derives a `rest` child for every parent whose known children
     # fall short (src/rest.py), so `rest` is a legitimate key in TCs.csv -- and
@@ -364,6 +384,6 @@ def report(folder: str, problems: list[Problem]) -> None:
             + '\n\nNothing was computed. Correct the input files and run again.')
 
 
-def validate(folder: str) -> None:
-    """Check a case folder, printing warnings and raising on errors."""
-    report(folder, check(folder))
+def validate(folder: str, tables: dict | None = None) -> None:
+    """Check a case, printing warnings and raising on errors."""
+    report(folder, check(folder, tables))

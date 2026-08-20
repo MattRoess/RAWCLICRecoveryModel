@@ -268,12 +268,12 @@ class MonteCarloRun:
 
 def solve_draws(data_folder: str, layer_names: list[str], draws: int,
                 start: int = 0, seed: int = 0, scenario: str | None = None,
-                years: str | None = None) -> MonteCarloRun:
+                years: str | None = None, tables: dict | None = None) -> MonteCarloRun:
     """Run the model over a block of draws, for every year in the selection."""
     from src.sampling import sample
 
     model = RecoveryModelOptimized(data_folder=data_folder, layer_names=layer_names,
-                                   scenario=scenario, years=years)
+                                   scenario=scenario, years=years, tables=tables)
 
     key_frames, value_blocks, report = [], [], {}
     sampled_tcs, sampled_values = None, None

@@ -1,11 +1,11 @@
 """
-05_run_monte_carlo.py
+04_run_monte_carlo.py
 =====================
 
 Run the model over many draws and write the figures that show what the spread
 actually is.
 
-    ./.venv/bin/python 05_run_monte_carlo.py
+    ./.venv/bin/python 04_run_monte_carlo.py
 
 Everything it uses is set in `src/params_schema.py`: which case, which years,
 how many draws, the seed, the chunk size and the figure formats. Change a value
@@ -47,6 +47,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.monte_carlo import solve_draws
 from src.params_schema import ParameterError, current
+from src.upstream import UpstreamError, load as refresh
 from src.plot_monte_carlo import draw_all
 from src.recovery_model_optimized import RecoveryModelOptimized
 
@@ -55,10 +56,16 @@ KEYS = ['Year', 'Stock/Flow ID', 'Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
 PERCENTILES = [5, 25, 50, 75, 95]
 
 
+def _tables(params):
+    """The upstream frames, fetched quietly for a repeat call."""
+    return refresh(params, params.run.data_folder, quiet=True)
+
+
 def deterministic_solution(params) -> pd.DataFrame:
     """The single-value answer, for comparison. Every coefficient at its mode."""
     solution = RecoveryModelOptimized(
         data_folder=params.run.data_folder, layer_names=LAYER_NAMES,
+        tables=_tables(params),
     ).solve_models_and_write_to_output()
     solution['Value'] = pd.to_numeric(solution['Value'])
     solution['Year'] = solution['Year'].astype(str)
@@ -91,8 +98,9 @@ def main() -> int:
     print(f'Case      : {params.run.data_folder}')
     print(f'Draws     : {draws:,}  (seed {params.monte_carlo.seed})')
 
+    tables = refresh(params, params.run.data_folder)
     run = solve_draws(params.run.data_folder, LAYER_NAMES, draws=draws,
-                      seed=params.monte_carlo.seed)
+                      seed=params.monte_carlo.seed, tables=tables)
 
     report = run.report
     if not report.get('uncertain'):
@@ -136,7 +144,7 @@ def main() -> int:
         columns={'Value': 'deterministic'}), on=KEYS, how='left')
 
     model = RecoveryModelOptimized(data_folder=params.run.data_folder,
-                                   layer_names=LAYER_NAMES)
+                                   layer_names=LAYER_NAMES, tables=_tables(params))
     path = model.output_path('monte_carlo_summary.csv')
     merged.to_csv(path, index=False)
     print(f'\n{path}: {len(merged):,} rows')

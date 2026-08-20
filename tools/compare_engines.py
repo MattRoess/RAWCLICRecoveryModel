@@ -12,6 +12,13 @@ With no argument it runs data_folder/reference/basic_test, where the two agree e
 import os
 import sys
 
+# tools/ is not the repo root, so put the root on the path before
+# importing src.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import os
+import sys
+
 import numpy as np
 import pandas as pd
 

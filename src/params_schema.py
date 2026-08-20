@@ -52,7 +52,7 @@ class RunParams:
     # A folder holding an `input_data/` with the three CSV files: inputs.csv,
     # composition.csv and TCs.csv. The path is written from the project root.
     # SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
-    # To see which folders qualify, run:  ./.venv/bin/python 04_run_model.py --list
+    # To see which folders qualify, run:  ./.venv/bin/python 03_run_model.py --list
     data_folder: str = 'data_folder/bev_electronics'
 
     # WHICH SCENARIO TO RUN.  Blank when the data has no scenario dimension,

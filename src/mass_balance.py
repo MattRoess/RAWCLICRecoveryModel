@@ -77,9 +77,13 @@ def check_composition(composition: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(results)
 
 
-def report(folder: str) -> bool:
-    missing = [name for name in ('TCs.csv', 'composition.csv')
-               if not os.path.exists(os.path.join(folder, 'input_data', name))]
+def report(folder: str, tables: dict | None = None) -> bool:
+    # Only TCs.csv is a file. The inflow and composition come from the upstream
+    # draws in memory, so a case that has them handed over needs nothing on disk.
+    given = tables or {}
+    missing = [name for name, key in (('TCs.csv', 'tcs'), ('composition.csv', 'composition'))
+               if given.get(key) is None
+               and not os.path.exists(os.path.join(folder, 'input_data', name))]
     if missing:
         print(f"\nNothing to check in '{folder}': missing {', '.join(missing)}")
         print(f"Expected them in {os.path.join(folder, 'input_data')}.")
@@ -90,7 +94,10 @@ def report(folder: str) -> bool:
         return False
 
     read = dict(keep_default_na=False, na_values=[])
-    tcs = pd.read_csv(f"{folder}/input_data/TCs.csv", **read)
+    given = tables or {}
+    tcs = given.get('tcs')
+    if tcs is None:
+        tcs = pd.read_csv(f"{folder}/input_data/TCs.csv", **read)
     # Coerce the three bound columns once, here, rather than at each use. A row
     # derived as its group's residual carries no range of its own, so its bounds
     # are blank -- and a blank read as a string turns every later comparison and
@@ -98,7 +105,9 @@ def report(folder: str) -> bool:
     if {'value_min', 'value_max'}.issubset(tcs.columns):
         from src.sampling import numeric_bounds
         tcs = numeric_bounds(tcs)
-    composition = pd.read_csv(f"{folder}/input_data/composition.csv", **read)
+    composition = given.get('composition')
+    if composition is None:
+        composition = pd.read_csv(f"{folder}/input_data/composition.csv", **read)
     # The engine derives a `rest` child for every parent whose known children
     # fall short, so closure has to be judged on the table the engine actually
     # solves. Reading the raw file reported "DOES NOT CLOSE" for exactly the
