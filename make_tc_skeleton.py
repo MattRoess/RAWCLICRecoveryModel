@@ -81,7 +81,14 @@ from src.rest import REST, add_rest
 
 COLUMNS = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
            'Output_FlowID', 'TC_target_layer', 'TC_target_key',
-           'value', 'value_min', 'value_max', 'process', 'technology']
+           'value', 'value_min', 'value_max', 'is_residual',
+           'process', 'technology', 'source']
+
+# `source` and `is_residual` are read by nothing in the loader -- extra columns
+# are dropped -- except is_residual, which the sampler uses. They are here
+# because a coefficient table without provenance is a table nobody can audit:
+# six months on, "0.85" and "0.85 [Smith 2023]" and "0.85 (guessed)" are
+# indistinguishable, and only one of them should survive review.
 
 # The layer a coefficient reads FROM, given the layer it targets. A component
 # coefficient is keyed on the product it sits in, an element coefficient on its
@@ -186,8 +193,11 @@ def build(case: str) -> pd.DataFrame:
                 'TC_target_layer': keyed_at,
                 'TC_target_key': target_key,
                 'value': value, 'value_min': value, 'value_max': value,
+                'is_residual': '',
                 'process': step.get('process', ''),
                 'technology': step.get('technology', ''),
+                'source': ('decision: unspecified material is not recovered'
+                           if fills_in else ''),
             })
 
     return pd.DataFrame(rows, columns=COLUMNS)
