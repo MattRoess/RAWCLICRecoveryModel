@@ -112,6 +112,23 @@ def main() -> int:
               f'the sampled recovery fractions summed past 1.\n'
               f'    That is physically impossible and says the input ranges are wrong.')
 
+    # Unspecified mass that stops in an intermediate flow is lost invisibly:
+    # totalling the terminal flows never sees it. Said plainly rather than
+    # folded into a figure.
+    from src.rest import stranded
+    stalled = stranded(run.keys.assign(Value=run.values.mean(axis=1)), run.tcs)
+    if len(stalled):
+        total = float(stalled['Value'].sum())
+        print(f'\nSTRANDED UNSPECIFIED MASS : {total:,.1f} {params.run.working_unit} '
+              f'in {stalled["Stock/Flow ID"].nunique()} intermediate flow(s)')
+        print('    Carried by the coarse coefficients, then stopped at the first')
+        print("    process keyed finer than itself. It never reaches a terminal flow,")
+        print('    so totalling those does not see it. Give `rest` its own')
+        print('    coefficients in TCs.csv to route it explicitly.')
+        for _, row in stalled.head(6).iterrows():
+            path = ' / '.join(x for x in row[['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']] if x)
+            print(f'      {row["Stock/Flow ID"]:22s} {path:34s} {row["Value"]:>12,.1f}')
+
     determined = deterministic_solution(params)
     summary = summarise(run)
 

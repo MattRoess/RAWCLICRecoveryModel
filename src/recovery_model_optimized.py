@@ -14,6 +14,7 @@ import networkx as nx
 from itertools import product
 
 from src.process_join import (INFLOW_POSITION, LAYERS, TC_POSITION, process_pairs)
+from src.rest import REST, add_rest
 from src.selection import chosen_scenario, chosen_years, is_year_match as _is_year_match, select
 from src.tc_precedence import apply_precedence
 from src.validate_inputs import validate
@@ -148,6 +149,13 @@ class RecoveryModelOptimized:
             keep_default_na=False,
             na_values=[]
         )
+
+        # Real composition data is incomplete: the copper in a wire is often
+        # known when the wire's own weight is not. A parent is therefore the sum
+        # of its known children plus a derived `rest`, so that closure to 1 holds
+        # at every layer and the unspecified part is visible rather than absent.
+        # Without this the shortfall simply had no row (src/rest.py).
+        composition_df, self.rest_notes = add_rest(composition_df)
         # Where two TCs describe the same material, the row naming the parent
         # governs and the other is narrowed to the products it still covers.
         # Done here, on the table, so that both engines are handed the same

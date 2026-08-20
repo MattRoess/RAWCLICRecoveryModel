@@ -53,6 +53,38 @@ depth rather than assume it.
 
 ## 3. How a result is built
 
+### Step 0 — make the unspecified part explicit
+
+Real composition data is incomplete: the copper in a wire is often known when
+the wire's own weight is not, and glass and plastics are frequently not itemised
+at all. So a parent's shares do not add up to one.
+
+The rule is that **a parent is the sum of its known children plus a `rest`**,
+derived per parent at every layer (`src/rest.py`):
+
+    rest = parent − Σ known children
+
+Closure to one then holds by construction, the same way explicit loss flows make
+the transfer coefficients sum to one. It is derived rather than written into the
+file, because a rest that has to be typed is a rest that gets forgotten.
+
+Before this existed the shortfall had **no row at all** — on `template` with the
+gold rows removed, a laminate parent read 400 with children summing to 340 and
+the missing 60 was simply absent from the output.
+
+Two things follow, and both matter:
+
+- **`rest` rides along a coarse-layer coefficient automatically**, because such
+  a coefficient scales the resource's whole subtree. Dismantling carries it
+  without needing coefficients of its own.
+- **It stops dead at the first process keyed finer than itself.** Refining and
+  shredding are element-specific and there is no element called `rest`, so it
+  sits in an intermediate flow where totalling the terminal flows never sees it.
+  A run reports this rather than inventing a route: generating coefficients
+  automatically would double-count the part already carried. Give `rest` its own
+  coefficients in `TCs.csv` to route it explicitly. Untouched, it is treated as
+  unrecovered, which makes recovery figures a **lower bound**.
+
 ### Step 1 — expand the inflow by composition
 
 `create_initial_flows` takes the inflows (given only at Layer 1) and multiplies
