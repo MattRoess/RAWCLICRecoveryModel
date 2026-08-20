@@ -92,8 +92,9 @@ them out to all four depths using `composition.csv`, one depth at a time:
 product → component → material → element. Each step multiplies the parent's
 value by the composition share.
 
-Composition shares must sum to 1 within each parent for mass to be conserved.
-Nothing enforces this. In `basic_test` they do, exactly, at all three depths.
+Composition shares sum to 1 within each parent by the time they reach here,
+because step 0 derives a `rest` for any parent that falls short. Shares summing
+to *more* than 1 are refused outright — a rest cannot be negative.
 
 ### Step 2 — order the processes
 
