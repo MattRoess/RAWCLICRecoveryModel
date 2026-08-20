@@ -3,9 +3,9 @@ Draw the STRUCTURE of a data folder: what connects to what, and what each
 process does. Nothing is scaled by mass -- this is the diagram for
 understanding the setup, not for reading quantities off.
 
-    ./.venv/bin/python plot_structure.py                    # the case in params_schema.py
-    ./.venv/bin/python plot_structure.py data_folder/basic_test
-    ./.venv/bin/python plot_structure.py --list
+    ./.venv/bin/python tools/plot_structure.py                    # the case in params_schema.py
+    ./.venv/bin/python tools/plot_structure.py data_folder/reference/basic_test
+    ./.venv/bin/python tools/plot_structure.py --list
 
 Everything about the output -- which formats, which resolution, which palette --
 is a parameter in `src/params_schema.py`, not a flag. Change it there.

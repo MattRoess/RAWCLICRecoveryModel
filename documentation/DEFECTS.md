@@ -12,7 +12,7 @@ than the rule. §3 is still open.
 Reproduce any case with:
 
 ```bash
-./.venv/bin/python compare_engines.py data_folder/defect_cases/<case>
+./.venv/bin/python tools/compare_engines.py data_folder/reference/defect_cases/<case>
 ```
 
 Every §2 item has a committed data folder. `basic_test`, for comparison, is
@@ -83,7 +83,7 @@ written down with the option not taken. §2.6 and §2.7 are refused at load.
 
 ### 2.1 Composition `Stock/ID` is ignored by the optimized engine — FIXED
 
-**Reproduce:** `data_folder/defect_cases/composition_stock_id`
+**Reproduce:** `data_folder/reference/defect_cases/composition_stock_id`
 
 The user guide defines `Stock/ID` as "Stock/Flow ID for the flow the material
 is contained in". `RecoveryModelLA` honours it.
@@ -102,7 +102,7 @@ Two inflows, FA composed of C1 and FB composed of C2:
 | FB / P1 / C2 | 100 | 100 |
 
 The component layer of FA now sums to 200 against a product layer of 100. Mass
-is invented, silently. The optimized engine is the one `01_run_model.py` uses.
+is invented, silently. The optimized engine is the one `04_run_model.py` uses.
 
 **Severity: high.** Any real dataset where two flows carry the same product with
 different compositions was wrong, in the direction of overestimating recovery.
@@ -119,7 +119,7 @@ row silently stops at product depth instead of being wrongly expanded.
 
 ### 2.2 The documented `P*` wildcard silently produces nothing — FIXED
 
-**Reproduce:** `data_folder/defect_cases/wildcard_star`
+**Reproduce:** `data_folder/reference/defect_cases/wildcard_star`
 
 The user guide documents an asterisk for "the same TC for all products in a
 layer". `fill_star_values` implements it — in `RecoveryModelLA` only
@@ -149,7 +149,7 @@ makes the two agree.
 
 ### 2.3 Overlapping TC rules — RESOLVED
 
-**Reproduce:** `data_folder/defect_cases/overlapping_rules`
+**Reproduce:** `data_folder/reference/defect_cases/overlapping_rules`
 
 A TC row names what it is about on its input side. A row naming a product is
 specific; a row naming only a component applies to that component in *every*
@@ -219,7 +219,7 @@ was applied gives the brevity without the silence.
 
 ### 2.4 Year, scenario and location matching differ — FIXED
 
-**Reproduce:** `data_folder/defect_cases/scenario_prefix`
+**Reproduce:** `data_folder/reference/defect_cases/scenario_prefix`
 
 `RecoveryModelLA` selected rows by **substring**: `str(year_target) in
 year_data`, and `.str.contains()` for scenario and additionalSpecification —
@@ -261,7 +261,7 @@ scenario-differentiated table would have been refused outright otherwise.
 
 ### 2.5 Same-layer TCs: each engine drops a different key — RESOLVED
 
-**Reproduce:** `data_folder/defect_cases/same_layer_key`
+**Reproduce:** `data_folder/reference/defect_cases/same_layer_key`
 
 For a transfer that stays within one layer, **neither engine reads both keys,
 and they drop opposite ones**:
@@ -396,7 +396,7 @@ The optimized engine does not fail at all:
 In (b) the orphan flow's mass enters the system, expands through the full
 composition tree, and goes nowhere. No warning from either engine.
 
-**Severity: high for the optimized engine**, which is the one `01_run_model.py`
+**Severity: high for the optimized engine**, which is the one `04_run_model.py`
 uses and the one that fails silently; medium for LA, where the failure is loud
 but the message is useless.
 
@@ -419,7 +419,7 @@ nothing records the shortfall.
 
 The meaningful check is per transferred resource, totalled over the output
 flows it reaches — see MODEL_MECHANICS.md §4 for why other groupings are not
-quantities. `02_check_mass_balance.py` computes it. On `basic_test`, totals range
+quantities. `03_check_inputs.py` computes it. On `basic_test`, totals range
 [0, 0.66], none exceed 1, and the unaccounted fraction averages 0.78. That mass
 has no residual or loss flow: it leaves the system unrecorded.
 
@@ -593,7 +593,7 @@ An input that cannot be read as meaning anything. Each one used to be silent:
 Inputs that are readable but that the two engines *disagree* about. These are
 open method questions (§2.1, §2.3, §2.5), not mistakes, and the answer belongs
 to whoever owns the method — so they are reported and the run proceeds. It is
-also what keeps `data_folder/defect_cases/` runnable, since those folders are
+also what keeps `data_folder/reference/defect_cases/` runnable, since those folders are
 built from exactly these patterns.
 
 Each defect case now reports precisely its own defect and nothing else;

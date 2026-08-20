@@ -5,7 +5,7 @@
 data). That is the good case: the constraints can be designed in rather than
 retrofitted.
 
-A worked example of everything below is in `data_folder/template`. It runs
+A worked example of everything below is in `data_folder/reference/template`. It runs
 through the existing engines unchanged, and passes every check.
 
 ## 1. The principle: make sum-to-1 true by construction
@@ -22,7 +22,7 @@ rest vanishes unrecorded, and no sum-to-1 rule can be enforced without
 inventing recovery. With them, mass balance becomes a property you can assert
 on load and check on every Monte Carlo draw.
 
-The contrast, from `02_check_mass_balance.py`:
+The contrast, from `03_check_inputs.py`:
 
 | | `basic_test` (mock, no loss flows) | `template` (proposed schema) |
 |---|---|---|
@@ -45,7 +45,7 @@ Add three things to `TCs.csv`:
 
 **This is backward compatible, and that is verified.** Both engines select only
 the columns in `InputDataFormat.TCs_columns`, so the extra columns are ignored:
-`data_folder/template` solves correctly today with no code change. `value`
+`data_folder/reference/template` solves correctly today with no code change. `value`
 remains the deterministic point estimate, so the existing model keeps working
 while the data is collected once.
 
@@ -56,7 +56,7 @@ rather than independently.
 
 ## 3. The four rules a TC table must obey
 
-`02_check_mass_balance.py` checks all four.
+`03_check_inputs.py` checks all four.
 
 ### R1 — Each resource's coefficients total exactly 1
 

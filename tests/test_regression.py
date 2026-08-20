@@ -33,10 +33,16 @@ WHAT IS PINNED
 """
 from __future__ import annotations
 
+import os
 import sys
 import traceback
 
 import pandas as pd
+
+# tests/ is not the repo root, so put the root on the path before
+# importing src.
+sys.path.insert(0, os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))))
 
 from src.recovery_model_LA import RecoveryModelLA
 from src.recovery_model_optimized import RecoveryModelOptimized
@@ -44,7 +50,7 @@ from src.recovery_model_optimized import RecoveryModelOptimized
 LAYER_NAMES = ['product', 'component', 'material', 'element']
 KEYS = ['Stock/Flow ID', 'Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
 
-CASE = 'data_folder/basic_test'
+CASE = 'data_folder/reference/basic_test'
 REFERENCE = f'{CASE}/output_data/solution.csv'
 
 # Compared with a tolerance rather than exactly, for two reasons: the reference
@@ -69,16 +75,16 @@ MAX_INTERMEDIATE_ROWS = 1000
 # either caught at load or documented as an input error, so there is no longer
 # a case where the two engines are expected to differ.
 DOCUMENTED_DIVERGENCES = {
-    'data_folder/defect_cases/composition_stock_id': 0.0,
-    'data_folder/defect_cases/wildcard_star': 0.0,
-    'data_folder/defect_cases/tc_specificity': 0.0,
-    'data_folder/defect_cases/scenario_prefix': 0.0,
+    'data_folder/reference/defect_cases/composition_stock_id': 0.0,
+    'data_folder/reference/defect_cases/wildcard_star': 0.0,
+    'data_folder/reference/defect_cases/tc_specificity': 0.0,
+    'data_folder/reference/defect_cases/scenario_prefix': 0.0,
 }
 
 
 # Cases that declare scenarios have to say which one they mean, since one run
 # is one scenario. Everything else has no scenario dimension at all.
-SCENARIO_FOR = {'data_folder/defect_cases/scenario_prefix': 'BAU'}
+SCENARIO_FOR = {'data_folder/reference/defect_cases/scenario_prefix': 'BAU'}
 
 
 # The committed reference and the defect cases are all written in Mg, so they
@@ -245,7 +251,7 @@ def test_validation_accepts_every_committed_case() -> None:
     """No committed data folder may fail its own loader."""
     from src.validate_inputs import check
 
-    folders = [CASE, 'data_folder/template'] + list(DOCUMENTED_DIVERGENCES)
+    folders = [CASE, 'data_folder/reference/template'] + list(DOCUMENTED_DIVERGENCES)
     for folder in folders:
         errors = [p for p in check(folder) if p.severity == 'ERROR']
         assert not errors, (
@@ -332,7 +338,7 @@ def test_overlapping_rules_resolve_to_the_specific_one() -> None:
     harness, perfectly recovered, which is what the optimized engine used to
     report.
     """
-    folder = 'data_folder/defect_cases/overlapping_rules'
+    folder = 'data_folder/reference/defect_cases/overlapping_rules'
     expected = {('F2_dismantled', 'BEV', 'Harness'): 640.0,
                 ('F2_dismantled', 'HEV', 'Harness'): 600.0}
 
@@ -358,7 +364,7 @@ def test_scenario_is_matched_exactly() -> None:
     'BAU_high' and it returned 90 t -- silently running a different scenario
     than the one asked for.
     """
-    folder = 'data_folder/defect_cases/scenario_prefix'
+    folder = 'data_folder/reference/defect_cases/scenario_prefix'
     for engine in (RecoveryModelOptimized, RecoveryModelLA):
         solution = solve(engine, folder)
         rows = solution[(solution['Stock/Flow ID'] == 'F2')
@@ -379,7 +385,7 @@ def test_a_scenario_must_be_chosen() -> None:
     """
     from src.validate_inputs import InputDataError
 
-    folder = 'data_folder/defect_cases/scenario_prefix'
+    folder = 'data_folder/reference/defect_cases/scenario_prefix'
     try:
         RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES, scenario='')
     except InputDataError as error:
@@ -407,7 +413,7 @@ def test_years_can_be_narrowed() -> None:
     """
     from src.validate_inputs import InputDataError
 
-    folder = 'data_folder/defect_cases/year_range'   # annual, 2020 to 2070
+    folder = 'data_folder/reference/defect_cases/year_range'   # annual, 2020 to 2070
     expected = {
         '': [str(y) for y in range(2020, 2071)],
         '2040': ['2040'],
@@ -445,7 +451,7 @@ def test_validation_rejects_a_same_layer_transformation() -> None:
     from src.validate_inputs import InputDataError, validate
 
     try:
-        validate('data_folder/defect_cases/same_layer_key')
+        validate('data_folder/reference/defect_cases/same_layer_key')
     except InputDataError as error:
         assert "'C1' -> 'C2'" in str(error), f'error does not name both keys: {error}'
     else:

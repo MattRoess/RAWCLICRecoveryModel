@@ -8,7 +8,7 @@ within product P1" -- not by the input key alone. The only sum that means
 anything is therefore: for one such resource, the total over all the output
 flows it can reach.
 
-    ./.venv/bin/python check_mass_balance.py data_folder/template
+    ./.venv/bin/python check_mass_balance.py data_folder/reference/template
 
 Also checks composition closure, the single-target-layer rule (see
 documentation/DESIGN_tc_table.md), and the optional value_min/value_max

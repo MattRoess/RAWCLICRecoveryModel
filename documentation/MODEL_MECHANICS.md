@@ -1,7 +1,7 @@
 # Model mechanics
 
 How the model computes a result. Reconstructed by reading the code and
-verifying each claim against `data_folder/basic_test`; none of this was
+verifying each claim against `data_folder/reference/basic_test`; none of this was
 previously written down. The input *schema* is documented in
 `../doc/User guide.docx` — this document is about behaviour.
 
@@ -157,7 +157,7 @@ The only sum that means anything is: **one resource, totalled over the output
 flows it can reach.** That total must lie in [0, 1] — above 1 creates mass, and
 the shortfall below 1 is loss.
 
-Run `02_check_mass_balance.py` to compute this for any dataset. On `basic_test`:
+Run `03_check_inputs.py` to compute this for any dataset. On `basic_test`:
 
 ```
 24 distinct resources transferred

@@ -158,7 +158,7 @@ def _check_coefficients_present(tcs: pd.DataFrame) -> list[Problem]:
     """
     Every transfer coefficient has to be a number.
 
-    A skeleton written by make_tc_skeleton.py has the rows and no values, which
+    A skeleton written by 02_make_skeleton.py has the rows and no values, which
     is the point -- but it must be said plainly. Left to reach the arithmetic, a
     blank value is read as the empty string and surfaces as
     "unsupported operand type(s) for -: 'str' and 'int'" from somewhere deep in

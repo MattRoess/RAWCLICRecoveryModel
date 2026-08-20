@@ -52,7 +52,7 @@ class RunParams:
     # A folder holding an `input_data/` with the three CSV files: inputs.csv,
     # composition.csv and TCs.csv. The path is written from the project root.
     # SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
-    # To see which folders qualify, run:  ./.venv/bin/python 01_run_model.py --list
+    # To see which folders qualify, run:  ./.venv/bin/python 04_run_model.py --list
     data_folder: str = 'data_folder/bev_electronics'
 
     # WHICH SCENARIO TO RUN.  Blank when the data has no scenario dimension,
@@ -136,7 +136,7 @@ class RunParams:
     # The Sankey figures are not a switch: they are drawn on every run,
     # because they ARE the result and should never be out of step with it.
     # SAFE TO CHANGE: yes. Set to False to skip the structure diagram; you can
-    # still draw it any time with:  ./.venv/bin/python plot_structure.py
+    # still draw it any time with:  ./.venv/bin/python tools/plot_structure.py
     draw_structure: bool = True
 
 
@@ -214,7 +214,7 @@ class DataParams:
     # it. What it is NOT is a recovery rate for vehicle electronics as a whole --
     # the domains left out are simply not in the answer.
     # SAFE TO CHANGE: yes. Names must match upstream: Wiring, Motors, PCB, Sensors.
-    import_domains: tuple[str, ...] = () 
+    import_domains: tuple[str, ...] = ('Wiring', 'Motors') 
 
 
 @dataclass

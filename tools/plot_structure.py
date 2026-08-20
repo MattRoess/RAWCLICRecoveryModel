@@ -5,9 +5,9 @@ plot_structure.py
 Draw HOW THE MODEL IS WIRED: one page showing every flow, every process, and
 the transfer coefficients behind each arrow.
 
-    ./.venv/bin/python plot_structure.py
+    ./.venv/bin/python tools/plot_structure.py
 
-NOT a numbered step. `01_run_model.py` already draws this whenever
+NOT a numbered step. `04_run_model.py` already draws this whenever
 `draw_structure` is True, which it is by default. This file is here for when
 you want the diagram on its own -- looking at a TC table you are still
 building, or redrawing after editing one -- without solving anything.
@@ -16,9 +16,9 @@ That is also why it is the one figure that needs no result: it reads TCs.csv
 and nothing else. Nothing on it is scaled by mass. It answers "how is this set
 up", not "how much goes where".
 
-    ./.venv/bin/python plot_structure.py --pick       choose from a list
-    ./.venv/bin/python plot_structure.py <folder>     draw one case
-    ./.venv/bin/python plot_structure.py <TCs.csv>    draw any TC file
+    ./.venv/bin/python tools/plot_structure.py --pick       choose from a list
+    ./.venv/bin/python tools/plot_structure.py <folder>     draw one case
+    ./.venv/bin/python tools/plot_structure.py <TCs.csv>    draw any TC file
 
 The file formats written are set by `png`, `svg` and `pdf` in
 `src/params_schema.py`.
@@ -27,7 +27,7 @@ import argparse
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.params_schema import ParameterError, current
 from src.plot_structure import choose, draw, find_cases

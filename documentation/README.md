@@ -9,7 +9,7 @@ rather than from anyone's recollection.
 | [SETUP.md](SETUP.md) | Getting running on a new machine: Python 3.14 without conda, the venv, and Positron. Start here on a fresh Mac. |
 | [MODEL_MECHANICS.md](MODEL_MECHANICS.md) | How the model actually computes a result. The nesting rule, how composition and TCs are applied, what the two engines do differently by design. Read this first. |
 | [DEFECTS.md](DEFECTS.md) | Every defect and engine divergence found, each with a measurement and a one-command reproduction. |
-| [DESIGN_tc_table.md](DESIGN_tc_table.md) | How to build the TC table so that sum-to-1 holds by construction. Proposal, with a worked example in `data_folder/template`. The real table does not exist yet, so read this before collecting data. |
+| [DESIGN_tc_table.md](DESIGN_tc_table.md) | How to build the TC table so that sum-to-1 holds by construction. Proposal, with a worked example in `data_folder/reference/template`. The real table does not exist yet, so read this before collecting data. |
 | [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | The design problem for the Monte Carlo version: architecture, the compute budget, sampling asymmetric triangulars, and how to sample under the sum-to-1 constraint. **Built 2026-08-20** — see `src/monte_carlo.py`. |
 | [HANDOVER.md](HANDOVER.md) | Current state, decisions taken and why, open questions, and the recommended order of work. |
 | [PARAMETER_REFERENCE.md](PARAMETER_REFERENCE.md) | Every setting, its current value, and what changing it does. Generated from `src/params_schema.py` — do not edit by hand; edit the settings file. |
@@ -25,7 +25,7 @@ What the transfer coefficients in a dataset actually total, and whether
 composition closes to 1:
 
 ```bash
-./.venv/bin/python 02_check_mass_balance.py data_folder/basic_test
+./.venv/bin/python 03_check_inputs.py data_folder/reference/basic_test
 ```
 
 Read MODEL_MECHANICS.md §4 first — the grouping this uses is not the obvious
@@ -34,7 +34,7 @@ one, and the obvious one produces numbers that are not quantities.
 ## Running the Monte Carlo
 
 ```bash
-./.venv/bin/python 03_run_monte_carlo.py
+./.venv/bin/python 05_run_monte_carlo.py
 ```
 
 Writes `monte_carlo_summary.csv` next to the case's other output, and five
@@ -47,7 +47,7 @@ To understand **how the model is wired** — every flow, every process, and the
 transfer coefficients behind each arrow, nothing scaled by mass:
 
 ```bash
-./.venv/bin/python plot_structure.py data_folder/template
+./.venv/bin/python tools/plot_structure.py data_folder/reference/template
 ```
 
 To see **how much mass goes where**, as a Sankey, in total and per element:
@@ -55,7 +55,7 @@ these are drawn by every run, so there is no separate command. Run the model
 and they appear in `figures/`.
 
 ```bash
-./.venv/bin/python 01_run_model.py
+./.venv/bin/python 04_run_model.py
 ```
 
 That is deliberate. The Sankeys are a picture of a *result*, so a run that
@@ -136,7 +136,7 @@ one rather than all of them.
 Both engines reproduce the committed reference result exactly:
 
 ```bash
-./.venv/bin/python compare_engines.py data_folder/basic_test
+./.venv/bin/python tools/compare_engines.py data_folder/reference/basic_test
 ```
 
 Expected: 180 rows, largest engine difference on the order of 1e-15.

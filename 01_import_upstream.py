@@ -7,7 +7,7 @@ Turn the upstream per-element draws into a case folder this model can solve.
     ./.venv/bin/python import_upstream.py
 
 Run it when the upstream data changes, not on every model run. It writes a data
-folder under `data_folder/`, which `01_run_model.py` and `03_run_monte_carlo.py`
+folder under `data_folder/`, which `04_run_model.py` and `05_run_monte_carlo.py`
 then read like any other case.
 
 WHERE THE DATA COMES FROM

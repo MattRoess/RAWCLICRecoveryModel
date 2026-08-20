@@ -3,7 +3,7 @@ src/model_run.py
 ================
 
 Solving a case and drawing its figures. The stage that calls this is
-`01_run_model.py`; the logic lives here because a file whose name starts with
+`04_run_model.py`; the logic lives here because a file whose name starts with
 a digit cannot be imported by another file.
 
 What is solved, with which engine, and which figures are drawn are all settings

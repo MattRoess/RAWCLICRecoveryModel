@@ -24,13 +24,13 @@ import traceback
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, '.')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.recovery_model_optimized import RecoveryModelOptimized
 from src.rest import REST, LAYERS, RestError, add_rest, is_rest, stranded
 
 NAMES = ['product', 'component', 'material', 'element']
-SOURCE = 'data_folder/template/input_data'
+SOURCE = 'data_folder/reference/template/input_data'
 
 
 def _case(drop_element: str | None = None) -> str:

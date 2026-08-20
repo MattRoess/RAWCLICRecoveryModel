@@ -26,13 +26,14 @@ code against an independent statement of what it should produce.
 """
 from __future__ import annotations
 
+import os
 import sys
 import traceback
 
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, '.')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.sampling import (SamplingError, clamp_bounds, check_ordering,
                           constrained_groups, sample, triangular_quantile, uniforms)
@@ -41,7 +42,7 @@ TOLERANCE = 1e-12
 
 
 def _tcs(path: str) -> pd.DataFrame:
-    return pd.read_csv(f'data_folder/{path}/input_data/TCs.csv',
+    return pd.read_csv(f'data_folder/reference/{path}/input_data/TCs.csv',
                        keep_default_na=False, na_values=[])
 
 

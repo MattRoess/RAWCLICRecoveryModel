@@ -95,7 +95,7 @@ import pandas as pd
 # A resource is where it comes from and what it becomes. Output_FlowID is
 # absent on purpose: that is the axis a constrained group sums over. Imported
 # rather than redefined so that the grouping the sampler constrains is the same
-# one 02_check_mass_balance.py reports on.
+# one 03_check_inputs.py reports on.
 from src.mass_balance import RESOURCE
 
 # How close to 1 a group's modes must sum before it is treated as constrained.

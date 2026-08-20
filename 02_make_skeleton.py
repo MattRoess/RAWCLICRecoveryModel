@@ -1,10 +1,10 @@
 """
-make_tc_skeleton.py
+02_make_skeleton.py
 ===================
 
 Write a TCs.csv with every row that needs a number, and no numbers in it.
 
-    ./.venv/bin/python make_tc_skeleton.py data_folder/bev_electronics
+    ./.venv/bin/python 02_make_skeleton.py data_folder/bev_electronics
 
 The flow network is domain knowledge and this script does not invent it. It
 reads a small, editable list of processes and expands it against the resources
@@ -16,9 +16,17 @@ the composition actually contains:
         v
     <case>/input_data/TCs.csv           one row per coefficient, values blank
 
-Edit the process list and run this again. It refuses to overwrite a TCs.csv
-that already has values in it, so a table you have started filling in cannot be
-destroyed by a stray run.
+Run it again whenever the case grows. It **merges**: every value already filled
+in is kept, rows for new resources are added blank, and rows whose resource no
+longer exists are dropped. So the intended way to work is one component at a
+time --
+
+    import_domains = ('Wiring',)             one domain, eight rows, run it
+    import_domains = ('Wiring', 'Motors')    re-import, re-run this, fill the new rows
+    import_domains = ()                      all of them
+
+-- rather than facing the whole table at once. Nothing you have filled in is
+ever overwritten by this script.
 
 WHAT A PROCESS LINE SAYS
 ------------------------
@@ -66,7 +74,7 @@ is a coefficient you are certain about.
 For each resource, the values across its destinations should sum to 1 -- that
 is what makes mass balance checkable rather than aspirational. Check it with:
 
-    ./.venv/bin/python 02_check_mass_balance.py <case>
+    ./.venv/bin/python 03_check_inputs.py <case>
 """
 from __future__ import annotations
 
@@ -203,45 +211,72 @@ def build(case: str) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=COLUMNS)
 
 
+KEY = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
+       'Output_FlowID', 'TC_target_layer', 'TC_target_key']
+
+
+def merge(existing: pd.DataFrame, skeleton: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    """
+    Keep what is filled in, add what is new, drop what no longer exists.
+
+    This is what makes growing a case one component at a time possible. A value
+    someone has entered is never overwritten -- not even by the `rest` rows this
+    script fills in itself, because they might have been deliberately changed.
+
+    Returns the merged table and a count of what happened to it.
+    """
+    filled = existing[existing['value'].astype(str).str.strip() != ''] \
+        if 'value' in existing.columns else existing.iloc[0:0]
+    known = filled.set_index(KEY) if len(filled) else None
+
+    merged, kept, added = [], 0, 0
+    for _, row in skeleton.iterrows():
+        key = tuple(row[column] for column in KEY)
+        if known is not None and key in known.index:
+            merged.append(known.loc[key].to_dict() | dict(zip(KEY, key)))
+            kept += 1
+        else:
+            merged.append(row.to_dict())
+            added += int(str(row['value']).strip() == '')
+
+    dropped = len(filled) - kept
+    return (pd.DataFrame(merged, columns=skeleton.columns),
+            {'kept': kept, 'added': added, 'dropped': dropped})
+
+
 def main(case: str) -> int:
     path = os.path.join(case, 'input_data', 'TCs.csv')
-
-    if os.path.exists(path):
-        existing = pd.read_csv(path, keep_default_na=False, na_values=[])
-        # The `rest` rows are written filled in by this script, so counting them
-        # as your work would make every regeneration refuse itself. Only values
-        # this script would not have produced count as work to protect.
-        has_value = existing['value'].astype(str).str.strip() != '' \
-            if 'value' in existing.columns else pd.Series(dtype=bool)
-        yours = existing[has_value & (existing['TC_target_key'] != REST)] \
-            if len(has_value) else existing.iloc[0:0]
-        if len(yours):
-            print(f'{path} already has {len(yours)} filled-in values. Not overwriting.',
-                  file=sys.stderr)
-            print('Delete it first if you really mean to start again.', file=sys.stderr)
-            return 1
-
     skeleton = build(case)
+
+    change = {'kept': 0, 'added': int((skeleton['value'].astype(str).str.strip() == '').sum()),
+              'dropped': 0}
+    if os.path.exists(path):
+        existing = pd.read_csv(path, keep_default_na=False, na_values=[], dtype=str)
+        skeleton, change = merge(existing, skeleton)
+
     skeleton.to_csv(path, index=False)
 
     blank = skeleton['value'].astype(str).str.strip() == ''
-    print(f'\n{path}: {len(skeleton)} rows, {int(blank.sum())} to fill in')
-    if (~blank).any():
-        print(f'  {int((~blank).sum()):4d} already filled: `rest` to loss, which is '
-              f'a decision, not a placeholder')
+    print(f'\n{path}: {len(skeleton)} rows')
+    if change['kept']:
+        print(f'  {change["kept"]:4d} kept -- already filled in, untouched')
+    if change['dropped']:
+        print(f'  {change["dropped"]:4d} dropped -- their resource is no longer in the composition')
+    print(f'  {int(blank.sum()):4d} still to fill in')
     for keyed_at, group in skeleton[blank].groupby('TC_target_layer', sort=False):
-        print(f'  {len(group):4d} keyed at {keyed_at}')
+        print(f'       {len(group):4d} keyed at {keyed_at}')
 
-    # The number that actually has to sum to 1 is per resource, over the output
-    # flows it reaches -- not per row (MODEL_MECHANICS.md section 4).
+    if not blank.any():
+        print('\n  Nothing left to fill. Run it:')
+        print('    ./.venv/bin/python 04_run_model.py')
+        print('    ./.venv/bin/python 05_run_monte_carlo.py')
+        return 0
+
     resources = skeleton[blank].groupby(
         ['Input_FlowID', 'Input_layer_key', 'TC_target_key']).ngroups
-    print(f'\n  {resources} distinct resources still need values, each of whose')
-    print('  coefficients should sum to 1 across its destinations.')
-    print(f'\n  Edit {os.path.join(case, "input_data", "processes.csv")} and run this')
-    print('  again to change the network. Then fill in value, value_min and')
-    print('  value_max, and check with:')
-    print(f'    ./.venv/bin/python 02_check_mass_balance.py {case}')
+    print(f'\n  {resources} resources still need values, each of whose coefficients')
+    print('  should sum to 1 across its destinations. Check with:')
+    print(f'    ./.venv/bin/python 03_check_inputs.py {case}')
     return 0
 
 

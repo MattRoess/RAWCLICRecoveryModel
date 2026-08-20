@@ -2,7 +2,7 @@
 Draw the flow network of a data folder as a Sankey diagram.
 
     ./.venv/bin/python plot_flows.py                       # the case in params_schema.py
-    ./.venv/bin/python plot_flows.py data_folder/basic_test
+    ./.venv/bin/python plot_flows.py data_folder/reference/basic_test
 
 Everything about the output -- which formats, which resolution, which palette,
 whether the per-element figures are drawn -- is a parameter in

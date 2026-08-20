@@ -10,13 +10,14 @@ which is exactly why the conversion needs pinning rather than trusting.
 """
 from __future__ import annotations
 
+import os
 import sys
 import traceback
 
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, '.')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.recovery_model_LA import RecoveryModelLA
 from src.recovery_model_optimized import RecoveryModelOptimized
@@ -27,7 +28,7 @@ KEYS = ['Stock/Flow ID', 'Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
 
 
 def _solve(case: str, unit: str, engine=RecoveryModelOptimized) -> pd.DataFrame:
-    frame = engine(data_folder=f'data_folder/{case}', layer_names=LAYER_NAMES,
+    frame = engine(data_folder=f'data_folder/reference/{case}', layer_names=LAYER_NAMES,
                    working_unit=unit).solve_models_and_write_to_output()
     frame['Value'] = pd.to_numeric(frame['Value'])
     for key in KEYS:

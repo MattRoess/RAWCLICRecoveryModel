@@ -1,10 +1,10 @@
 """
-02_check_mass_balance.py
+03_check_inputs.py
 ========================
 
 STEP 2 -- check that a dataset's numbers add up, before trusting a result.
 
-    ./.venv/bin/python 02_check_mass_balance.py
+    ./.venv/bin/python 03_check_inputs.py
 
 Reports three things about the case named in `src/params_schema.py`:
 
@@ -18,7 +18,7 @@ Reports three things about the case named in `src/params_schema.py`:
 
 Nothing here changes any file. It only reports.
 
-    ./.venv/bin/python 02_check_mass_balance.py <folder>   check one case
+    ./.venv/bin/python 03_check_inputs.py <folder>   check one case
 """
 import argparse
 import os

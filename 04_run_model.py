@@ -1,18 +1,18 @@
 """
-01_run_model.py
+04_run_model.py
 ===============
 
 STEP 1 -- solve the model and draw its figures.
 
-    ./.venv/bin/python 01_run_model.py
+    ./.venv/bin/python 04_run_model.py
 
 This is the one you run. It reads the settings in `src/params_schema.py`,
 solves the case named there, writes the answer next to the input data, and
 draws the figures.
 
-    ./.venv/bin/python 01_run_model.py --list     which cases are available
-    ./.venv/bin/python 01_run_model.py --pick     choose one from a list
-    ./.venv/bin/python 01_run_model.py <folder>   run one case just this once
+    ./.venv/bin/python 04_run_model.py --list     which cases are available
+    ./.venv/bin/python 04_run_model.py --pick     choose one from a list
+    ./.venv/bin/python 04_run_model.py <folder>   run one case just this once
 
 The answer goes to <case folder>/output_data/. The figures go to figures/.
 

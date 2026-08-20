@@ -10,7 +10,7 @@ or flagged as a decision still to be taken.
 The model works, and now works for the same reasons on both engines:
 
 ```bash
-./.venv/bin/python compare_engines.py data_folder/basic_test
+./.venv/bin/python tools/compare_engines.py data_folder/reference/basic_test
 # 180 rows, largest engine difference 8.9e-16
 
 ./.venv/bin/python test_regression.py
@@ -43,7 +43,7 @@ What it still lacks is real data. Coefficients are sampled from the ranges in
 the upstream per-draw arrays are not readable yet (§8).
 
 ```bash
-./.venv/bin/python 03_run_monte_carlo.py
+./.venv/bin/python 05_run_monte_carlo.py
 ```
 
 ## 2. Environment — decisions and why
@@ -105,7 +105,7 @@ diagnosis and the one-minute rebuild.
 0. **What is the flow network?** Which processes exist, and what output flows
    each one has. The real TC table does not exist yet, so this is the gating
    question and it is entirely domain knowledge. DESIGN_tc_table.md proposes
-   the schema and the four rules; `data_folder/template` shows the *shape* of
+   the schema and the four rules; `data_folder/reference/template` shows the *shape* of
    an answer — seven flows, three processes, explicit loss flows — and is
    **not a proposal about the content**.
 1. **Do losses get explicit flows?** Recommended yes — it is the only thing
@@ -144,11 +144,11 @@ resolve — was **answered on 2026-08-17** and is now DEFECTS.md §2.3.
 2. ~~**Validate the input tables on load**~~ — **done**, `src/validate_inputs.py`.
 3. ~~**Fix the engine divergences**~~ — **done**, all seven (DEFECTS.md §2).
 4. **Add the mass balance assertion on load**, once the table has loss flows.
-   `02_check_mass_balance.py` already computes everything it needs; this is
+   `03_check_inputs.py` already computes everything it needs; this is
    promoting a report into a hard failure. Blocked on question 1.
 5. ~~**Restructure for Monte Carlo**~~ — **done 2026-08-20**. `src/sampling.py`
    draws the coefficients, `src/monte_carlo.py` solves every draw at once,
-   `03_run_monte_carlo.py` runs it and `src/plot_monte_carlo.py` draws five
+   `05_run_monte_carlo.py` runs it and `src/plot_monte_carlo.py` draws five
    figures. 24 + 7 checks in `test_sampling.py` and `test_monte_carlo.py`.
 6. **Feed it the real inflow draws.** The engine already takes inflows as a
    `(rows, draws)` array — it is handed a repeated column today only because
@@ -210,7 +210,7 @@ rm -rf .venv && python3 -m venv .venv && ./.venv/bin/pip install -r requirements
 **4. Check the environment is right.**
 
 ```bash
-./.venv/bin/python compare_engines.py data_folder/basic_test   # Engines agree, ~1e-15
+./.venv/bin/python tools/compare_engines.py data_folder/reference/basic_test   # Engines agree, ~1e-15
 ./.venv/bin/python test_regression.py                          # 16 of 16 passed
 ```
 
@@ -219,7 +219,7 @@ If both pass, that machine is in the same state as this one.
 **5. Run the model.**
 
 ```bash
-./.venv/bin/python 01_run_model.py
+./.venv/bin/python 04_run_model.py
 ```
 
 That solves the case in the settings and writes every figure to `figures/`.

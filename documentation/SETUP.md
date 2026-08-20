@@ -147,7 +147,7 @@ The file to edit is always `src/params_schema.py`.
 ## 6. Verify
 
 ```bash
-./.venv/bin/python compare_engines.py data_folder/basic_test
+./.venv/bin/python tools/compare_engines.py data_folder/reference/basic_test
 ```
 
 Expected: 180 rows and `Engines agree`, with a largest difference on the order
@@ -165,9 +165,9 @@ Expected: `6 of 6 passed`.
 Then the workflow itself, all of which should run clean:
 
 ```bash
-./.venv/bin/python 01_run_model.py
-./.venv/bin/python 02_check_mass_balance.py data_folder/template
-./.venv/bin/python plot_structure.py data_folder/template
+./.venv/bin/python 04_run_model.py
+./.venv/bin/python 03_check_inputs.py data_folder/reference/template
+./.venv/bin/python tools/plot_structure.py data_folder/reference/template
 ```
 
 Once the interpreter is selected in Positron, `./.venv/bin/python` can be
