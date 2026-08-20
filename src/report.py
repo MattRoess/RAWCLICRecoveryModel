@@ -16,7 +16,7 @@ THE SHEETS
 ----------
     Overview      what produced this run -- case, years, draws, seed, unit
     Recovered     the headline: mass recovered per element per year, with the
-                  90% interval and how far the deterministic run sits from it
+                  95% interval and how far the deterministic run sits from it
     By flow       where the mass ended up, per flow and year
     Mass balance  what entered against what left, per year
     Distribution  every result row: mean, sd and the five percentiles
@@ -89,7 +89,7 @@ def overview(params, run) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=['setting', 'value'])
 
 
-def recovered(summary: pd.DataFrame, tcs: pd.DataFrame) -> pd.DataFrame:
+def recovered(summary: pd.DataFrame, tcs: pd.DataFrame, case: str) -> pd.DataFrame:
     """
     The headline: recovered mass per element per year.
 
@@ -98,8 +98,11 @@ def recovered(summary: pd.DataFrame, tcs: pd.DataFrame) -> pd.DataFrame:
     number that says whether the Monte Carlo changed the answer or only put
     error bars on it.
     """
-    ends = terminal_flows(tcs)
-    keep = sorted(f for f in ends if 'loss' not in f.lower())
+    # Which flows count as recovered is stated in processes.csv, not guessed
+    # from the name -- a handoff to a separate recovery model is neither
+    # recovered here nor lost (src/rest.py, ROLES).
+    from src.rest import recovered_flows
+    keep = recovered_flows(case, tcs)
 
     rows = []
     for (year, element), group in summary[
@@ -109,11 +112,11 @@ def recovered(summary: pd.DataFrame, tcs: pd.DataFrame) -> pd.DataFrame:
         point = group['deterministic'].sum()
         rows.append({
             'Year': year, 'element': element,
-            'mean': mean, 'p5': group['p5'].sum(), 'p50': group['p50'].sum(),
-            'p95': group['p95'].sum(),
+            'mean': mean, 'p2.5': group['p2_5'].sum(), 'p50': group['p50'].sum(),
+            'p97.5': group['p97_5'].sum(),
             'deterministic': point,
             'deterministic vs mean %': (100.0 * (point - mean) / mean) if mean else np.nan,
-            'relative spread %': (100.0 * (group['p95'].sum() - group['p5'].sum()) / mean)
+            'relative spread %': (100.0 * (group['p97_5'].sum() - group['p2_5'].sum()) / mean)
                                  if mean else np.nan,
         })
     return pd.DataFrame(rows).sort_values(['element', 'Year'])
@@ -125,9 +128,9 @@ def by_flow(summary: pd.DataFrame) -> pd.DataFrame:
     for (year, flow), group in summary.groupby(['Year', 'Stock/Flow ID']):
         rows.append({'Year': year, 'flow': flow,
                      'mean': _shallowest(group),
-                     'p5': _shallowest(group, 'p5'),
+                     'p2.5': _shallowest(group, 'p2_5'),
                      'p50': _shallowest(group, 'p50'),
-                     'p95': _shallowest(group, 'p95'),
+                     'p97.5': _shallowest(group, 'p97_5'),
                      'deterministic': _shallowest(group, 'deterministic')})
     return pd.DataFrame(rows).sort_values(['Year', 'flow'])
 
@@ -150,7 +153,7 @@ def write(path: str, params, run, summary: pd.DataFrame, tcs: pd.DataFrame,
     """Write the workbook. Returns the sheet names written."""
     sheets = {
         'Overview': overview(params, run),
-        'Recovered': recovered(summary, tcs),
+        'Recovered': recovered(summary, tcs, params.run.data_folder),
         'By flow': by_flow(summary),
         'Mass balance': mass_balance(summary, tcs),
         'Distribution': summary,

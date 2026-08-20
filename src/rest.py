@@ -233,3 +233,49 @@ def stranded(solution: pd.DataFrame, tcs: pd.DataFrame) -> pd.DataFrame:
     depth = (caught[LAYERS] != '').sum(axis=1)
     caught = caught[depth == depth.max()]
     return caught.sort_values('Value', ascending=False)
+
+
+# ----------------------------------------------------------------------
+#  What each terminal flow means
+# ----------------------------------------------------------------------
+
+# Read from processes.csv rather than guessed from the flow's name. Guessing
+# counted F_separated_electronics as recovered, because the string 'loss' does
+# not appear in it -- and that flow is material handed to a SEPARATE recovery
+# model, neither recovered here nor lost. It carried no mass at the time, so
+# nothing was wrong yet; it would have silently inflated recovery the moment
+# boards and sensors were included again.
+ROLES = ('recovered', 'loss', 'handoff', 'intermediate')
+
+
+def flow_roles(case: str) -> dict[str, str]:
+    """
+    {flow: role} from the case's processes.csv, empty when there is none.
+
+    A flow with no role stated falls back to `is_loss`, and to 'recovered' when
+    even that is absent -- so an older table keeps working, just less precisely.
+    """
+    import os
+
+    path = os.path.join(case, 'input_data', 'processes.csv')
+    if not os.path.exists(path):
+        return {}
+
+    processes = pd.read_csv(path, keep_default_na=False, na_values=[])
+    roles: dict[str, str] = {}
+    for _, step in processes.iterrows():
+        stated = str(step.get('role', '')).strip()
+        if stated not in ROLES:
+            stated = ('loss' if str(step.get('is_loss', '')).strip() in ('1', 'True', 'true')
+                      else 'recovered')
+        roles[step['Output_FlowID']] = stated
+    return roles
+
+
+def recovered_flows(case: str, tcs: pd.DataFrame) -> list[str]:
+    """Terminal flows whose contents actually count as recovered."""
+    roles = flow_roles(case)
+    ends = terminal_flows(tcs)
+    if not roles:
+        return sorted(f for f in ends if 'loss' not in f.lower())
+    return sorted(f for f in ends if roles.get(f, 'recovered') == 'recovered')

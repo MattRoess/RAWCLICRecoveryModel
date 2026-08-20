@@ -67,7 +67,9 @@ from src.recovery_model_optimized import RecoveryModelOptimized
 
 LAYER_NAMES = ['product', 'component', 'material', 'element']
 KEYS = ['Year', 'Stock/Flow ID', 'Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
-PERCENTILES = [5, 25, 50, 75, 95]
+# The same interval the figures draw (src/plot_monte_carlo.INTERVAL), so a
+# number read off a chart matches a number read out of the workbook.
+PERCENTILES = [2.5, 25, 50, 75, 97.5]
 
 
 def _tables(params):
@@ -92,7 +94,8 @@ def summarise(run) -> pd.DataFrame:
     summary = run.keys.copy()
     summary['mean'] = values.mean(axis=1)
     summary['sd'] = values.std(axis=1, ddof=1) if run.draws > 1 else 0.0
-    for percentile, column in zip(PERCENTILES, ('p5', 'p25', 'p50', 'p75', 'p95')):
+    for percentile, column in zip(PERCENTILES,
+                              ('p2_5', 'p25', 'p50', 'p75', 'p97_5')):
         summary[column] = np.percentile(values, percentile, axis=1)
     return summary
 

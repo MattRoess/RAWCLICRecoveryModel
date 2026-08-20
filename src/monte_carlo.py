@@ -260,6 +260,7 @@ class MonteCarloRun:
     report: dict                # what the sampler clamped and constrained
     tcs: pd.DataFrame           # the coefficient table actually sampled
     tc_values: np.ndarray       # (n_coefficients, draws), as drawn
+    case: str = ''              # the folder it was solved from
 
     @property
     def draws(self) -> int:
@@ -300,4 +301,5 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
 
     return MonteCarloRun(keys=pd.concat(key_frames, ignore_index=True),
                          values=np.vstack(value_blocks), report=report,
-                         tcs=sampled_tcs, tc_values=sampled_values)
+                         tcs=sampled_tcs, tc_values=sampled_values,
+                         case=data_folder)

@@ -180,7 +180,7 @@ class DataParams:
     # that a run at 5,000 is a strict prefix of a run at 200,000 and the two can
     # be compared directly.
     # SAFE TO CHANGE: yes. A whole number above zero, at most what the arrays hold.
-    draws: int = 20_000
+    draws: int = 200_000
 
     # WHICH UPSTREAM FLOW IS THE INFLOW TO RECOVERY.
     # Upstream reports three: what entered the fleet, what left it, and what was

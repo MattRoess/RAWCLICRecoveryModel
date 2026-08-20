@@ -51,6 +51,18 @@ def terminal_flows(run) -> list[str]:
     return sorted(arrives - leaves)
 
 
+def recovered_flows(run, case: str) -> list[str]:
+    """
+    Which terminal flows count as recovered, from the case's processes.csv.
+
+    Not guessed from the flow name: that counted a handoff to a separate
+    recovery model as recovered here, because the word 'loss' did not appear in
+    it (src/rest.py, ROLES).
+    """
+    from src.rest import recovered_flows as roles_for
+    return roles_for(case, run.tcs)
+
+
 def element_rows(run, flow: str, element: str) -> np.ndarray:
     """
     Positions of the rows holding `element` inside `flow`.
@@ -76,9 +88,14 @@ def totals_by_flow_and_element(run) -> dict[tuple[str, str], np.ndarray]:
     return out
 
 
+# The reported interval. 95% throughout -- figures, tables and the workbook --
+# so a number quoted from one matches a number quoted from another.
+INTERVAL = (2.5, 25, 50, 75, 97.5)
+
+
 def _band(values: np.ndarray) -> tuple[float, float, float, float, float]:
-    """Median with the 50% and 90% intervals around it."""
-    return tuple(np.percentile(values, [5, 25, 50, 75, 95]))
+    """Median with the 50% and 95% intervals around it."""
+    return tuple(np.percentile(values, list(INTERVAL)))
 
 
 # ----------------------------------------------------------------------
@@ -93,7 +110,7 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
     the distance between those two lines is the whole point.
     """
     elements = sorted({e for e in run.keys['Layer 4'].unique() if e})
-    recovered = [f for f in terminal_flows(run) if 'loss' not in f.lower()]
+    recovered = recovered_flows(run, run.case)
     if not elements or not recovered:
         return None
 
@@ -127,7 +144,7 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
 
         low, _, median, _, high = _band(totals)
         panel.axvspan(low, high, color=colours['meta'], alpha=0.10,
-                      label=f'90% interval  {low:,.1f} to {high:,.1f}')
+                      label=f'95% interval  {low:,.1f} to {high:,.1f}')
 
         panel.set_title(f'{element} recovered', color=colours['title'],
                         fontsize=11, fontweight='bold')
@@ -137,7 +154,7 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
         for text in legend.get_texts():
             text.set_color(colours['meta'])
 
-    figure.suptitle('Where the answer actually lies', color=colours['title'],
+    figure.suptitle('Recovered mass, across draws', color=colours['title'],
                     fontsize=13, fontweight='bold', x=0.01, ha='left')
     figure.tight_layout(rect=[0, 0, 1, 0.94])
     return figure
@@ -156,7 +173,7 @@ def _deterministic_total(deterministic: pd.DataFrame, flows: list[str],
 
 def figure_spread(run, theme: str, unit: str):
     """
-    Median, 50% and 90% interval for every terminal flow and element.
+    Median, 50% and 95% interval for every terminal flow and element.
 
     Sorted by relative spread, so the least certain answer is at the top --
     which is the one worth arguing about.
@@ -188,9 +205,9 @@ def figure_spread(run, theme: str, unit: str):
     panel.set_yticks(range(len(entries)))
     panel.set_yticklabels([entry[0] for entry in entries], fontsize=8.5,
                           color=colours['node'])
-    panel.set_xlabel(f'mass ({shown})   —   bar is the 50% interval, line the 90%',
+    panel.set_xlabel(f'mass ({shown})   —   bar is the 50% interval, line the 95%',
                      color=colours['meta'], fontsize=9)
-    panel.set_title('How uncertain each result is', color=colours['title'],
+    panel.set_title('Spread of each result', color=colours['title'],
                     fontsize=12, fontweight='bold', loc='left')
     panel.grid(True, axis='x', color=colours['rule'], linewidth=0.7)
     panel.grid(False, axis='y')
@@ -251,7 +268,7 @@ def figure_mode_vs_mean(run, deterministic: pd.DataFrame, theme: str, unit: str)
                           color=colours['node'])
     panel.set_xlabel('deterministic run, as % away from the Monte Carlo mean',
                      color=colours['meta'], fontsize=9)
-    panel.set_title('What the Monte Carlo changes, not just how uncertain it is',
+    panel.set_title('Deterministic run against the Monte Carlo mean',
                     color=colours['title'], fontsize=12, fontweight='bold', loc='left')
     panel.grid(True, axis='x', color=colours['rule'], linewidth=0.7)
     panel.grid(False, axis='y')
@@ -282,12 +299,12 @@ def figure_convergence(run, theme: str, unit: str):
     steps = np.unique(np.geomspace(20, run.draws, 60).astype(int))
 
     running_mean = np.array([values[:n].mean() for n in steps])
-    running_low = np.array([np.percentile(values[:n], 5) for n in steps])
-    running_high = np.array([np.percentile(values[:n], 95) for n in steps])
+    running_low = np.array([np.percentile(values[:n], INTERVAL[0]) for n in steps])
+    running_high = np.array([np.percentile(values[:n], INTERVAL[-1]) for n in steps])
 
     figure, panel, colours = chart(720, 340, theme)
     panel.fill_between(steps, running_low, running_high, color=PALETTE[0], alpha=0.18,
-                       label='5th to 95th percentile')
+                       label='2.5th to 97.5th percentile')
     panel.plot(steps, running_mean, color=PALETTE[0], linewidth=1.8, label='mean')
     for series, style in ((running_low, ':'), (running_high, ':')):
         panel.plot(steps, series, color=PALETTE[0], linewidth=1.0, linestyle=style)
@@ -296,7 +313,7 @@ def figure_convergence(run, theme: str, unit: str):
     panel.set_xscale('log')
     panel.set_xlabel('draws used', color=colours['meta'], fontsize=9)
     panel.set_ylabel(f'{name[0]} · {name[1]}  ({shown})', color=colours['meta'], fontsize=9)
-    panel.set_title('How many draws the answer needs', color=colours['title'],
+    panel.set_title('Convergence with draw count', color=colours['title'],
                     fontsize=12, fontweight='bold', loc='left')
     legend = panel.legend(fontsize=8, frameon=False)
     for text in legend.get_texts():
@@ -356,7 +373,7 @@ def figure_sensitivity(run, theme: str):
     panel.set_xlim(-1, 1)
     panel.set_xlabel(f'rank correlation with {name[0]} · {name[1]}',
                      color=colours['meta'], fontsize=9)
-    panel.set_title('Which coefficients the answer is sensitive to',
+    panel.set_title('Sensitivity to each coefficient',
                     color=colours['title'], fontsize=12, fontweight='bold', loc='left')
     panel.grid(True, axis='x', color=colours['rule'], linewidth=0.7)
     panel.grid(False, axis='y')
@@ -401,7 +418,7 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
 def recovered_rows(run, element: str, year) -> np.ndarray:
     """Row positions for one element recovered in one year, across all routes."""
     keys = run.keys
-    recovered = [f for f in terminal_flows(run) if 'loss' not in f.lower()]
+    recovered = recovered_flows(run, run.case)
     return np.flatnonzero(
         keys['Stock/Flow ID'].isin(recovered).to_numpy()
         & (keys['Layer 4'] == element).to_numpy()
@@ -434,7 +451,10 @@ def figure_pdf(run, element: str, deterministic: pd.DataFrame | None,
         scale, shown = scale_for(totals, unit)
         totals = totals * scale
 
-        panel.hist(totals, bins=60, density=True, color=PALETTE[0],
+        # Freedman-Diaconis: the bin width that suits the data, so more draws
+        # give a smoother curve instead of the same 60 ragged bars.
+        bins = min(200, max(30, int(np.sqrt(totals.size) / 2)))
+        panel.hist(totals, bins=bins, density=True, color=PALETTE[0],
                    alpha=0.75, edgecolor='none')
 
         low, _, median, _, high = _band(totals)
@@ -455,19 +475,19 @@ def figure_pdf(run, element: str, deterministic: pd.DataFrame | None,
     for panel in panels[len(panels_with_data):]:
         panel.axis('off')
 
-    figure.suptitle(f'{element} recovered — the distribution, not a number',
+    figure.suptitle(f'{element} recovered per year',
                     color=colours['title'], fontsize=13, fontweight='bold',
                     x=0.01, ha='left')
     figure.text(0.01, 0.945,
-                'solid line: Monte Carlo mean    dashed: deterministic run at the '
-                'modes    shaded: 90% interval',
+                'solid: Monte Carlo mean    dashed: deterministic    '
+                'shaded: 95% interval',
                 color=colours['meta'], fontsize=8.5, ha='left')
     figure.tight_layout(rect=[0, 0, 1, 0.93])
     return figure
 
 
 def _deterministic_recovered(deterministic, run, element: str, year) -> float | None:
-    recovered = [f for f in terminal_flows(run) if 'loss' not in f.lower()]
+    recovered = recovered_flows(run, run.case)
     rows = deterministic[(deterministic['Stock/Flow ID'].isin(recovered))
                          & (deterministic['Layer 4'] == element)
                          & (deterministic['Year'].astype(str) == str(year))]
