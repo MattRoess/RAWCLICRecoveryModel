@@ -9,24 +9,34 @@ Run everything and say, in one line, whether it is all still working.
 Run it after changing anything -- a coefficient, a setting, the flow network,
 the code. It is the answer to "did I break something".
 
-WHAT IT RUNS
-------------
-1. The five test suites in `tests/`. These pin behaviour that must not move:
-   the deterministic answer, the sampler against the mathematics, the Monte
-   Carlo against the deterministic model, unit conversion, and the handling of
-   incomplete composition.
+TWO SEPARATE QUESTIONS, ANSWERED SEPARATELY
+-------------------------------------------
+    THE CODE   is the model still correct?
+    YOUR CASE  is the table you are editing still valid?
 
-2. The pipeline itself, on the case in `src/params_schema.py`, exactly as you
-   would run it. A suite can pass while the actual thing is broken -- the tests
-   use the reference cases, and the real case has its own data, settings and
-   coefficients.
+They are kept apart because transfer coefficients change constantly, and a
+half-edited table must not look like broken code.
 
-3. Mass balance on the result: what enters must equal what leaves, in every
-   year. That is the one check that says the numbers mean something rather
-   than merely that nothing raised.
+**The code checks never read your case.** The five suites in `tests/` run
+entirely against the fixed fixtures in `data_folder/reference/`, with their own
+years and their own unit pinned, so nothing you do to TCs.csv -- editing it,
+emptying it, deleting it -- can make them fail. If they pass, the model is
+sound whatever state your table is in.
 
-Nothing here writes to the repository except the figures and output files the
-stages write anyway.
+    ./.venv/bin/python 99_check_all.py --code
+
+runs only those, which is what you want while a coefficient table is
+half-written.
+
+The case checks then run the pipeline on the case in `src/params_schema.py`
+and check that mass balance closes. Those depend on your data by definition:
+they are asking whether the table is complete and consistent, not whether the
+code is. A failure there names your table, not the model.
+
+Neither section asserts any particular coefficient value. Mass balance holds
+for any well-formed table -- it is a property of the coefficients summing to 1,
+not of what they sum from -- so changing every number in TCs.csv leaves every
+check here still meaningful.
 """
 
 from __future__ import annotations
@@ -130,46 +140,60 @@ def mass_balance(params) -> tuple[bool, str]:
                 + ('' if ok else '  -- MASS IS NOT CONSERVED'))
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    code_only = '--code' in (argv if argv is not None else sys.argv[1:])
+
     try:
         params = current()
     except ParameterError as error:
         print(error, file=sys.stderr)
         return 1
 
-    print(f'Case   : {params.run.data_folder}')
-    print(f'Years  : {params.run.years or "all"}    '
-          f'Draws: {params.data.draws:,}    Unit: {params.run.working_unit}')
-
-    print('\nTest suites')
-    results = suites()
-    for name, ok, tail in results:
+    # ---- THE CODE -- nothing here touches your case or your coefficients ----
+    print('THE CODE   (fixed fixtures; independent of your TCs.csv)')
+    code = suites()
+    for name, ok, tail in code:
         print(f'  {"ok  " if ok else "FAIL"}  {name:<24} {tail}')
+    code_failed = [name for name, ok, _ in code if not ok]
 
-    print('\nPipeline, on the real case')
-    stage_results = pipeline(params)
-    for name, ok, tail in stage_results:
-        print(f'  {"ok  " if ok else "FAIL"}  {name:<24} {tail[:78]}')
-    results += stage_results
+    if code_only:
+        print()
+        print(f'{len(code_failed)} of {len(code)} FAILED: {", ".join(code_failed)}'
+              if code_failed else f'The code is sound: all {len(code)} checks passed.')
+        return 1 if code_failed else 0
 
-    print('\nMass balance')
+    # ---- YOUR CASE -- depends on your data, and is meant to -----------------
+    print(f'\nYOUR CASE  {params.run.data_folder}')
+    print(f'           years {params.run.years or "all"}, {params.data.draws:,} draws, '
+          f'{params.run.working_unit}, domains '
+          f'{", ".join(params.data.import_domains) or "all"}')
+    stages = pipeline(params)
+    for name, ok, tail in stages:
+        print(f'  {"ok  " if ok else "FAIL"}  {name:<24} {tail[:76]}')
+
     # Only meaningful if the run that produced the summary actually succeeded.
     # Reading it after a failed pipeline checks the PREVIOUS run's file and
     # reports "ok" for a case that did not solve at all.
-    if all(passed for _, passed, _ in stage_results):
+    if all(ok for _, ok, _ in stages):
         ok, detail = mass_balance(params)
     else:
         ok, detail = False, 'not checked -- the pipeline did not complete'
+    print(f'  {"ok  " if ok else "FAIL"}  {"mass balance":<24} {detail}')
+    case = stages + [('mass balance', ok, detail)]
+    case_failed = [name for name, passed, _ in case if not passed]
 
-    print(f'  {"ok  " if ok else "FAIL"}  {"in == out":<24} {detail}')
-    results.append(('mass balance', ok, detail))
-
-    failed = [name for name, passed, _ in results if not passed]
     print()
-    if failed:
-        print(f'{len(failed)} of {len(results)} FAILED: {", ".join(failed)}')
+    if code_failed:
+        print(f'THE CODE IS BROKEN: {", ".join(code_failed)}')
+        if case_failed:
+            print('  (the case failures below are probably a consequence)')
         return 1
-    print(f'All {len(results)} checks passed.')
+    if case_failed:
+        print(f'The code is sound. YOUR CASE has {len(case_failed)} problem(s): '
+              f'{", ".join(case_failed)}')
+        print('  Your data or coefficients, not the model. Fix the table and run again.')
+        return 1
+    print(f'All {len(code) + len(case)} checks passed -- code and case.')
     return 0
 
 
