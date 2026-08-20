@@ -5,6 +5,7 @@
 @Date: 24.03.2024
 """
 # %%
+import numpy as np
 import pandas as pd
 import os
 from typing import List
@@ -12,6 +13,7 @@ from dataclasses import dataclass
 import networkx as nx
 from itertools import product
 
+from src.process_join import (INFLOW_POSITION, LAYERS, TC_POSITION, process_pairs)
 from src.selection import chosen_scenario, chosen_years, is_year_match as _is_year_match, select
 from src.tc_precedence import apply_precedence
 from src.validate_inputs import validate
@@ -36,6 +38,12 @@ class InputDataFormat:
     composition_columns = ['Stock/ID','Layer 1','Layer 2','Layer 3','Layer 4', 'Value']
 
     optional_columns = ['Location','Year','Scenario','additionalSpecification']
+
+    # Carried through to the Monte Carlo when present, ignored otherwise, so a
+    # table with ranges and one without both load. See documentation/
+    # DESIGN_tc_table.md section 2 and src/sampling.py.
+    uncertainty_columns = ['value_min', 'value_max', 'is_residual',
+                           'process', 'technology']
 
     dtypes = {
             'Stock/Flow ID': str,
@@ -174,7 +182,15 @@ class RecoveryModelOptimized:
 
             inflows_df_selection = inflows_df_selection[InputDataFormat.input_columns].replace('n/a','')
             composition_df_selection = composition_df_selection[InputDataFormat.composition_columns].replace('n/a','')
-            tcs_df_selection = tcs_df_selection[InputDataFormat.TCs_columns].replace('n/a','')
+            # The mandatory columns, plus any uncertainty columns the table
+            # carries. Narrowing to the mandatory list alone silently dropped
+            # value_min and value_max, so a table with ranges reached the Monte
+            # Carlo looking deterministic and every draw came back identical --
+            # a failure that produces plausible numbers and announces nothing.
+            kept = InputDataFormat.TCs_columns + [
+                column for column in InputDataFormat.uncertainty_columns
+                if column in tcs_df_selection.columns]
+            tcs_df_selection = tcs_df_selection[kept].replace('n/a','')
 
             input_dfs.append({
                 "Year":year,
@@ -365,69 +381,36 @@ class RecoveryModelOptimized:
     @staticmethod
     def solve_process(process_tcs: pd.DataFrame, process_inflow: pd.DataFrame) -> pd.DataFrame:
         """
-        Use the flows into a specific process together with the TCs for that process to determine the outflows of that process.
+        The outflows of one process: its inflow rows, each scaled by the
+        coefficient that applies to it.
+
+        Which coefficient applies to which row is decided by
+        `src/process_join.py`, not here, so that the Monte Carlo solve pairs
+        exactly the same rows with exactly the same coefficients. Everything
+        this function still owns is the arithmetic: multiply, and drop the
+        rows that came out zero.
         """
-        def process_outflow(process_inflow: pd.DataFrame, tcs: pd.DataFrame, input_layer: str, target_layer: str):
-            """
-            Apply all TCs for the given input layer and target layer.
-            """
-            if input_layer==target_layer:
-                # A same-layer TC carries a resource to another flow unchanged --
-                # a component does not turn into a different component -- so the
-                # two keys must name the same resource, which the loader enforces
-                # (DEFECTS.md 2.5). Match on Input_layer_key: matching on
-                # TC_target_key instead, as this did, moved the WRONG resource
-                # whenever the two keys differed, silently and by whatever the
-                # two happened to hold.
-                tcs_layer = tcs[(tcs["Input_layer"]==input_layer)&(tcs["TC_target_layer"]==target_layer)][["Input_layer_key","value"]]
-                tcs_layer = tcs_layer.rename(columns={"Input_layer_key": input_layer, "value": "TC"})
-                process_outflow = process_inflow.merge(tcs_layer, on=[input_layer], how='left')
-            else:
-                tcs_layer = tcs[(tcs["Input_layer"]==input_layer)&(tcs["TC_target_layer"]==target_layer)][["Input_layer_key","TC_target_key","value"]]
-                
-                # This snippet of code fills the data gaps when the Input_layer_key is left empty.
-                if int(target_layer[-1])-int(input_layer[-1])==1: # if the layers follow each other, e.g Layer 1->Layer 2
-                    unique_list = process_inflow[input_layer].unique().tolist()
-                    tcs_layer['Input_layer_key'] = tcs_layer['Input_layer_key'].apply(lambda x: unique_list if x == '' else x)
-                    tcs_layer = tcs_layer.explode('Input_layer_key')
-                    tcs_layer = tcs_layer.drop_duplicates(subset=['TC_target_key', 'Input_layer_key'])
+        tcs = process_tcs.reset_index(drop=True)
+        tcs = tcs.assign(**{TC_POSITION: np.arange(len(tcs))})
 
-                # This snippet is taken from chatgpt, i have no idea but it works
-                if tcs_layer['Input_layer_key'].eq('').any():
-                    # Apply the TC to **all rows** of that input layer
-                    keys_to_expand = process_inflow[input_layer].dropna().unique().tolist()
-                    tcs_layer = tcs_layer.copy()
-                    tcs_layer['Input_layer_key'] = tcs_layer['Input_layer_key'].replace('', None)
-                    tcs_layer = tcs_layer.explode('Input_layer_key')
-                    tcs_layer = pd.concat([
-                        tcs_layer[tcs_layer['Input_layer_key'].notna()],
-                        pd.DataFrame([
-                            {'Input_layer_key': key, 'TC_target_key': row['TC_target_key'], 'value': row['value']}
-                            for _, row in tcs_layer[tcs_layer['Input_layer_key'].isna()].iterrows()
-                            for key in keys_to_expand
-                        ])
-                    ], ignore_index=True)
-                
-                
-                tcs_layer.rename(columns={"Input_layer_key": input_layer, "TC_target_key": target_layer, "value": "TC"}, inplace=True)
-                process_outflow = process_inflow.merge(tcs_layer, on=[input_layer, target_layer], how='left')
-            # Rows with no matching TC get a TC of 0, i.e. none of that resource is
-            # transferred. This must be an assignment, not fillna(inplace=True): under
-            # copy-on-write the inplace form silently does nothing, leaving the TC as
-            # NaN. The Value!=0 filter below then prunes nothing and the intermediate
-            # result grows 16x per process step.
-            process_outflow["TC"] = process_outflow["TC"].fillna(0)
-            process_outflow["Value"] *= process_outflow["TC"]
-            return process_outflow[process_outflow["Value"]!=0.0].drop(columns=["TC"])
+        inflow = process_inflow.reset_index(drop=True)
+        inflow = inflow.assign(**{INFLOW_POSITION: np.arange(len(inflow))})
 
-        process_outflows = []
-        for in_layer in ["Layer 1","Layer 2","Layer 3","Layer 4"]:
-            for out_layer in ["Layer 1","Layer 2","Layer 3","Layer 4"]:
-                process_outflow_iter = process_outflow(process_inflow, process_tcs, in_layer, out_layer)
-                process_outflows.append(process_outflow_iter)
+        pairs = process_pairs(tcs, inflow[LAYERS + [INFLOW_POSITION]])
+        if pairs.empty:
+            return pd.DataFrame({**{layer: pd.Series(dtype='object') for layer in LAYERS},
+                                 'Value': pd.Series(dtype='float64')})
 
-        return pd.concat(process_outflows, ignore_index=True)
+        values = (inflow['Value'].to_numpy(dtype=float)[pairs[INFLOW_POSITION].to_numpy()]
+                  * tcs['value'].to_numpy(dtype=float)[pairs[TC_POSITION].to_numpy()])
 
+        outflow = pairs[LAYERS].copy()
+        outflow['Value'] = values
+        # A coefficient of exactly zero contributes nothing and is dropped, which
+        # is what keeps the intermediate frames small (DEFECTS.md 1.3). Rows with
+        # no matching coefficient never appeared in the first place: a missing
+        # coefficient is the absence of a route, not a transfer of nothing.
+        return outflow[outflow['Value'] != 0.0].reset_index(drop=True)
 
 class HelperFunctions:
     @staticmethod
