@@ -208,7 +208,9 @@ class RecoveryModelOptimized:
         """
         Solve all entries in the variable self.input_data. Creates an output file where the solution is stored.
         """
-        full_solution = pd.DataFrame(columns=["Year","Scenario","Location","additionalSpecification","Stock/Flow ID","Layer 1","Layer 2","Layer 3","Layer 4","Value"])
+        columns = ["Year", "Scenario", "Location", "additionalSpecification",
+                   "Stock/Flow ID", "Layer 1", "Layer 2", "Layer 3", "Layer 4", "Value"]
+        solutions = []
         for entry in self.input_data:
             # Solve the system for a specific year, location, scenario and additionalSpecification
             solution = self.solve_model(
@@ -221,8 +223,18 @@ class RecoveryModelOptimized:
             solution['Location'] = entry['Location']
             solution['additionalSpecification'] = entry['additionalSpecification']
 
-            # Add the solution to the full output file
-            full_solution = pd.concat([full_solution, solution],ignore_index=True)
+            solutions.append(solution)
+
+        # Collected and concatenated once, rather than concatenated onto an empty
+        # frame inside the loop. That older form did two harmful things: it was
+        # quadratic in the number of year/scenario cells, and seeding from
+        # pd.DataFrame(columns=[...]) made every column object dtype -- so Value
+        # came back as boxed Python floats, which survives the CSV round trip
+        # unnoticed and defeats every numpy fast path (DEFECTS.md 3.4).
+        full_solution = (pd.concat(solutions, ignore_index=True) if solutions
+                         else pd.DataFrame({name: pd.Series(dtype='float64' if name == 'Value'
+                                                            else 'object')
+                                            for name in columns}))
 
         # Sort the result, and select only the relevant columns and rows.
         full_solution = full_solution.sort_values(by=['Year','Scenario', 'Location','additionalSpecification', 'Stock/Flow ID', 'Layer 1','Layer 2','Layer 3','Layer 4'])

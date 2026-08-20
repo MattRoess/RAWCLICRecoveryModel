@@ -359,7 +359,9 @@ class RecoveryModelLA:
         Solve all entries in the variable self.input_matrices, which contains the model matrices
         for every year, location, scenario and additionalSpecification Creates an ouput CSV where the solutions are stored.
         """
-        full_solution = pd.DataFrame(columns=["Year","Scenario","Location","additionalSpecification","Stock/Flow ID","Layer 1","Layer 2","Layer 3","Layer 4","Value"])
+        columns = ["Year", "Scenario", "Location", "additionalSpecification",
+                   "Stock/Flow ID", "Layer 1", "Layer 2", "Layer 3", "Layer 4", "Value"]
+        solutions = []
         for entry in self.input_matrices:
             solution = self.solve_model(
                 inflows_vector=entry["inflows_vector"],
@@ -370,7 +372,16 @@ class RecoveryModelLA:
             solution['Scenario'] = entry['Scenario']
             solution['Location'] = entry['Location']
             solution['additionalSpecification'] = entry['additionalSpecification']
-            full_solution = pd.concat([full_solution, solution],ignore_index=True)
+            solutions.append(solution)
+
+        # Concatenated once. Seeding from pd.DataFrame(columns=[...]) and growing
+        # it in the loop made every column object dtype, so Value came back as
+        # boxed Python floats (DEFECTS.md 3.4). Same fix as the optimized engine,
+        # so the two keep returning the same thing.
+        full_solution = (pd.concat(solutions, ignore_index=True) if solutions
+                         else pd.DataFrame({name: pd.Series(dtype='float64' if name == 'Value'
+                                                            else 'object')
+                                            for name in columns}))
 
         # Sort the result, and select only the relevant columns.
         full_solution = full_solution.sort_values(by=['Year','Scenario', 'Location','additionalSpecification','Stock/Flow ID', 'Layer 1','Layer 2','Layer 3','Layer 4'])

@@ -1,0 +1,385 @@
+"""
+src/sampling.py
+===============
+
+Drawing transfer coefficients from their asymmetric triangular ranges.
+
+This module is the whole of the "what value does a coefficient take on draw i"
+question. It does not touch the flow network; `src/monte_carlo.py` does that.
+
+THE DISTRIBUTION
+----------------
+A coefficient is given as three numbers -- `value_min` (a), `value` (c, the
+mode) and `value_max` (b) -- with a <= c <= b. The mode sits off-centre, which
+is the point: expert judgement about a recovery yield is rarely symmetric.
+
+The triangular density is
+
+    f(x) = 2(x - a) / ((b - a)(c - a))     a <= x <  c
+    f(x) = 2(b - x) / ((b - a)(b - c))     c <= x <= b
+
+and its distribution function is
+
+    F(x) = (x - a)^2 / ((b - a)(c - a))            a <= x <= c
+    F(x) = 1 - (b - x)^2 / ((b - a)(b - c))        c <  x <= b
+
+Sampling is by inverse transform: draw u uniform on [0, 1) and invert F. With
+F(c) = (c - a) / (b - a),
+
+    x = a + sqrt(u (b - a)(c - a))            u <  F(c)
+    x = b - sqrt((1 - u)(b - a)(b - c))       u >= F(c)
+
+Inverse transform is used rather than numpy's `Generator.triangular` because
+this way the value of draw i depends only on u_i, so it survives chunking and
+reordering -- see SEEDING below. The two are checked against each other, and
+against scipy's independent implementation, in `test_sampling.py`.
+
+BOUNDS OUTSIDE [0, 1]
+---------------------
+A transfer coefficient is a fraction of a resource, so it cannot be negative
+and cannot exceed one. An elicited range that runs past either end is not an
+error in the judgement, it is the judgement bumping into the physical limit:
+"somewhere around 0.05, could be nothing at all" is naturally written as
+-0.02 to 0.15.
+
+So a bound outside [0, 1] is pulled back to the boundary rather than refused.
+`clamp_bounds` does it, and says what it changed. Note the consequence: pulling
+a to 0 makes the distribution steeper on that side, because the same probability
+mass now sits in a narrower interval. That is the correct reading of a bound
+that was never physically reachable.
+
+Ordering is still enforced after clamping. a <= c <= b is not a range problem
+that a boundary can fix -- a mode outside its own bounds means the three numbers
+disagree about what they describe, and that is refused.
+
+SEEDING
+-------
+Draw i of a given coefficient is the same number no matter how the run is
+chunked, how many draws are asked for, or what order the table is in. Two
+things make that true:
+
+  * each coefficient gets its own stream, keyed by a stable hash of its
+    identity -- not by its position in the file, which changes when a row is
+    added; and
+  * a chunk starting at draw `start` advances that stream by exactly `start`
+    before drawing, rather than continuing from wherever the last chunk left
+    off.
+
+This is what lets two scenarios be compared: the same draw index means the same
+underlying u in both, so the difference between them is the scenario and not
+noise.
+
+THE SUM-TO-1 CONSTRAINT
+-----------------------
+Coefficients are constrained in groups: everything a single resource can turn
+into, across all the output flows it reaches (`RESOURCE` in
+`src/mass_balance.py`). Sampling each member independently does not respect it.
+
+A group is treated as constrained **only if its modes already sum to 1**. That
+is deliberate. In a table with explicit loss flows every group sums to 1 and
+every group is constrained. In a table without them a group sums to whatever it
+sums to -- 0.25, say -- and forcing that to 1 would not conserve mass, it would
+invent recovery fourfold. Sum-to-1 is a property a well-formed table has, not
+one this module may impose on a table that lacks it.
+
+See documentation/DESIGN_monte_carlo.md section 4 for the two ways to enforce
+it and what each costs.
+"""
+from __future__ import annotations
+
+import hashlib
+
+import numpy as np
+import pandas as pd
+
+# A resource is where it comes from and what it becomes. Output_FlowID is
+# absent on purpose: that is the axis a constrained group sums over. Imported
+# rather than redefined so that the grouping the sampler constrains is the same
+# one 02_check_mass_balance.py reports on.
+from src.mass_balance import RESOURCE
+
+# How close to 1 a group's modes must sum before it is treated as constrained.
+# Loose enough for the rounding in a hand-written table, tight enough that a
+# group summing to 0.99 by intent is not silently rescaled.
+SUM_TOLERANCE = 1e-6
+
+MIN_COLUMN = 'value_min'
+MODE_COLUMN = 'value'
+MAX_COLUMN = 'value_max'
+
+# Optional column naming the row that absorbs the rounding in a constrained
+# group -- normally the loss flow. See `enforce_sum_to_one`.
+RESIDUAL_COLUMN = 'is_residual'
+
+
+class SamplingError(ValueError):
+    """Raised when a coefficient's three numbers cannot describe a distribution."""
+
+
+def clamp_bounds(tcs: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+    """
+    Pull every bound into [0, 1], and report what moved.
+
+    A coefficient is a fraction, so a bound outside [0, 1] names a value the
+    quantity cannot take. Clamping is the documented behaviour, not a silent
+    repair, so the second return value lists every change in full.
+
+    Returns:
+        The table with bounds clamped, and one line per row that changed.
+    """
+    if MIN_COLUMN not in tcs.columns or MAX_COLUMN not in tcs.columns:
+        return tcs, []
+
+    tcs = tcs.copy()
+    notes: list[str] = []
+
+    for column in (MIN_COLUMN, MODE_COLUMN, MAX_COLUMN):
+        original = tcs[column].astype(float)
+        clamped = original.clip(0.0, 1.0)
+        for position in np.flatnonzero((original != clamped).to_numpy()):
+            row = tcs.iloc[position]
+            notes.append(
+                f"{row['Input_FlowID']} {row['Input_layer_key']} -> "
+                f"{row['Output_FlowID']} {row['TC_target_key']}: "
+                f"{column} {original.iloc[position]:g} -> {clamped.iloc[position]:g}")
+        tcs[column] = clamped
+
+    return tcs, notes
+
+
+def check_ordering(tcs: pd.DataFrame) -> None:
+    """
+    Refuse a row whose three numbers do not satisfy min <= mode <= max.
+
+    Clamping cannot fix this. A mode above its own maximum is not a bound that
+    overshot a physical limit, it is three numbers that disagree about what they
+    describe, and guessing which one is wrong would be inventing data.
+    """
+    if MIN_COLUMN not in tcs.columns or MAX_COLUMN not in tcs.columns:
+        return
+
+    low = tcs[MIN_COLUMN].astype(float)
+    mode = tcs[MODE_COLUMN].astype(float)
+    high = tcs[MAX_COLUMN].astype(float)
+    broken = tcs[(low > mode) | (mode > high)]
+    if len(broken):
+        lines = [f"  {row['Input_FlowID']} {row['Input_layer_key']} -> "
+                 f"{row['Output_FlowID']} {row['TC_target_key']}: "
+                 f"min {row[MIN_COLUMN]:g}, mode {row[MODE_COLUMN]:g}, max {row[MAX_COLUMN]:g}"
+                 for _, row in broken.iterrows()]
+        raise SamplingError(
+            f'{len(broken)} transfer coefficient(s) do not satisfy '
+            f'min <= mode <= max, after bounds were clamped into [0, 1]:\n'
+            + '\n'.join(lines)
+            + '\n\nCorrect the three numbers in TCs.csv. They cannot all be right.')
+
+
+def triangular_quantile(low, mode, high, u):
+    """
+    The inverse distribution function of the triangular distribution.
+
+    Vectorised and shape-broadcasting: `low`, `mode` and `high` are per
+    coefficient, `u` is per (coefficient, draw).
+
+    Args:
+        low:  a, the smallest value the coefficient can take
+        mode: c, the most likely value
+        high: b, the largest value
+        u:    uniform variates on [0, 1)
+
+    Returns:
+        Values distributed Triangular(a, c, b), the same shape as `u`.
+    """
+    low = np.asarray(low, dtype=np.float64)
+    mode = np.asarray(mode, dtype=np.float64)
+    high = np.asarray(high, dtype=np.float64)
+    u = np.asarray(u, dtype=np.float64)
+
+    width = high - low
+    # A zero-width range is a point mass, not a distribution. Guard the division
+    # rather than special-casing afterwards, so the branch arithmetic below
+    # never sees a divide by zero and never produces a NaN to clean up.
+    safe_width = np.where(width > 0, width, 1.0)
+    split = (mode - low) / safe_width          # F(c), the share of mass below the mode
+
+    lower = low + np.sqrt(u * width * (mode - low))
+    upper = high - np.sqrt((1.0 - u) * width * (high - mode))
+
+    drawn = np.where(u < split, lower, upper)
+    return np.where(width > 0, drawn, np.broadcast_to(low, np.shape(drawn)))
+
+
+def _stream_key(row: pd.Series) -> int:
+    """
+    A stable 64-bit seed for one coefficient's own random stream.
+
+    Built from the identity of the coefficient -- which resource, moving from
+    where to where -- so that adding, removing or reordering rows in TCs.csv
+    does not change the draws for any other row.
+
+    Python's built-in hash() is deliberately not used: it is randomised per
+    process, so it would give different numbers on every run.
+    """
+    identity = '|'.join(str(row[column]) for column in
+                        ('Input_FlowID', 'Input_layer', 'Input_layer_key',
+                         'Output_FlowID', 'TC_target_layer', 'TC_target_key'))
+    digest = hashlib.blake2b(identity.encode('utf-8'), digest_size=8).digest()
+    return int.from_bytes(digest, 'big')
+
+
+def uniforms(tcs: pd.DataFrame, draws: int, start: int = 0, seed: int = 0) -> np.ndarray:
+    """
+    Uniform variates, one row per coefficient and one column per draw.
+
+    Each coefficient draws from its own stream, advanced to `start`, so that
+    draw i is the same value whatever chunk it arrives in. Verified in
+    `test_sampling.py`: a chunked run reproduces a single run exactly.
+
+    Args:
+        tcs:   the coefficient table, one row per coefficient
+        draws: how many draws this chunk covers
+        start: index of the first draw in this chunk
+        seed:  shifts every stream together, for a genuinely independent repeat
+
+    Returns:
+        Array of shape (len(tcs), draws), values on [0, 1).
+    """
+    out = np.empty((len(tcs), draws), dtype=np.float64)
+    for position, (_, row) in enumerate(tcs.iterrows()):
+        bit_generator = np.random.PCG64(_stream_key(row) ^ np.uint64(seed))
+        if start:
+            # Advance rather than generate-and-discard: same result, but O(1)
+            # instead of O(start), which matters when start is 190,000.
+            bit_generator = bit_generator.advance(start)
+        out[position] = np.random.Generator(bit_generator).random(draws)
+    return out
+
+
+def constrained_groups(tcs: pd.DataFrame) -> dict[tuple, np.ndarray]:
+    """
+    Which coefficients must sum to 1 together, by row position.
+
+    A group is everything one resource turns into, across the output flows it
+    reaches. It is included **only if its modes already sum to 1** -- a table
+    without explicit loss flows has groups summing to well under 1, and forcing
+    those to 1 would invent recovery rather than conserve mass.
+
+    Returns:
+        {group key: array of row positions}, only for constrained groups.
+    """
+    positions = np.arange(len(tcs))
+    groups: dict[tuple, np.ndarray] = {}
+    for key, index in tcs.groupby(RESOURCE, sort=False).indices.items():
+        members = positions[index] if index.dtype != np.intp else index
+        if abs(float(tcs.iloc[members][MODE_COLUMN].sum()) - 1.0) <= SUM_TOLERANCE:
+            groups[key] = np.asarray(members)
+    return groups
+
+
+def enforce_sum_to_one(values: np.ndarray, groups: dict[tuple, np.ndarray],
+                       residual: np.ndarray | None = None) -> tuple[np.ndarray, int]:
+    """
+    Make each constrained group sum to exactly 1 on every draw.
+
+    Two ways, per documentation/DESIGN_monte_carlo.md section 4:
+
+    * **Residual** -- when the group names one row as the residual, the others
+      keep the values they were drawn with and the residual takes 1 - their
+      sum. This is the right causal direction where the residual is a loss
+      flow: loss is whatever was not recovered, and it is the term with the
+      weakest independent data. It leaves the marginals of the coefficients
+      that *do* have data undistorted.
+
+    * **Normalise** -- otherwise, divide the group by its own sum. This always
+      works and needs nothing added to the table, at the cost of shifting every
+      marginal off the triangular it was drawn from.
+
+    A residual coming out negative means the sampled recovery fractions summed
+    past 1, which is physically impossible and says the input ranges are wrong.
+    It is counted and returned, never silently clipped.
+
+    Args:
+        values:   (n_coefficients, n_draws), as drawn
+        groups:   from `constrained_groups`
+        residual: boolean per row, True for a row that absorbs the remainder
+
+    Returns:
+        The corrected values, and how many (group, draw) pairs went negative.
+    """
+    values = values.copy()
+    negatives = 0
+
+    for members in groups.values():
+        block = values[members]
+
+        if residual is not None and residual[members].any():
+            which = np.flatnonzero(residual[members])
+            if len(which) > 1:
+                raise SamplingError(
+                    f'A constrained group names {len(which)} residual rows; '
+                    f'at most one row per group may carry {RESIDUAL_COLUMN}.')
+            others = np.setdiff1d(np.arange(len(members)), which)
+            remainder = 1.0 - block[others].sum(axis=0)
+            negatives += int((remainder < 0).sum())
+            block[which[0]] = remainder
+        else:
+            total = block.sum(axis=0)
+            # A group whose draws all came out zero cannot be normalised. It can
+            # only happen if every member has max 0, which the mode sum check
+            # above already excludes, but dividing by it would poison the array
+            # with NaN rather than failing loudly, so it is guarded.
+            block = np.divide(block, total, out=np.zeros_like(block),
+                              where=total > 0)
+
+        values[members] = block
+
+    return values, negatives
+
+
+def sample(tcs: pd.DataFrame, draws: int, start: int = 0, seed: int = 0
+           ) -> tuple[np.ndarray, dict]:
+    """
+    Draw every transfer coefficient, respecting the sum-to-1 groups.
+
+    This is the entry point; the functions above are its steps, kept separate
+    so each can be checked against the mathematics on its own.
+
+    Args:
+        tcs:   coefficient table, with value_min / value / value_max
+        draws: how many draws this chunk covers
+        start: index of the first draw, for chunked runs
+        seed:  shifts every stream together
+
+    Returns:
+        (n_coefficients, draws) of sampled values, and a report describing what
+        was clamped, which groups are constrained, and any negative residuals.
+    """
+    if MIN_COLUMN not in tcs.columns or MAX_COLUMN not in tcs.columns:
+        # A deterministic table. Every draw is the mode, which is the honest
+        # answer: a coefficient given as one number has no spread to sample.
+        modes = tcs[MODE_COLUMN].to_numpy(dtype=np.float64)
+        return np.repeat(modes[:, None], draws, axis=1), {
+            'uncertain': False, 'clamped': [], 'groups': 0, 'negative_residuals': 0}
+
+    tcs, clamped = clamp_bounds(tcs)
+    check_ordering(tcs)
+
+    values = triangular_quantile(
+        tcs[MIN_COLUMN].to_numpy(dtype=np.float64),
+        tcs[MODE_COLUMN].to_numpy(dtype=np.float64),
+        tcs[MAX_COLUMN].to_numpy(dtype=np.float64),
+        uniforms(tcs, draws, start=start, seed=seed).T,
+    ).T
+
+    groups = constrained_groups(tcs)
+    residual = (tcs[RESIDUAL_COLUMN].astype(bool).to_numpy()
+                if RESIDUAL_COLUMN in tcs.columns else None)
+    values, negatives = enforce_sum_to_one(values, groups, residual)
+
+    return values, {
+        'uncertain': True,
+        'clamped': clamped,
+        'groups': len(groups),
+        'unconstrained': len(tcs.groupby(RESOURCE, sort=False)) - len(groups),
+        'negative_residuals': negatives,
+    }
