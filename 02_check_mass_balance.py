@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from src.mass_balance import report
 from src.params_schema import ParameterError, current
 from src.plot_structure import choose, find_cases
+from src.validate_inputs import InputDataError, validate
 
 
 def main(argv=None) -> int:
@@ -53,6 +54,15 @@ def main(argv=None) -> int:
         return 1
 
     folder = args.folder or (choose() if args.pick else params.run.data_folder)
+    # Check the tables before totalling them. Without this a freshly generated
+    # skeleton -- rows present, values blank -- reaches the arithmetic and comes
+    # back as a TypeError from inside pandas, naming neither the file nor the row.
+    try:
+        validate(folder)
+    except InputDataError as error:
+        print(error, file=sys.stderr)
+        return 1
+
     return 0 if report(folder) else 1
 
 

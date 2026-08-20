@@ -154,11 +154,46 @@ def _check_units(inputs: pd.DataFrame) -> list[Problem]:
     return problems
 
 
+def _check_coefficients_present(tcs: pd.DataFrame) -> list[Problem]:
+    """
+    Every transfer coefficient has to be a number.
+
+    A skeleton written by make_tc_skeleton.py has the rows and no values, which
+    is the point -- but it must be said plainly. Left to reach the arithmetic, a
+    blank value is read as the empty string and surfaces as
+    "unsupported operand type(s) for -: 'str' and 'int'" from somewhere deep in
+    pandas, naming neither the file nor the row.
+    """
+    if 'value' not in tcs.columns:
+        return [Problem('ERROR', '-', "TCs.csv has no 'value' column.")]
+
+    blank = tcs['value'].astype(str).str.strip() == ''
+    if not blank.any():
+        return []
+
+    total = int(blank.sum())
+    first = tcs[blank].iloc[0]
+    return [Problem(
+        'ERROR', '-',
+        f"TCs.csv: {total} of {len(tcs)} rows have no value. The first is row "
+        f"{int(blank.idxmax()) + 2}: {first['Input_FlowID']} "
+        f"{first['Input_layer_key']} -> {first['Output_FlowID']} "
+        f"{first['TC_target_key']}.\n"
+        f"    This is what a freshly generated skeleton looks like. Fill in "
+        f"value, and value_min/value_max if the coefficient is uncertain.")]
+
+
 def check(folder: str) -> list[Problem]:
     """Every problem with a case folder's three tables. Empty means clean."""
     inputs, composition, tcs = _load(folder)
     known = _known_keys(composition)
     problems: list[Problem] = []
+
+    # Before anything else: a table with no numbers in it cannot be checked for
+    # anything else, and every later check would fail confusingly.
+    blank = _check_coefficients_present(tcs)
+    if blank:
+        return blank
 
     # ---- 2.7  every key in inputs.csv has to name something -----------------
     # Checked as a (flow, product) PAIR, because composition is defined per flow
