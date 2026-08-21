@@ -26,6 +26,13 @@ WHAT IS CHECKED
 3. Mass balance closes on every year.
 4. The Monte Carlo runs on it and produces a spread.
 5. `rest` is derived for an incomplete parent, as it is for vehicles.
+6. The same fixture read with `child_layer = material` puts the children one
+   layer up, with no placeholder -- the 04_01 shape rather than the 04_02 one.
+
+The item is named in the case's own `source.csv`, never in `src/params_schema.py`.
+That is what lets 04_01 and 04_02 be different cases rather than different runs
+of the same settings, so this suite writes one and would fail if the reader
+went back to reading the settings instead.
 """
 
 from __future__ import annotations
@@ -91,19 +98,34 @@ def write_upstream(root: str) -> None:
                         (mass * share).astype(np.float32))
 
 
-def write_case(case: str) -> None:
+def write_case(case: str, child_layer: str = 'element') -> None:
     """The coefficients and the network, for a panel recycler."""
     os.makedirs(os.path.join(case, 'input_data'), exist_ok=True)
+
+    # What the case is, declared by the case. Deliberately NOT in the settings:
+    # a second case must be runnable without editing the first one's numbers.
+    pd.DataFrame([
+        dict(key='product', value=PRODUCT),
+        dict(key='inflow_flow_id', value=FLOW),
+        dict(key='flow', value='collected'),
+        dict(key='child_layer', value=child_layer),
+        dict(key='group_marker', value='__domain__'),
+        dict(key='material_suffix', value='_mixed'),
+        dict(key='groups', value=''),
+    ]).to_csv(os.path.join(case, 'input_data', 'source.csv'), index=False)
+
+    # A material-keyed case has no element layer to key on.
+    finest = 'element' if child_layer == 'element' else 'material'
     pd.DataFrame([
         dict(Input_FlowID=FLOW, Output_FlowID='PV_delaminated', process='delamination',
              technology='thermal', keyed_at='component', is_loss=0, role='intermediate'),
         dict(Input_FlowID=FLOW, Output_FlowID='PV_loss_handling', process='delamination',
              technology='thermal', keyed_at='component', is_loss=1, role='loss'),
         dict(Input_FlowID='PV_delaminated', Output_FlowID='PV_recovered',
-             process='leaching', technology='hydro', keyed_at='element',
+             process='leaching', technology='hydro', keyed_at=finest,
              is_loss=0, role='recovered'),
         dict(Input_FlowID='PV_delaminated', Output_FlowID='PV_loss_leaching',
-             process='leaching', technology='hydro', keyed_at='element',
+             process='leaching', technology='hydro', keyed_at=finest,
              is_loss=1, role='loss'),
     ]).to_csv(os.path.join(case, 'input_data', 'processes.csv'), index=False)
 
@@ -119,26 +141,25 @@ def settings(root: str, case_name: str) -> Params:
     params.data.inflow_draws_dir = '.'
     params.data.upstream_flow = 'collected'
     params.data.import_case = case_name
-    params.data.groups = ()
-    # The whole point: the item is named in the settings, not in the code.
-    params.data.product = PRODUCT
-    params.data.inflow_flow_id = FLOW
-    params.data.material_suffix = '_mixed'
+    # NOT set here: product, inflow_flow_id, groups, material_suffix,
+    # child_layer. Those come from the case's own source.csv, which is the
+    # whole point -- they are left at their vehicle defaults on purpose, so
+    # that a reader falling back to the settings names 'BEV' and fails loudly.
     params.data.draws = DRAWS
     return params
 
 
-def build_everything():
+def build_everything(child_layer: str = 'element'):
     """Set the whole thing up, and return (params, case folder, temp root)."""
     root = tempfile.mkdtemp()
     upstream = os.path.join(root, 'upstream')
     write_upstream(upstream)
 
-    case_name = 'pv_panels_test'
+    case_name = f'pv_panels_test_{child_layer}'
     case = os.path.join('data_folder', case_name)
     if os.path.isdir(case):
         shutil.rmtree(case)
-    write_case(case)
+    write_case(case, child_layer)
 
     params = settings(upstream, case_name)
     return params, case, root
@@ -212,6 +233,56 @@ def test_a_different_recovery_item_solves_and_closes() -> None:
         assert len(notes) == 2 * len(YEARS), \
             f'expected 2 incomplete groups x {len(YEARS)} years, got {len(notes)}'
 
+        solution = RecoveryModelOptimized(
+            data_folder=case, layer_names=NAMES, tables=tables,
+            working_unit=params.run.working_unit, years='',
+        ).solve_models_and_write_to_output()
+        solution['Value'] = pd.to_numeric(solution['Value'])
+
+        layers = ['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
+        depth = (solution[layers] != '').sum(axis=1)
+        for year, group in solution.assign(depth=depth).groupby('Year'):
+            def total(flow):
+                rows = group[group['Stock/Flow ID'] == flow]
+                return 0.0 if rows.empty else \
+                    rows[rows['depth'] == rows['depth'].min()]['Value'].sum()
+            entering = total(FLOW)
+            leaving = sum(total(f) for f in ('PV_recovered', 'PV_loss_leaching',
+                                             'PV_loss_handling'))
+            assert entering > 0, f'{year}: nothing entered'
+            assert abs(entering - leaving) / entering < 1e-9, \
+                f'{year}: {entering:g} in, {leaving:g} out'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_children_can_be_materials_instead_of_elements() -> None:
+    """
+    The 04_01 shape: the upstream child is a material, not an element.
+
+    Same fixture, same files, one line of source.csv different. The children
+    must land at Layer 3 with Layer 4 empty and no placeholder material
+    invented -- and the case must still solve and close.
+    """
+    from src.upstream import load
+
+    params, case, root = build_everything(child_layer='material')
+    try:
+        tables = load(params, params.run.data_folder, quiet=True)
+        composition = tables['composition']
+
+        assert set(composition['Layer 4']) == {''}, \
+            f"Layer 4 should be unused, found {sorted(set(composition['Layer 4']))}"
+
+        children = {e for group in ELEMENTS.values() for e in group}
+        at_three = set(composition['Layer 3']) - {''}
+        assert at_three == children, \
+            f'Layer 3 holds {sorted(at_three)}, expected {sorted(children)}'
+        assert not any(name.endswith('_mixed') for name in at_three), \
+            'a placeholder material was invented where the child is already one'
+
+        coefficients(case, composition)
         solution = RecoveryModelOptimized(
             data_folder=case, layer_names=NAMES, tables=tables,
             working_unit=params.run.working_unit, years='',

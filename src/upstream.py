@@ -68,17 +68,27 @@ class UpstreamError(FileNotFoundError):
     """Raised when the upstream draws are missing or do not cover the request."""
 
 
-def source_dir(params) -> str:
-    """Where the draws for this scenario live."""
+def source_dir(params, folder: str = '') -> str:
+    """Where the draws for this case's scenario live."""
+    from src import source as source_module
+    upstream_dir = (source_module.read(folder, params)['upstream_dir'] if folder
+                    else params.data.inflow_draws_dir)
     return os.path.normpath(os.path.join(
-        params.data.upstream_root, params.data.inflow_draws_dir,
-        params.run.scenario or 'BAU'))
+        params.data.upstream_root, upstream_dir, params.run.scenario or 'BAU'))
 
 
 def is_upstream_case(params, folder: str) -> bool:
-    """Whether this case folder is the one fed from upstream."""
-    return os.path.normpath(folder) == os.path.normpath(
-        os.path.join('data_folder', params.data.import_case))
+    """
+    Whether this case is fed from upstream.
+
+    A case says so by carrying a source.csv. That replaces matching a setting
+    against the folder name: with one recovery model per upstream stage, the
+    setting could only ever name one of them, so running another meant editing
+    it -- and forgetting to is how one stage's draws meet another's
+    coefficients without anything complaining.
+    """
+    from src import source as source_module
+    return source_module.exists(folder)
 
 
 def read_draws(folder: str, flow: str, group_marker: str = '__domain__'):
@@ -87,8 +97,11 @@ def read_draws(folder: str, flow: str, group_marker: str = '__domain__'):
     if not os.path.exists(years_path):
         raise UpstreamError(
             f'No upstream draws at {folder}.\n'
-            f'Stage 04_02 of RAWCLICStockAndFlow writes them when\n'
-            f'materials.bev_electronics_element_draws_years names at least one year.')
+            f'That path is upstream_root + this case\'s `upstream_dir` + the\n'
+            f'scenario. Check `upstream_dir` in the case\'s input_data/source.csv,\n'
+            f'and that the matching stage of RAWCLICStockAndFlow has run its\n'
+            f'year-sliced draw export -- each stage has its own switch naming\n'
+            f'which years to write.')
 
     years = np.load(years_path)
     flow_dir = os.path.join(folder, flow)
@@ -136,13 +149,24 @@ def wanted_years(available: np.ndarray, setting: str) -> list[int]:
 def build(years, domain_mass, element_mass, keep_years: list[int],
           draws: int, keep_groups: tuple[str, ...] = (),
           product: str = 'BEV', flow_id: str = 'F_collected',
-          material_suffix: str = '_mixed'):
+          material_suffix: str = '_mixed', child_layer: str = 'element'):
     """
     The inflow and composition tables, one set of rows per year.
 
     Means over draws. The model's arithmetic is linear in the inflow, so a
     deterministic run built on means is the honest central case; the spread is
     carried separately by the Monte Carlo.
+
+    `child_layer` says what the upstream child actually is, which differs by
+    stage and cannot be guessed from the files (src/source.py):
+
+        'element'   Cu within Wiring, from 04_02. The group's children are
+                    elements, so a placeholder material is inserted between
+                    them -- upstream has no material resolution there.
+
+        'material'  calAHSS within elvBIW, from 04_01. The group's children
+                    ARE materials, so they sit at Layer 3 and there is no
+                    placeholder and no element layer.
     """
     domains = sorted(domain_mass)
     if keep_groups:
@@ -168,22 +192,32 @@ def build(years, domain_mass, element_mass, keep_years: list[int],
                             'Value': product_total, 'Unit': 'kt'})
 
         for domain in sorted(totals):
-            material = f'{domain}{material_suffix}'
             base = {'Year': year, 'Stock/ID': flow_id, 'Layer 1': product,
                     'Layer 2': domain}
             composition_rows.append({**base, 'Layer 3': '', 'Layer 4': '',
                                      'Value': totals[domain] / product_total,
                                      'parameterCode': 'c-p'})
-            composition_rows.append({**base, 'Layer 3': material, 'Layer 4': '',
-                                     'Value': 1.0, 'parameterCode': 'm-c'})
-            for (element, in_domain), array in sorted(element_mass.items()):
+
+            if child_layer == 'element':
+                # A placeholder material, whole, so the children have something
+                # to be a share of. It carries no information.
+                material = f'{domain}{material_suffix}'
+                composition_rows.append({**base, 'Layer 3': material, 'Layer 4': '',
+                                         'Value': 1.0, 'parameterCode': 'm-c'})
+
+            for (child, in_domain), array in sorted(element_mass.items()):
                 if in_domain != domain:
                     continue
                 share = mean_of(array) / totals[domain]
-                if share > 0:
+                if share <= 0:
+                    continue
+                if child_layer == 'element':
                     composition_rows.append({**base, 'Layer 3': material,
-                                             'Layer 4': element, 'Value': share,
+                                             'Layer 4': child, 'Value': share,
                                              'parameterCode': 'e-m'})
+                else:
+                    composition_rows.append({**base, 'Layer 3': child, 'Layer 4': '',
+                                             'Value': share, 'parameterCode': 'm-c'})
 
     return pd.DataFrame(inflow_rows), pd.DataFrame(composition_rows), report
 
@@ -198,9 +232,12 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
     if not is_upstream_case(params, folder):
         return None
 
-    source = source_dir(params)
+    from src import source as source_module
+    described = source_module.read(folder, params)
+
+    source = source_dir(params, folder)
     years, domain_mass, element_mass = read_draws(
-        source, params.data.upstream_flow, params.data.group_marker)
+        source, described['flow'], described['group_marker'])
     keep_years = wanted_years(years, params.run.years)
 
     available = next(iter(domain_mass.values())).shape[0]
@@ -208,16 +245,17 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
 
     inflow, composition, report = build(
         years, domain_mass, element_mass, keep_years, draws,
-        tuple(params.data.groups), product=params.data.product,
-        flow_id=params.data.inflow_flow_id,
-        material_suffix=params.data.material_suffix)
+        described['groups'], product=described['product'],
+        flow_id=described['inflow_flow_id'],
+        material_suffix=described['material_suffix'],
+        child_layer=described['child_layer'])
 
     if not quiet:
         span = (f'{keep_years[0]}' if len(keep_years) == 1
                 else f'{keep_years[0]}-{keep_years[-1]} ({len(keep_years)} years)')
         print(f'Upstream  : {os.path.relpath(source)}')
-        print(f'            {params.data.upstream_flow}, {span}, {draws:,} draws, '
-              f'domains {", ".join(params.data.groups) or "all"}')
+        print(f'            {source_module.describe(described)}')
+        print(f'            {span}, {draws:,} draws')
         for year, totals in report.items():
             print(f'            {year}: {sum(totals.values()):,.4g} kt  '
                   + '  '.join(f'{d} {v:,.4g}' for d, v in sorted(totals.items())))

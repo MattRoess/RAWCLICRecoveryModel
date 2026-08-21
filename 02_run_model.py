@@ -74,7 +74,11 @@ def main(argv=None) -> int:
               f"to see what is available.", file=sys.stderr)
         return 1
 
-    solve_and_draw(folder, params, show_table=not args.quiet)
+    try:
+        solve_and_draw(folder, params, show_table=not args.quiet)
+    except UpstreamError as error:
+        print(error, file=sys.stderr)
+        return 1
     return 0
 
 

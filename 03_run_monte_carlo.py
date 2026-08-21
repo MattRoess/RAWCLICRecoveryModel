@@ -51,6 +51,7 @@ from src.bootstrap import ensure_venv
 ensure_venv()
 
 
+import argparse
 import os
 import sys
 
@@ -72,16 +73,16 @@ KEYS = ['Year', 'Stock/Flow ID', 'Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
 PERCENTILES = [2.5, 25, 50, 75, 97.5]
 
 
-def _tables(params):
+def _tables(params, folder):
     """The upstream frames, fetched quietly for a repeat call."""
-    return refresh(params, params.run.data_folder, quiet=True)
+    return refresh(params, folder, quiet=True)
 
 
-def deterministic_solution(params) -> pd.DataFrame:
+def deterministic_solution(params, folder) -> pd.DataFrame:
     """The single-value answer, for comparison. Every coefficient at its mode."""
     solution = RecoveryModelOptimized(
-        data_folder=params.run.data_folder, layer_names=LAYER_NAMES,
-        tables=_tables(params),
+        data_folder=folder, layer_names=LAYER_NAMES,
+        tables=_tables(params, folder),
     ).solve_models_and_write_to_output()
     solution['Value'] = pd.to_numeric(solution['Value'])
     solution['Year'] = solution['Year'].astype(str)
@@ -100,7 +101,12 @@ def summarise(run) -> pd.DataFrame:
     return summary
 
 
-def main() -> int:
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('folder', nargs='?', default=None,
+                        help='case folder to run; defaults to run.data_folder')
+    args = parser.parse_args(argv)
+
     try:
         params = current()
     except ParameterError as error:
@@ -111,13 +117,23 @@ def main() -> int:
         print('monte_carlo.enabled is False in src/params_schema.py. Nothing to do.')
         return 0
 
+    folder = args.folder or params.run.data_folder
+    if not os.path.isdir(folder):
+        print(f"There is no case folder called '{folder}'.", file=sys.stderr)
+        return 1
+
     draws = params.data.draws
-    print(f'Case      : {params.run.data_folder}')
+    print(f'Case      : {folder}')
     print(f'Draws     : {draws:,}  (seed {params.monte_carlo.seed})')
 
-    tables = refresh(params, params.run.data_folder)
     try:
-        run = solve_draws(params.run.data_folder, LAYER_NAMES, draws=draws,
+        tables = refresh(params, folder)
+    except UpstreamError as error:
+        print(error, file=sys.stderr)
+        return 1
+
+    try:
+        run = solve_draws(folder, LAYER_NAMES, draws=draws,
                           seed=params.monte_carlo.seed, tables=tables,
                           chunk=params.monte_carlo.chunk,
                           budget_gb=params.monte_carlo.memory_budget_gb,
@@ -161,14 +177,15 @@ def main() -> int:
             path = ' / '.join(x for x in row[['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']] if x)
             print(f'      {row["Stock/Flow ID"]:22s} {path:34s} {row["Value"]:>12,.1f}')
 
-    determined = deterministic_solution(params)
+    determined = deterministic_solution(params, folder)
     summary = summarise(run)
 
     merged = summary.merge(determined[KEYS + ['Value']].rename(
         columns={'Value': 'deterministic'}), on=KEYS, how='left')
 
-    model = RecoveryModelOptimized(data_folder=params.run.data_folder,
-                                   layer_names=LAYER_NAMES, tables=_tables(params))
+    model = RecoveryModelOptimized(data_folder=folder,
+                                   layer_names=LAYER_NAMES,
+                                   tables=_tables(params, folder))
     path = model.output_path('monte_carlo_summary.csv')
     merged.to_csv(path, index=False)
     print(f'\n{path}: {len(merged):,} rows')

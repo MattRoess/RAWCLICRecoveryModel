@@ -13,6 +13,7 @@ rather than from anyone's recollection.
 | [DESIGN_04_01_carcomposition.md](DESIGN_04_01_carcomposition.md) | What it would take to read stage 04_01 (car composition) as well as 04_02. Effort estimate, layer mapping, and a made-up TC table on the real component and material names. |
 | [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | The design problem for the Monte Carlo version: architecture, the compute budget, sampling asymmetric triangulars, and how to sample under the sum-to-1 constraint. **Built 2026-08-20** — see `src/monte_carlo.py`. |
 | [HANDOVER.md](HANDOVER.md) | Current state, decisions taken and why, open questions, and the recommended order of work. |
+| [CASES.md](CASES.md) | One model, one case per upstream stage. What `source.csv` says, and how to add 04_03 or 04_04 without touching the settings. |
 | [PARAMETER_REFERENCE.md](PARAMETER_REFERENCE.md) | Every setting, its current value, and what changing it does. Generated from `src/params_schema.py` — do not edit by hand; edit the settings file. |
 
 The input file format is specified in `../doc/User guide.docx` (Harmjan de
@@ -37,6 +38,15 @@ one, and the obvious one produces numbers that are not quantities.
 ```bash
 ./.venv/bin/python 03_run_monte_carlo.py
 ```
+
+Every stage takes the case folder as an optional argument, so switching
+between 04_01 and 04_02 is naming one and nothing else:
+
+```bash
+./.venv/bin/python 03_run_monte_carlo.py data_folder/carcomposition_mockup
+```
+
+See [CASES.md](CASES.md).
 
 Writes `monte_carlo_summary.csv` next to the case's other output, and five
 figures into `figures/`. Start with `mc_mode_vs_mean` — it says whether the

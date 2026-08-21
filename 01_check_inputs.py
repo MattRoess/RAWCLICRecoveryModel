@@ -70,7 +70,12 @@ def main(argv=None) -> int:
     # Check the tables before totalling them. Without this a freshly generated
     # skeleton -- rows present, values blank -- reaches the arithmetic and comes
     # back as a TypeError from inside pandas, naming neither the file nor the row.
-    tables = refresh(params, folder)
+    try:
+        tables = refresh(params, folder)
+    except UpstreamError as error:
+        print(error, file=sys.stderr)
+        return 1
+
     try:
         validate(folder, tables)
     except InputDataError as error:

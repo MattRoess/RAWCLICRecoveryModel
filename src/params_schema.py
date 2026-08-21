@@ -142,7 +142,33 @@ class RunParams:
 
 @dataclass
 class DataParams:
-    """Where the upstream Monte Carlo draws are read from."""
+    """
+    Where the upstream Monte Carlo draws are read from.
+
+    MOST OF THIS IS A DEFAULT, NOT THE ANSWER.
+    ------------------------------------------
+    There is one recovery case per upstream stage -- 04_01 car composition,
+    04_02 electronics, 04_03 and 04_04 to come -- and each reads a different
+    export with a different shape. So every setting below marked BY CASE is
+    really the case's business, and a case states it in its own file:
+
+        data_folder/<case>/input_data/source.csv
+
+    Running the other one is then naming it, with nothing here touched:
+
+        ./.venv/bin/python 02_run_model.py data_folder/carcomposition_mockup
+        ./.venv/bin/python 03_run_monte_carlo.py data_folder/bev_electronics
+
+    The values here are what a case gets if it says nothing. Keeping them is
+    what lets an older case with no source.csv keep working; relying on them
+    for a new one is how one stage's draws end up read with another stage's
+    coefficients, which is exactly the mistake nothing else would catch.
+    See src/source.py.
+
+    `upstream_root`, `draws` and `import_year` are NOT by case: where the
+    sibling repository is checked out, and how much of it to read, are
+    properties of this machine and this run, not of the study.
+    """
 
     # WHERE THE UPSTREAM PROJECT IS, as a path from this project's root.
     # The two repositories sit side by side, so the default works on any machine
@@ -153,22 +179,18 @@ class DataParams:
     # SAFE TO CHANGE: yes -- it must point at the RAWCLICStockAndFlow checkout.
     upstream_root: str = '../RAWCLICStockAndFlow'
 
-    # WHERE THE PER-ELEMENT INFLOW DRAWS ARE, under `upstream_root`.
-    # One `.npy` per element per flow, each of shape (draws, years), in kt.
+    # BY CASE (`upstream_dir` in source.csv).
+    # WHERE THE PER-CHILD INFLOW DRAWS ARE, under `upstream_root`.
+    # One `.npy` per child per flow, each of shape (draws, years), in kt.
     # The scenario named in `run.scenario` is appended to this path.
     #
-    # THIS DOES NOT EXIST YET, and that is the current blocker. Stage 04_02 of
-    # the upstream pipeline computes exactly these numbers -- vehicles per year
-    # times grams per vehicle, multiplied draw by draw so both uncertainties
-    # carry through -- but it only persists a *summary* pickle and its figures.
-    # The per-draw element arrays are discarded when it finishes.
-    #
-    # The fix belongs upstream, not here: 04_02 gains a step that writes them.
-    # Recomputing them in this project would mean duplicating 04_02's segment
-    # splitting and draw pairing, and that pipeline's own header records three
-    # separate occasions where a stage reconstructed another stage's numbers and
-    # diverged silently. Read the real draws; do not re-derive them.
-    # SAFE TO CHANGE: yes -- it must name the folder 04_02 writes them to.
+    # These are written by a year-sliced export step in the upstream stage --
+    # built for 04_02, to be mirrored for the others. Recomputing them here
+    # would mean duplicating that stage's segment splitting and draw pairing,
+    # and that pipeline's own header records three separate occasions where a
+    # stage reconstructed another stage's numbers and diverged silently.
+    # Read the real draws; do not re-derive them.
+    # SAFE TO CHANGE: yes -- but prefer saying it in the case's source.csv.
     inflow_draws_dir: str = 'data/processed/element_draws'
 
     # HOW MANY OF THE DRAWS TO USE.  The upstream arrays hold 200,000.
@@ -182,6 +204,7 @@ class DataParams:
     # SAFE TO CHANGE: yes. A whole number above zero, at most what the arrays hold.
     draws: int = 200_000
 
+    # BY CASE (`flow` in source.csv).
     # WHICH UPSTREAM FLOW IS THE INFLOW TO RECOVERY.
     # Upstream reports three: what entered the fleet, what left it, and what was
     # collected for recycling. Recovery starts from what was collected -- the
@@ -202,6 +225,7 @@ class DataParams:
     # SAFE TO CHANGE: yes.
     import_case: str = 'bev_electronics'
 
+    # BY CASE (`product` in source.csv).
     # WHAT THE PRODUCT IS CALLED, at Layer 1.
     # Whatever the upstream item is: 'BEV', 'PVPanel', 'Battery'. It is the
     # parent every composition share is a share OF, and it appears in the
@@ -209,6 +233,7 @@ class DataParams:
     # SAFE TO CHANGE: yes -- it is a label, and nothing matches on it.
     product: str = 'BEV'
 
+    # BY CASE (`inflow_flow_id` in source.csv).
     # WHAT THE INFLOW FLOW IS CALLED.
     # The flow the upstream mass arrives in, and therefore the one the first
     # process reads from. It must match the Input_FlowID of the first row in
@@ -216,6 +241,9 @@ class DataParams:
     # SAFE TO CHANGE: yes, together with processes.csv.
     inflow_flow_id: str = 'F_collected'
 
+    # BY CASE (`material_suffix` in source.csv). Used only where the upstream
+    # child is an ELEMENT; a case whose children are already materials leaves
+    # it blank and gets no placeholder. See `child_layer` in src/source.py.
     # WHAT THE PLACEHOLDER MATERIAL LAYER IS CALLED, appended to the group name.
     # Upstream has no material resolution -- it goes straight from a group to
     # the elements in it -- so each group gets exactly one material named after
@@ -223,6 +251,7 @@ class DataParams:
     # SAFE TO CHANGE: yes -- it is a label.
     material_suffix: str = '_mixed'
 
+    # BY CASE (`group_marker` in source.csv).
     # HOW THE UPSTREAM FILES NAME A GROUP'S OWN MASS.
     # Files are `<child>__<parent>.npy`, and the group's own mass is written as
     # `<group_marker>__<group>.npy`. Only change it if the upstream export
@@ -230,6 +259,7 @@ class DataParams:
     # SAFE TO CHANGE: yes, together with the upstream export.
     group_marker: str = '__domain__'
 
+    # BY CASE (`groups` in source.csv, semicolon-separated).
     # WHICH GROUPS TO IMPORT.  Empty means all of them.
     #
     # Narrowing this is the honest way to start: every domain kept is a set of
