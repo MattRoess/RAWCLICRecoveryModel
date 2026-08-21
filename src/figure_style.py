@@ -80,6 +80,20 @@ def label(axes, x, y, text, size, colour, weight='normal', ha='left', family=Non
               **({'fontfamily': family} if family else {}))
 
 
+def folder_for(out_dir: str, case: str) -> str:
+    """
+    Where one case's figures go: `<out_dir>/<case>/`.
+
+    A FOLDER PER CASE, NOT A PREFIX. Two cases used to write `mc_pdf_Cu.png`
+    into the same directory and the second run replaced the first's silently,
+    leaving a figures/ directory holding half of one study and half of another
+    with nothing but timestamps to tell them apart. A folder cannot collide, and
+    it means the figure names say what the figure IS -- `total.png`,
+    `structure.png`, `Cu.png` -- rather than repeating the case in every one.
+    """
+    return os.path.join(out_dir, os.path.basename(os.path.normpath(case)))
+
+
 def write(figure, out_dir: str, stem: str, formats, dpi: int) -> list[str]:
     """Write one figure to every requested format. Returns the paths written."""
     os.makedirs(out_dir, exist_ok=True)

@@ -27,7 +27,7 @@ import pandas as pd
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle
 from matplotlib.path import Path
 
-from src.figure_style import MONO, PALETTE, canvas, label, write
+from src.figure_style import MONO, PALETTE, canvas, folder_for, label, write
 from src.params_schema import Params, current
 
 SEARCH_ROOTS = ('data_folder', '.')
@@ -262,7 +262,7 @@ def draw(target: str | None = None, params: Params | None = None) -> None:
         from src.sampling import numeric_bounds
         tcs = numeric_bounds(tcs)
     figure = render(tcs, case, theme=params.figures.theme)
-    for path in write(figure, params.figures.out_dir, f'{case}_structure',
+    for path in write(figure, folder_for(params.figures.out_dir, case), 'structure',
                       params.figures.enabled(), params.figures.dpi):
         print(f'wrote {path}')
 

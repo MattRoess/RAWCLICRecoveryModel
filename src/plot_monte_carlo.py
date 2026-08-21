@@ -29,13 +29,62 @@ result it describes.
 """
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import pandas as pd
 
-from src.figure_style import PALETTE, chart, write
+from src.figure_style import PALETTE, chart, folder_for, write
 from src.units import scale_for
 
 LAYERS = ['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
+
+# How many bars a ranked chart will draw. Beyond this the figure stops being a
+# figure -- 04_01's few hundred (flow, resource) pairs made one 10,277 pixels
+# tall. The full table is in the workbook; a chart is for seeing the shape.
+MAX_BARS = 30
+
+
+def header(figure, title: str, colours, subtitle: str = '') -> None:
+    """
+    A title, and an optional line under it, that do not collide.
+
+    THE GAP IS IN POINTS, NOT IN FIGURE FRACTIONS. matplotlib places suptitle
+    and figure.text at a FRACTION of the figure height, so a pair of positions
+    tuned on a tall figure lands on top of itself on a short one -- which is
+    exactly what happened once 04_01 produced single-year figures a third the
+    height of 04_02's five-year ones, and the title printed straight through
+    the legend line. Converting a fixed number of points into a fraction of
+    THIS figure's height keeps the spacing the same whatever the shape.
+
+    Also reserves the space it used, so tight_layout does not put a panel there.
+    """
+    inches = figure.get_figheight()
+
+    def fraction(points: float) -> float:
+        return 1.0 - (points / 72.0) / inches
+
+    figure.suptitle(title, color=colours['title'], fontsize=13,
+                    fontweight='bold', x=0.01, ha='left', y=fraction(16))
+    if subtitle:
+        figure.text(0.01, fraction(34), subtitle, color=colours['meta'],
+                    fontsize=8.5, ha='left', va='top')
+    figure.tight_layout(rect=[0, 0, 1, fraction(46 if subtitle else 28)])
+
+
+def finest_layer(frame) -> str:
+    """
+    The deepest layer this case actually resolves.
+
+    NOT always Layer 4. 04_02 resolves elements within a placeholder material;
+    04_01 stops at material and leaves Layer 4 empty in every row. Reading it
+    from the data is the only way one figure module serves both -- assuming
+    Layer 4 gave 04_01 no per-resource figures at all, silently.
+    """
+    for column in ('Layer 4', 'Layer 3', 'Layer 2'):
+        if column in frame.columns and (frame[column] != '').any():
+            return column
+    return 'Layer 2'
 
 
 def terminal_flows(run) -> list[str]:
@@ -73,12 +122,13 @@ def element_rows(run, flow: str, element: str) -> np.ndarray:
     """
     keys = run.keys
     return np.flatnonzero((keys['Stock/Flow ID'] == flow).to_numpy()
-                          & (keys['Layer 4'] == element).to_numpy())
+                          & (keys[finest_layer(keys)] == element).to_numpy())
 
 
 def totals_by_flow_and_element(run) -> dict[tuple[str, str], np.ndarray]:
     """{(flow, element): (draws,)} for every terminal flow and element."""
-    elements = sorted({e for e in run.keys['Layer 4'].unique() if e})
+    layer = finest_layer(run.keys)
+    elements = sorted({e for e in run.keys[layer].unique() if e})
     out = {}
     for flow in terminal_flows(run):
         for element in elements:
@@ -109,13 +159,25 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
     The deterministic value and the Monte Carlo mean are drawn on top, because
     the distance between those two lines is the whole point.
     """
-    elements = sorted({e for e in run.keys['Layer 4'].unique() if e})
+    layer = finest_layer(run.keys)
+    elements = sorted({e for e in run.keys[layer].unique() if e})
     recovered = recovered_flows(run, run.case)
     if not elements or not recovered:
         return None
 
-    figure, axes, colours = chart(360 * len(elements), 300, theme, 1, len(elements))
-    panels = axes if hasattr(axes, '__len__') else [axes]
+    # A GRID, NOT A ROW. One row of panels is fine for the nine elements 04_02
+    # resolves and absurd for the twenty-eight materials 04_01 does: it produced
+    # a 28,000 x 833 pixel strip that no screen or page can show, with every
+    # label overlapping its neighbour. Columns are capped so a panel keeps a
+    # readable width whatever the case contains.
+    columns = min(5, len(elements))
+    rows = -(-len(elements) // columns)
+    figure, axes, colours = chart(400 * columns, 320 * rows, theme, rows, columns)
+    panels = list(axes.ravel()) if hasattr(axes, 'ravel') else [axes]
+
+    # Panels with nothing to draw would otherwise show an empty box with ticks.
+    for spare in panels[len(elements):]:
+        spare.set_visible(False)
 
     for index, (element, panel) in enumerate(zip(elements, panels)):
         totals = np.zeros(run.draws)
@@ -137,7 +199,7 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
         panel.axvline(mean, color=colours['title'], linewidth=1.6,
                       label=f'Monte Carlo mean  {mean:,.1f}')
         if deterministic is not None:
-            point = _deterministic_total(deterministic, recovered, element)
+            point = _deterministic_total(deterministic, recovered, element, layer)
             if point is not None:
                 panel.axvline(point, color=PALETTE[3], linewidth=1.6, linestyle='--',
                               label=f'deterministic (mode)  {point:,.1f}')
@@ -154,16 +216,14 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
         for text in legend.get_texts():
             text.set_color(colours['meta'])
 
-    figure.suptitle('Recovered mass, across draws', color=colours['title'],
-                    fontsize=13, fontweight='bold', x=0.01, ha='left')
-    figure.tight_layout(rect=[0, 0, 1, 0.94])
+    header(figure, 'Recovered mass, across draws', colours)
     return figure
 
 
 def _deterministic_total(deterministic: pd.DataFrame, flows: list[str],
-                         element: str) -> float | None:
+                         element: str, layer: str = 'Layer 4') -> float | None:
     rows = deterministic[(deterministic['Stock/Flow ID'].isin(flows))
-                         & (deterministic['Layer 4'] == element)]
+                         & (deterministic[layer] == element)]
     return float(rows['Value'].sum()) if len(rows) else None
 
 
@@ -189,9 +249,15 @@ def figure_spread(run, theme: str, unit: str):
         low, q1, median, q3, high = _band(values * scale)
         relative = (high - low) / median if median > 0 else 0.0
         entries.append((f'{flow}  ·  {element}', low, q1, median, q3, high, relative))
+    # The widest spreads, for the same reason as figure_mode_vs_mean: one bar
+    # per (flow, resource) is a readable chart for 04_02 and a 10,000-pixel
+    # column for 04_01. Every row is in the workbook.
+    entries.sort(key=lambda item: item[-1], reverse=True)
+    trimmed = max(0, len(entries) - MAX_BARS)
+    entries = entries[:MAX_BARS]
     entries.sort(key=lambda item: item[-1])
 
-    figure, panel, colours = chart(760, 60 + 26 * len(entries), theme)
+    figure, panel, colours = chart(880, 90 + 26 * len(entries), theme)
     for position, (name, low, q1, median, q3, high, relative) in enumerate(entries):
         colour = PALETTE[position % len(PALETTE)]
         panel.plot([low, high], [position, position], color=colour, linewidth=1.4, alpha=0.55)
@@ -207,7 +273,9 @@ def figure_spread(run, theme: str, unit: str):
                           color=colours['node'])
     panel.set_xlabel(f'mass ({shown})   —   bar is the 50% interval, line the 95%',
                      color=colours['meta'], fontsize=9)
-    panel.set_title('Spread of each result', color=colours['title'],
+    panel.set_title('Spread of each result'
+                    + (f'  --  the {len(entries)} widest of {len(entries) + trimmed}'
+                       if trimmed else ''), color=colours['title'],
                     fontsize=12, fontweight='bold', loc='left')
     panel.grid(True, axis='x', color=colours['rule'], linewidth=0.7)
     panel.grid(False, axis='y')
@@ -230,13 +298,14 @@ def figure_mode_vs_mean(run, deterministic: pd.DataFrame, theme: str, unit: str)
     totals = totals_by_flow_and_element(run)
     if not totals or deterministic is None:
         return None
+    layer = finest_layer(run.keys)
 
     scale, shown = scale_for(np.concatenate(list(totals.values())), unit)
 
     entries = []
     for (flow, element), values in totals.items():
         rows = deterministic[(deterministic['Stock/Flow ID'] == flow)
-                             & (deterministic['Layer 4'] == element)]
+                             & (deterministic[layer] == element)]
         if not len(rows):
             continue
         point = float(rows['Value'].sum())
@@ -246,9 +315,18 @@ def figure_mode_vs_mean(run, deterministic: pd.DataFrame, theme: str, unit: str)
                             point * scale, mean * scale))
     if not entries:
         return None
+
+    # THE BIGGEST GAPS, NOT EVERY ROW. 04_01 produces hundreds of
+    # (flow, resource) pairs, and one bar each made a figure 10,277 pixels tall
+    # whose labels ran into one another. The tail of near-zero gaps is exactly
+    # the part nobody reads; the workbook's Distribution sheet has all of them.
+    shown_count = min(len(entries), MAX_BARS)
+    trimmed = len(entries) - shown_count
+    entries.sort(key=lambda item: abs(item[1]), reverse=True)
+    entries = entries[:shown_count]
     entries.sort(key=lambda item: item[1])
 
-    figure, panel, colours = chart(760, 60 + 26 * len(entries), theme)
+    figure, panel, colours = chart(880, 90 + 26 * len(entries), theme)
     for position, (name, percent, point, mean) in enumerate(entries):
         colour = PALETTE[3] if percent < 0 else PALETTE[2]
         panel.barh(position, percent, height=0.62, color=colour, alpha=0.85)
@@ -268,7 +346,9 @@ def figure_mode_vs_mean(run, deterministic: pd.DataFrame, theme: str, unit: str)
                           color=colours['node'])
     panel.set_xlabel('deterministic run, as % away from the Monte Carlo mean',
                      color=colours['meta'], fontsize=9)
-    panel.set_title('Deterministic run against the Monte Carlo mean',
+    panel.set_title('Deterministic run against the Monte Carlo mean'
+                    + (f'  --  the {len(entries)} largest gaps of '
+                       f'{len(entries) + trimmed}' if trimmed else ''),
                     color=colours['title'], fontsize=12, fontweight='bold', loc='left')
     panel.grid(True, axis='x', color=colours['rule'], linewidth=0.7)
     panel.grid(False, axis='y')
@@ -384,23 +464,38 @@ def figure_sensitivity(run, theme: str):
 # ----------------------------------------------------------------------
 
 def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
-             dpi: int, theme: str, unit: str = 'Mg') -> list[str]:
-    """Draw every Monte Carlo figure. Returns the paths written."""
+             dpi: int, theme: str, unit: str = 'Mg', case: str = '') -> list[str]:
+    """
+    Draw every Monte Carlo figure. Returns the paths written.
+
+    EVERY CASE GETS ITS OWN FOLDER (figure_style.folder_for). These used to be
+    written flat, so two cases wrote `mc_pdf_Cu.png` to the same place and the
+    second run replaced the first's silently -- a figures/ directory holding
+    half of one study and half of another, with nothing but the file timestamps
+    to say which was which.
+    """
     import matplotlib.pyplot as plt
 
+    out_dir = folder_for(out_dir, case) if case else out_dir
+
     figures = [
-        ('mc_distribution', figure_distribution(run, deterministic, theme, unit)),
-        ('mc_spread', figure_spread(run, theme, unit)),
-        ('mc_mode_vs_mean', figure_mode_vs_mean(run, deterministic, theme, unit)),
-        ('mc_convergence', figure_convergence(run, theme, unit)),
-        ('mc_sensitivity', figure_sensitivity(run, theme)),
+        ('distribution', figure_distribution(run, deterministic, theme, unit)),
+        ('spread', figure_spread(run, theme, unit)),
+        ('mode_vs_mean', figure_mode_vs_mean(run, deterministic, theme, unit)),
+        ('convergence', figure_convergence(run, theme, unit)),
+        ('sensitivity', figure_sensitivity(run, theme)),
     ]
 
-    # One distribution figure per element: the histograms ARE the result, and
-    # a single combined panel hides which element is uncertain and which is not.
-    for element in sorted({e for e in run.keys['Layer 4'].unique() if e}):
-        figures.append((f'mc_pdf_{element}', figure_pdf(run, element, deterministic,
-                                                        theme, unit)))
+    # One distribution figure per resource: the histograms ARE the result, and a
+    # single combined panel hides which one is uncertain and which is not.
+    #
+    # At the finest layer the case resolves, NOT always Layer 4 -- 04_01 stops at
+    # material and leaves Layer 4 empty, which produced no per-resource figures
+    # at all rather than an error.
+    layer = finest_layer(run.keys)
+    for resource in sorted({e for e in run.keys[layer].unique() if e}):
+        figures.append((f'pdf_{resource}', figure_pdf(run, resource, deterministic,
+                                                         theme, unit, layer=layer)))
 
     written = []
     for stem, figure in figures:
@@ -415,18 +510,23 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
 #  6. The distribution itself, per element and per year
 # ----------------------------------------------------------------------
 
-def recovered_rows(run, element: str, year) -> np.ndarray:
-    """Row positions for one element recovered in one year, across all routes."""
+def recovered_rows(run, element: str, year, layer: str = 'Layer 4') -> np.ndarray:
+    """
+    Row positions for one resource recovered in one year, across all routes.
+
+    `layer` because the finest layer is not always Layer 4: 04_02 resolves
+    elements, 04_01 stops at material and leaves Layer 4 empty everywhere.
+    """
     keys = run.keys
     recovered = recovered_flows(run, run.case)
     return np.flatnonzero(
         keys['Stock/Flow ID'].isin(recovered).to_numpy()
-        & (keys['Layer 4'] == element).to_numpy()
+        & (keys[layer] == element).to_numpy()
         & (keys['Year'].astype(str) == str(year)).to_numpy())
 
 
 def figure_pdf(run, element: str, deterministic: pd.DataFrame | None,
-               theme: str, unit: str):
+               theme: str, unit: str, layer: str = 'Layer 4'):
     """
     The probability density of one element's recovered mass, one panel per year.
 
@@ -436,7 +536,7 @@ def figure_pdf(run, element: str, deterministic: pd.DataFrame | None,
     single-value answer is one point inside a shape, and usually not its centre.
     """
     years = sorted(run.keys['Year'].astype(str).unique())
-    panels_with_data = [y for y in years if recovered_rows(run, element, y).size]
+    panels_with_data = [y for y in years if recovered_rows(run, element, y, layer).size]
     if not panels_with_data:
         return None
 
@@ -446,7 +546,7 @@ def figure_pdf(run, element: str, deterministic: pd.DataFrame | None,
     panels = np.atleast_1d(axes).ravel()
 
     for panel, year in zip(panels, panels_with_data):
-        positions = recovered_rows(run, element, year)
+        positions = recovered_rows(run, element, year, layer)
         totals = run.values[positions].sum(axis=0)
         scale, shown = scale_for(totals, unit)
         totals = totals * scale
@@ -462,7 +562,7 @@ def figure_pdf(run, element: str, deterministic: pd.DataFrame | None,
         panel.axvline(totals.mean(), color=colours['title'], linewidth=1.5)
 
         if deterministic is not None:
-            point = _deterministic_recovered(deterministic, run, element, year)
+            point = _deterministic_recovered(deterministic, run, element, year, layer)
             if point is not None:
                 panel.axvline(point * scale, color=PALETTE[3], linewidth=1.5,
                               linestyle='--')
@@ -475,20 +575,16 @@ def figure_pdf(run, element: str, deterministic: pd.DataFrame | None,
     for panel in panels[len(panels_with_data):]:
         panel.axis('off')
 
-    figure.suptitle(f'{element} recovered per year',
-                    color=colours['title'], fontsize=13, fontweight='bold',
-                    x=0.01, ha='left')
-    figure.text(0.01, 0.945,
-                'solid: Monte Carlo mean    dashed: deterministic    '
-                'shaded: 95% interval',
-                color=colours['meta'], fontsize=8.5, ha='left')
-    figure.tight_layout(rect=[0, 0, 1, 0.93])
+    header(figure, f'{element} recovered per year', colours,
+           'solid: Monte Carlo mean    dashed: deterministic    '
+           'shaded: 95% interval')
     return figure
 
 
-def _deterministic_recovered(deterministic, run, element: str, year) -> float | None:
+def _deterministic_recovered(deterministic, run, element: str, year,
+                             layer: str = 'Layer 4') -> float | None:
     recovered = recovered_flows(run, run.case)
     rows = deterministic[(deterministic['Stock/Flow ID'].isin(recovered))
-                         & (deterministic['Layer 4'] == element)
+                         & (deterministic[layer] == element)
                          & (deterministic['Year'].astype(str) == str(year))]
     return float(rows['Value'].sum()) if len(rows) else None

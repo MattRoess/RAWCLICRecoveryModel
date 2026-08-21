@@ -6,6 +6,7 @@ rather than from anyone's recollection.
 
 | Document | What is in it |
 |---|---|
+| **[RUNNING.md](RUNNING.md)** | **Start here.** How to run the two pipelines, what comes out, where it lands, and when you have to touch the upstream project. |
 | [SETUP.md](SETUP.md) | Getting running on a new machine: Python 3.14 without conda, the venv, and Positron. Start here on a fresh Mac. |
 | [MODEL_MECHANICS.md](MODEL_MECHANICS.md) | How the model actually computes a result. The nesting rule, how composition and TCs are applied, what the two engines do differently by design. Read this first. |
 | [DEFECTS.md](DEFECTS.md) | Every defect and engine divergence found, each with a measurement and a one-command reproduction. |

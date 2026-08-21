@@ -8,7 +8,7 @@ Everything about the output -- which formats, which resolution, which palette,
 whether the per-element figures are drawn -- is a parameter in
 `src/params_schema.py`, not a flag. Change it there.
 
-Writes <out_dir>/<case>_total.<fmt> plus one figure per element, in every
+Writes <out_dir>/<case>/total.<fmt> plus one figure per element, in every
 format switched on by `figures.png`, `figures.svg` and `figures.pdf`. Rendering goes through matplotlib, so all
 formats come from one drawing and cannot disagree.
 
@@ -31,7 +31,7 @@ import pandas as pd
 from matplotlib.patches import PathPatch, Rectangle
 from matplotlib.path import Path
 
-from src.figure_style import PALETTE, canvas, label, write
+from src.figure_style import PALETTE, canvas, folder_for, label, write
 from src.params_schema import Params, current
 from src.recovery_model_optimized import RecoveryModelOptimized
 
@@ -227,8 +227,8 @@ def draw(folder: str | None = None, params: Params | None = None,
         figure = figure_for(case, edges, flows, element, unit, params.figures.theme)
         if figure is None:
             continue
-        stem = f'{case}_{element or "total"}'
-        for path in write(figure, params.figures.out_dir, stem,
+        stem = element or 'total'
+        for path in write(figure, folder_for(params.figures.out_dir, case), stem,
                           params.figures.enabled(), params.figures.dpi):
             print(f'  wrote {path}')
         import matplotlib.pyplot as plt

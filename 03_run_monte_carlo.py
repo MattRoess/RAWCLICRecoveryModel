@@ -205,7 +205,8 @@ def main(argv=None) -> int:
 
     written = draw_all(run, determined, params.figures.out_dir,
                        params.figures.enabled(), params.figures.dpi,
-                       params.figures.theme, params.run.working_unit)
+                       params.figures.theme, params.run.working_unit,
+                       case=folder)
     for figure_path in written:
         print(f'{figure_path}')
 
