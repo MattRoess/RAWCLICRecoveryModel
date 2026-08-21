@@ -6,7 +6,7 @@ rather than from anyone's recollection.
 
 | Document | What is in it |
 |---|---|
-| **[RUNNING.md](RUNNING.md)** | **Start here.** How to run the two pipelines, what comes out, where it lands, and when you have to touch the upstream project. |
+| **[RUNNING.md](RUNNING.md)** | **Start here.** Open `RUN.py` in Positron and press Run. What comes out, where it lands, what to edit, and the only two reasons to touch the upstream project. |
 | [SETUP.md](SETUP.md) | Getting running on a new machine: Python 3.14 without conda, the venv, and Positron. Start here on a fresh Mac. |
 | [MODEL_MECHANICS.md](MODEL_MECHANICS.md) | How the model actually computes a result. The nesting rule, how composition and TCs are applied, what the two engines do differently by design. Read this first. |
 | [DEFECTS.md](DEFECTS.md) | Every defect and engine divergence found, each with a measurement and a one-command reproduction. |
@@ -22,79 +22,36 @@ Vries, 21-11-2024). That document is the authority on the input schema and is
 still accurate. It does not describe model behaviour, which is what
 MODEL_MECHANICS.md covers.
 
-## Checking a dataset
+## Everything is a file you press Run on
 
-What the transfer coefficients in a dataset actually total, and whether
-composition closes to 1:
+Nothing in this project needs a terminal. `RUN.py` does both pipelines;
+`01_check_inputs.py`, `02_run_model.py`, `03_run_monte_carlo.py`,
+`99_check_all.py` and `tools/plot_structure.py` each do one part, and each uses
+`run.data_folder` from `src/params_schema.py`. See [RUNNING.md](RUNNING.md).
 
-```bash
-./.venv/bin/python 01_check_inputs.py data_folder/reference/basic_test
-```
-
-Read MODEL_MECHANICS.md §4 first — the grouping this uses is not the obvious
-one, and the obvious one produces numbers that are not quantities.
-
-## Running the Monte Carlo
-
-```bash
-./.venv/bin/python 03_run_monte_carlo.py
-```
-
-Every stage takes the case folder as an optional argument, so switching
-between 04_01 and 04_02 is naming one and nothing else:
-
-```bash
-./.venv/bin/python 03_run_monte_carlo.py data_folder/carcomposition_mockup
-```
-
-See [CASES.md](CASES.md).
-
-Writes `monte_carlo_summary.csv` next to the case's other output, and five
-figures into `figures/`. Start with `mc_mode_vs_mean` — it says whether the
-Monte Carlo *changed* the answer or only put error bars on it.
+Read MODEL_MECHANICS.md section 4 before reading a coefficient total -- the
+grouping it uses is not the obvious one, and the obvious one produces numbers
+that are not quantities.
 
 ## Seeing the flows
 
-To understand **how the model is wired** — every flow, every process, and the
-transfer coefficients behind each arrow, nothing scaled by mass:
+**How the model is wired** -- every flow, every process, and the transfer
+coefficients behind each arrow, nothing scaled by mass -- is
+`tools/plot_structure.py`, and `run.draw_structure` decides whether an ordinary
+run draws it too.
 
-```bash
-./.venv/bin/python tools/plot_structure.py data_folder/reference/template
-```
+**How much mass goes where** is the Sankeys, and they are drawn by every run, so
+there is nothing separate to press. That is deliberate: a Sankey is a picture of
+a RESULT, so a run that produced numbers without the matching picture is exactly
+how the two drift apart. The structure diagram is different -- it describes the
+TC table rather than a result, and changes only when that table changes.
 
-To see **how much mass goes where**, as a Sankey, in total and per element:
-these are drawn by every run, so there is no separate command. Run the model
-and they appear in `figures/`.
+Both render through matplotlib, so every requested format comes from one drawing
+and they cannot disagree. Which formats, which resolution, which palette are
+settings in `src/params_schema.py` (`figures.*`), not flags.
 
-```bash
-./.venv/bin/python 02_run_model.py
-```
-
-That is deliberate. The Sankeys are a picture of a *result*, so a run that
-produced numbers without the matching picture is exactly how the two drift
-apart. The structure diagram is different — it describes the TC table rather
-than a result, changes only when that table changes, and therefore has its own
-script and a `draw_structure` switch that decides whether a run also produces
-it.
-
-Both render through matplotlib, so every requested format comes from one
-drawing and they cannot disagree.
-
-For the Sankeys, totals are taken at each flow's own shallowest depth, so the
-nesting described in MODEL_MECHANICS.md §1 is not double counted, and edge
-magnitudes are recomputed by replaying the model's own process loop rather than
-inferred from the solution file.
-
-**Which formats, which resolution, which palette are settings, not flags.**
-They are in `src/params_schema.py` — `png`, `svg`, `pdf`, `dpi`, `theme`,
-`out_dir`, `element_figures` — and are listed in
-[PARAMETER_REFERENCE.md](PARAMETER_REFERENCE.md). PNG is on; SVG and PDF are
-off until switched on there. The one thing still passed on the command line is
-which case to draw, because that is what changes within a single sitting.
-
-A note on the theme: the figures used to be hand-written SVG carrying a
-`prefers-color-scheme` rule, so they followed the reader's system setting. A
-PNG or PDF cannot do that, so `theme` picks the palette at render time.
+Figures land in `figures/<case>/`, one folder per case, with the same names in
+each so the two pipelines compare directly.
 
 ## Years and scenarios
 

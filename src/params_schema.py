@@ -48,11 +48,25 @@ class ParameterError(ValueError):
 class RunParams:
     """What gets solved, and with which engine."""
 
-    # WHICH CASE THE MODEL RUNS.
-    # A folder holding an `input_data/` with the three CSV files: inputs.csv,
-    # composition.csv and TCs.csv. The path is written from the project root.
+    # ******************************************************************
+    #  WHICH PIPELINE RUNS.  Set it here, then press Run on RUN.py.
+    #
+    #    'data_folder/bev_electronics'        04_02  electronics in BEVs,
+    #                                                resolved to ELEMENTS
+    #    'data_folder/carcomposition_mockup'  04_01  whole cars, five
+    #                                                drivetrains, resolved
+    #                                                to MATERIALS
+    #
+    #  ONE AT A TIME. They are different studies -- different networks,
+    #  different coefficients, different layers -- and a result is reported
+    #  for one of them, never for both together.
+    #
+    #  Nothing else changes when you switch: each case carries its own data
+    #  and its own coefficients in its own folder.
+    # ******************************************************************
+    # A folder holding an `input_data/`, written from the project root.
+    # RUN.py lists the folders that qualify if this one does not exist.
     # SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
-    # To see which folders qualify, run:  ./.venv/bin/python 02_run_model.py --list
     data_folder: str = 'data_folder/bev_electronics'
 
     # WHICH SCENARIO TO RUN.  Blank when the data has no scenario dimension,
