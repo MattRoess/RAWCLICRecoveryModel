@@ -1,8 +1,12 @@
 # Reading 04_01 (car composition) — what it would take
 
-Investigated 2026-08-21 against the real upstream repository. This is an effort
-estimate and a design, not work that has been done. A made-up TC table built on
-the real structure sits in `data_folder/carcomposition_mockup/`.
+Investigated 2026-08-21 against the real upstream repository.
+
+**BUILT 2026-08-21.** Everything below except the coefficients themselves is
+now implemented; see the corrections at the end for the two places this
+estimate was wrong. A made-up TC table on the real structure sits in
+`data_folder/carcomposition_mockup/`, and how a case is configured is in
+[CASES.md](CASES.md).
 
 ## Short answer
 
@@ -172,3 +176,43 @@ and composition. It exists to show the shape and to size the work.
 - **04_03 and 04_04** (traction motors, batteries) export nothing at all. Each
   would need its own export step, and possibly its own reader if the shape
   differs.
+
+## Corrections, after building it
+
+Two things above were wrong, and both changed the work.
+
+### 04_01's draws are per PERIOD, not per year
+
+This document assumed an annual axis to slice, as 04_02 has. It does not have
+one. `combine_flow_and_composition_draws` returns one `(n_draws,)` array per
+`(drivetrain, segment, component, material)` **cumulative over a period**, and
+`monte_carlo.output_periods` defaults to a single entry covering 1975–2070.
+
+So an annual axis is something you ask for:
+
+```python
+output_periods = [(y, y) for y in (2030, 2035, 2040, 2045, 2050)]
+```
+
+The export writes only single-year periods, and skips a multi-year one with a
+note rather than filing it under a year label it does not mean.
+
+### Five drivetrains are one case, not five
+
+The estimate said "one generalisation — which layer the child sits at". There
+were two. The other is that the recovery model had one product at Layer 1,
+where 04_01 has five drivetrains, and they belong in one case: the same
+coefficient table serves all of them, with only the dismantling rows keyed per
+drivetrain. A case can now name several products and read one upstream folder
+each — see [CASES.md](CASES.md).
+
+The cost is memory, and it is not small: five drivetrains over 20 components
+and 101 material pairs is 605 composition rows per year against the electronics
+case's 70 for five, which is 29 GB at 200,000 draws over five years. The budget
+guard refuses that before allocating. Years and draws are the levers.
+
+### What is still open
+
+- **The coefficients.** The mockup's numbers are invented and marked as such.
+- **Running it.** 04_01 must be re-run with `carcomposition_draws_years` set
+  and matching single-year `output_periods` before the case has any data.
