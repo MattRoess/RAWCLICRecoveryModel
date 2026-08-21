@@ -38,13 +38,29 @@ keeps working exactly as before.
     key               example                        what it is
     ----------------- ------------------------------ ------------------------
     upstream_dir      data/processed/element_draws   under upstream_root
-    product           BEV                            Layer 1
+    product           BEV;Diesel;Petrol              Layer 1; one or several
     inflow_flow_id    F_collected                    the flow the mass arrives in
     child_layer       element                        'element' or 'material'
     group_marker      __domain__                     how a group's own mass is named
     material_suffix   _mixed                         placeholder material, when needed
     groups            Wiring;Motors                  blank means all of them
-    flow              collected                      which upstream flow to read
+    flow              {product}_collected            which upstream folder(s) to read
+
+SEVERAL PRODUCTS IN ONE CASE
+----------------------------
+04_01 covers five drivetrains, and they are one study: the same shredder, the
+same coefficient table, only the dismantling rows keyed per drivetrain. So the
+case names all five, and `flow` says where each one's folder is:
+
+    product   BEV;Diesel;HEV;PHEV;Petrol
+    flow      {product}_collected
+
+`{product}` is substituted per product, giving `BEV_collected`, `Diesel_collected`
+and so on. Composition shares then close to 1 **within each product** -- a
+component's share is a share of its own drivetrain, never of all five together.
+
+With one product and no `{product}` in `flow`, this is the old single-folder
+behaviour, which is what 04_02 uses.
 
 CHILD LAYER — THE ONE THAT MATTERS
 ----------------------------------
@@ -68,6 +84,10 @@ import os
 import pandas as pd
 
 FILENAME = 'source.csv'
+
+# In `flow`, replaced by each product in turn: '{product}_collected' reads
+# BEV_collected, Diesel_collected, ... one folder per Layer 1 value.
+PRODUCT_SLOT = '{product}'
 
 # 'element' puts the child at Layer 4 with a placeholder material above it;
 # 'material' puts it at Layer 3 and leaves Layer 4 empty.
@@ -144,6 +164,19 @@ def read(case: str, params) -> dict:
     else:
         out['groups'] = tuple(out['groups'])
 
+    out['products'] = tuple(x.strip() for x in str(out['product']).split(';') if x.strip())
+    if not out['products']:
+        raise SourceError(f'{path_for(case)}: product is blank; Layer 1 needs a name.')
+
+    # Several products must read several folders, or they are all the same
+    # numbers under different Layer 1 labels -- which balances, plots, and is
+    # wrong. Caught here because nothing downstream could tell.
+    if len(out['products']) > 1 and PRODUCT_SLOT not in out['flow']:
+        raise SourceError(
+            f"{path_for(case)}: product names {len(out['products'])} products "
+            f"but flow is {out['flow']!r}, which is one folder.\n"
+            f"Write the folder pattern instead, e.g. flow = {PRODUCT_SLOT}_collected.")
+
     # Absent means the 04_02 shape; present-but-blank means somebody meant to
     # say something and did not, so say so rather than picking for them.
     if out['child_layer'] not in CHILD_LAYERS:
@@ -156,8 +189,15 @@ def read(case: str, params) -> dict:
     return out
 
 
+def flow_for(source: dict, product: str) -> str:
+    """The upstream folder holding this product's arrays."""
+    return source['flow'].replace(PRODUCT_SLOT, product)
+
+
 def describe(source: dict) -> str:
     """One line naming what this case reads, for a run to print."""
-    return (f"{source['product']} / {source['flow']} / child at the "
+    products = source['products']
+    named = products[0] if len(products) == 1 else f'{len(products)} products'
+    return (f"{named} / {source['flow']} / child at the "
             f"{source['child_layer']} layer"
             + (f" / groups {', '.join(source['groups'])}" if source['groups'] else ''))

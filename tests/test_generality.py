@@ -28,6 +28,8 @@ WHAT IS CHECKED
 5. `rest` is derived for an incomplete parent, as it is for vehicles.
 6. The same fixture read with `child_layer = material` puts the children one
    layer up, with no placeholder -- the 04_01 shape rather than the 04_02 one.
+7. Several products in one case each close to 1 on their OWN total, not on the
+   pooled one -- the 04_01 drivetrain shape.
 
 The item is named in the case's own `source.csv`, never in `src/params_schema.py`.
 That is what lets 04_01 and 04_02 be different cases rather than different runs
@@ -70,6 +72,11 @@ YEARS = (2035, 2045)
 DRAWS = 400
 FLOW = 'PV_collected'
 
+# Two more products, exported to their own folders the way 04_01 writes one per
+# drivetrain. `collected` and `inflow` are the single-product case's folders.
+PRODUCTS = ('PVMono', 'PVThin')
+FOLDERS = ('collected', 'inflow', *(f'{p}_collected' for p in PRODUCTS))
+
 
 def write_upstream(root: str) -> None:
     """
@@ -84,12 +91,16 @@ def write_upstream(root: str) -> None:
     np.save(os.path.join(scenario, 'years.npy'), np.array(YEARS))
 
     rng = np.random.default_rng(11)
-    for flow in ('collected', 'inflow'):
+    for flow in FOLDERS:
         folder = os.path.join(scenario, flow)
         os.makedirs(folder, exist_ok=True)
+        # Each product at a clearly different level, so reading one folder
+        # twice, or pooling the two, shows up as a total that is out by a
+        # factor rather than by a rounding error.
+        level = 40.0 * 2 ** FOLDERS.index(flow)
         for group in GROUPS:
             # Group mass in kt, growing between the two years, with spread.
-            mass = rng.lognormal(mean=np.log([40.0, 90.0]), sigma=0.15,
+            mass = rng.lognormal(mean=np.log([level, level * 2.25]), sigma=0.15,
                                  size=(DRAWS, len(YEARS)))
             np.save(os.path.join(folder, f'__domain____{group}.npy'),
                     mass.astype(np.float32))
@@ -98,7 +109,8 @@ def write_upstream(root: str) -> None:
                         (mass * share).astype(np.float32))
 
 
-def write_case(case: str, child_layer: str = 'element') -> None:
+def write_case(case: str, child_layer: str = 'element',
+               products: tuple[str, ...] | None = None) -> None:
     """The coefficients and the network, for a panel recycler."""
     os.makedirs(os.path.join(case, 'input_data'), exist_ok=True)
 
@@ -108,6 +120,14 @@ def write_case(case: str, child_layer: str = 'element') -> None:
         dict(key='product', value=PRODUCT),
         dict(key='inflow_flow_id', value=FLOW),
         dict(key='flow', value='collected'),
+        dict(key='child_layer', value=child_layer),
+        dict(key='group_marker', value='__domain__'),
+        dict(key='material_suffix', value='_mixed'),
+        dict(key='groups', value=''),
+    ] if products is None else [
+        dict(key='product', value=';'.join(products)),
+        dict(key='inflow_flow_id', value=FLOW),
+        dict(key='flow', value='{product}_collected'),
         dict(key='child_layer', value=child_layer),
         dict(key='group_marker', value='__domain__'),
         dict(key='material_suffix', value='_mixed'),
@@ -149,17 +169,17 @@ def settings(root: str, case_name: str) -> Params:
     return params
 
 
-def build_everything(child_layer: str = 'element'):
+def build_everything(child_layer: str = 'element', products=None):
     """Set the whole thing up, and return (params, case folder, temp root)."""
     root = tempfile.mkdtemp()
     upstream = os.path.join(root, 'upstream')
     write_upstream(upstream)
 
-    case_name = f'pv_panels_test_{child_layer}'
+    case_name = f'pv_panels_test_{child_layer}{"_multi" if products else ""}'
     case = os.path.join('data_folder', case_name)
     if os.path.isdir(case):
         shutil.rmtree(case)
-    write_case(case, child_layer)
+    write_case(case, child_layer, products)
 
     params = settings(upstream, case_name)
     return params, case, root
@@ -302,6 +322,43 @@ def test_children_can_be_materials_instead_of_elements() -> None:
             assert entering > 0, f'{year}: nothing entered'
             assert abs(entering - leaving) / entering < 1e-9, \
                 f'{year}: {entering:g} in, {leaving:g} out'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_several_products_close_on_their_own_totals() -> None:
+    """
+    The 04_01 drivetrain shape: one case, several Layer 1 values.
+
+    Each product is exported to its own folder at its own level, and each must
+    come out as its own whole. Pooling them would still balance and still plot
+    -- every share would just be wrong by the ratio of one product's mass to
+    all of them -- so the check is on the shares, not on the total.
+    """
+    from src.upstream import load
+
+    params, case, root = build_everything(products=PRODUCTS)
+    try:
+        tables = load(params, params.run.data_folder, quiet=True)
+        inflow, composition = tables['inputs'], tables['composition']
+
+        assert set(inflow['Substance_main_parent']) == set(PRODUCTS), \
+            f"products are {set(inflow['Substance_main_parent'])}, expected {PRODUCTS}"
+        assert len(inflow) == len(PRODUCTS) * len(YEARS), \
+            f'expected one inflow row per product per year, got {len(inflow)}'
+
+        # The folders were written at 40 kt and 80 kt, so the products must
+        # differ -- identical totals would mean one folder was read twice.
+        totals = inflow.groupby('Substance_main_parent')['Value'].sum()
+        assert totals.max() / totals.min() > 1.5, \
+            f'the products came out the same size ({dict(totals)}); one folder read twice?'
+
+        # The component share is a share of its OWN product.
+        top = composition[composition['Layer 3'] == '']
+        for (product, year), rows in top.groupby(['Layer 1', 'Year']):
+            assert abs(rows['Value'].sum() - 1.0) < 1e-6, \
+                f'{product} {year}: component shares sum to {rows["Value"].sum():.6f}'
     finally:
         shutil.rmtree(root, ignore_errors=True)
         shutil.rmtree(case, ignore_errors=True)

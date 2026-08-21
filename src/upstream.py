@@ -146,12 +146,25 @@ def wanted_years(available: np.ndarray, setting: str) -> list[int]:
     return chosen
 
 
-def build(years, domain_mass, element_mass, keep_years: list[int],
+def build(years, per_product: dict, keep_years: list[int],
           draws: int, keep_groups: tuple[str, ...] = (),
-          product: str = 'BEV', flow_id: str = 'F_collected',
+          flow_id: str = 'F_collected',
           material_suffix: str = '_mixed', child_layer: str = 'element'):
     """
-    The inflow and composition tables, one set of rows per year.
+    The inflow and composition tables, one set of rows per product per year.
+
+    `per_product` maps a Layer 1 name to that product's (domain_mass,
+    element_mass) arrays. One product is the ordinary case; 04_01's five
+    drivetrains are one case with five, because they are one study -- the same
+    shredder and the same coefficient table, with only the dismantling rows
+    keyed per drivetrain.
+
+    EACH PRODUCT IS ITS OWN WHOLE. The component share is `component / that
+    product's total`, never `component / all five together`, and the inflow is
+    one row per product. Pooling them would still balance and still plot, and
+    every share would be wrong by the ratio of one drivetrain's mass to the
+    fleet's -- which is why the total is computed inside the product loop and
+    not before it.
 
     Means over draws. The model's arithmetic is linear in the inflow, so a
     deterministic run built on means is the honest central case; the spread is
@@ -168,14 +181,28 @@ def build(years, domain_mass, element_mass, keep_years: list[int],
                     ARE materials, so they sit at Layer 3 and there is no
                     placeholder and no element layer.
     """
+    inflow_rows, composition_rows, report = [], [], {}
+    for product, (domain_mass, element_mass) in per_product.items():
+        _one_product(product, domain_mass, element_mass, years, keep_years, draws,
+                     keep_groups, flow_id, material_suffix, child_layer,
+                     inflow_rows, composition_rows, report)
+
+    return pd.DataFrame(inflow_rows), pd.DataFrame(composition_rows), report
+
+
+
+def _one_product(product, domain_mass, element_mass, years, keep_years, draws,
+                 keep_groups, flow_id, material_suffix, child_layer,
+                 inflow_rows, composition_rows, report) -> None:
+    """One product's rows, appended in place. See `build` for the reasoning."""
     domains = sorted(domain_mass)
     if keep_groups:
         unknown = sorted(set(keep_groups) - set(domains))
         if unknown:
-            raise UpstreamError(f'groups names {unknown}; upstream has {domains}.')
+            raise UpstreamError(
+                f'groups names {unknown}; upstream has {domains} for {product}.')
         domains = [d for d in domains if d in keep_groups]
 
-    inflow_rows, composition_rows, report = [], [], {}
     for year in keep_years:
         index = int(np.searchsorted(years, year))
 
@@ -185,7 +212,7 @@ def build(years, domain_mass, element_mass, keep_years: list[int],
         totals = {d: mean_of(domain_mass[d]) for d in domains}
         totals = {d: v for d, v in totals.items() if v > 0}
         product_total = sum(totals.values())
-        report[year] = totals
+        report.setdefault(year, {})[product] = totals
 
         inflow_rows.append({'Year': year, 'Stock/Flow ID': flow_id,
                             'Substance_main_parent': product,
@@ -219,8 +246,6 @@ def build(years, domain_mass, element_mass, keep_years: list[int],
                     composition_rows.append({**base, 'Layer 3': child, 'Layer 4': '',
                                              'Value': share, 'parameterCode': 'm-c'})
 
-    return pd.DataFrame(inflow_rows), pd.DataFrame(composition_rows), report
-
 
 def load(params, folder: str, quiet: bool = False) -> dict | None:
     """
@@ -236,16 +261,25 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
     described = source_module.read(folder, params)
 
     source = source_dir(params, folder)
-    years, domain_mass, element_mass = read_draws(
-        source, described['flow'], described['group_marker'])
+
+    # One folder per product. The arrays are memory-mapped, so holding all five
+    # drivetrains open at once costs file handles, not memory -- what grows is
+    # the number of ROWS, and through them the Monte Carlo's array.
+    per_product, years = {}, None
+    for product in described['products']:
+        years, domain_mass, element_mass = read_draws(
+            source, source_module.flow_for(described, product),
+            described['group_marker'])
+        per_product[product] = (domain_mass, element_mass)
+
     keep_years = wanted_years(years, params.run.years)
 
-    available = next(iter(domain_mass.values())).shape[0]
+    available = next(iter(per_product[described['products'][0]][0].values())).shape[0]
     draws = min(params.data.draws, available)
 
     inflow, composition, report = build(
-        years, domain_mass, element_mass, keep_years, draws,
-        described['groups'], product=described['product'],
+        years, per_product, keep_years, draws,
+        described['groups'],
         flow_id=described['inflow_flow_id'],
         material_suffix=described['material_suffix'],
         child_layer=described['child_layer'])
@@ -256,8 +290,13 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
         print(f'Upstream  : {os.path.relpath(source)}')
         print(f'            {source_module.describe(described)}')
         print(f'            {span}, {draws:,} draws')
-        for year, totals in report.items():
-            print(f'            {year}: {sum(totals.values()):,.4g} kt  '
-                  + '  '.join(f'{d} {v:,.4g}' for d, v in sorted(totals.items())))
+        one = len(described['products']) == 1
+        for year, by_product in report.items():
+            whole = sum(v for totals in by_product.values() for v in totals.values())
+            print(f'            {year}: {whole:,.4g} kt', end='' if one else '\n')
+            for product, totals in sorted(by_product.items()):
+                label = '' if one else f'              {product:<10s}'
+                print(f'{label}  '
+                      + '  '.join(f'{d} {v:,.4g}' for d, v in sorted(totals.items())))
 
     return {'inputs': inflow, 'composition': composition}
