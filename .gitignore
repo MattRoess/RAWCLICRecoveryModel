@@ -29,6 +29,11 @@ data_folder/*
 !data_folder/template/
 !data_folder/template/**
 
+# The made-up 04_01 table: real component and material names, invented numbers
+# (documentation/DESIGN_04_01_carcomposition.md).
+!data_folder/carcomposition_mockup/
+!data_folder/carcomposition_mockup/**
+
 # These outputs are regenerated on every run; only the inputs matter.
 data_folder/defect_cases/*/output_data/
 data_folder/template/output_data/
