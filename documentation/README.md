@@ -6,7 +6,7 @@ rather than from anyone's recollection.
 
 | Document | What is in it |
 |---|---|
-| **[RUNNING.md](RUNNING.md)** | **Start here.** Open `RUN.py` in Positron and press Run. What comes out, where it lands, what to edit, and the only two reasons to touch the upstream project. |
+| **[RUNNING.md](RUNNING.md)** | **Start here.** Set the case in `src/params_schema.py`, then press Run on each numbered file in turn. What each step does, what comes out, where it lands, and the only two reasons to touch the upstream project. |
 | [SETUP.md](SETUP.md) | Getting running on a new machine: Python 3.14 without conda, the venv, and Positron. Start here on a fresh Mac. |
 | [MODEL_MECHANICS.md](MODEL_MECHANICS.md) | How the model actually computes a result. The nesting rule, how composition and TCs are applied, what the two engines do differently by design. Read this first. |
 | [DEFECTS.md](DEFECTS.md) | Every defect and engine divergence found, each with a measurement and a one-command reproduction. |
@@ -24,10 +24,12 @@ MODEL_MECHANICS.md covers.
 
 ## Everything is a file you press Run on
 
-Nothing in this project needs a terminal. `RUN.py` does both pipelines;
-`01_check_inputs.py`, `02_run_model.py`, `03_run_monte_carlo.py`,
-`99_check_all.py` and `tools/plot_structure.py` each do one part, and each uses
-`run.data_folder` from `src/params_schema.py`. See [RUNNING.md](RUNNING.md).
+Nothing in this project needs a terminal, and nothing takes an argument.
+`00_parameters.py`, `01_check_inputs.py`, `02_run_model.py`,
+`03_run_monte_carlo.py`, `99_check_all.py` and `tools/plot_structure.py` each do
+one step, and each reads `run.data_folder` from `src/params_schema.py` -- which
+is where you choose the pipeline. Step by step, in that order. See
+[RUNNING.md](RUNNING.md).
 
 Read MODEL_MECHANICS.md section 4 before reading a coefficient total -- the
 grouping it uses is not the obvious one, and the obvious one produces numbers

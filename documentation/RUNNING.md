@@ -1,30 +1,44 @@
 # Running the two pipelines
 
-## Open `RUN.py` in Positron and press Run
+## 1. Choose the pipeline, in `src/params_schema.py`
 
-That is the whole thing. No terminal, no arguments, no commands to remember.
-
-It runs the pipeline end to end and writes every result and every figure. A few
-minutes.
-
----
-
-## Choosing which pipeline
-
-**In `src/params_schema.py`**, at the top, `run.data_folder`:
+At the top of the file, `run.data_folder`:
 
 ```python
-data_folder: str = 'data_folder/bev_electronics'        # 04_02, elements
+data_folder: str = 'data_folder/bev_electronics'          # 04_02, elements
 # data_folder: str = 'data_folder/carcomposition_mockup'  # 04_01, materials
 ```
 
-Change it, press Run again. **One at a time** — they are different studies, and
-a result is reported for one of them, never for both together.
+**One at a time.** They are different studies — different networks, different
+coefficients, different layers — and a result is reported for one of them, never
+for both together. To run the other, change this line and go through the steps
+again.
 
-There is nothing to edit in `RUN.py` itself. Every setting — the case, the
-years, the scenario, the working unit, the memory budget — is in
-`src/params_schema.py`, which is also just a file you open and edit. Nothing is
-ever passed on a command line.
+## 2. Open each file in Positron and press Run, in order
+
+No terminal, no arguments. Each one reads `run.data_folder` and does its part.
+
+| step | file | what it does | writes |
+|---|---|---|---|
+| 0 | `00_parameters.py` | checks the settings make sense; regenerates `params.xlsx` and `PARAMETER_REFERENCE.md` | those two files |
+| 1 | `01_check_inputs.py` | reports the totals, closure and coefficient coverage | nothing |
+| 2 | `02_run_model.py` | the deterministic answer, the Sankeys, the structure diagram | `output_data/solution_*.csv`, `figures/<case>/` |
+| 3 | `03_run_monte_carlo.py` | the Monte Carlo, the workbook, the distribution figures | `output_data/*.csv`, `recovery_results.xlsx`, `figures/<case>/` |
+| 9 | `99_check_all.py` | ten checks: six test suites, then the pipeline and mass balance | nothing |
+
+**Steps 0 and 1 are optional.** `02` and `03` validate the inputs themselves and
+refuse a broken table, so nothing silently uses bad numbers if you skip them.
+
+**Steps 2 and 3 do not depend on each other.** `03` runs the deterministic solve
+itself. Run `02` when you want the diagrams; run `03` when you want the numbers
+and the uncertainty. Either can be run alone.
+
+Two more you can press when you want them:
+
+| file | what it does |
+|---|---|
+| `01_import_upstream.py` | writes `inputs.csv`/`composition.csv` into the case so you can *see* the numbers the model will solve. **Nothing reads them** — every run takes its numbers from the upstream draws. Delete them and the results are identical. |
+| `tools/plot_structure.py` | the structure diagram on its own, without solving anything |
 
 ---
 
@@ -42,8 +56,8 @@ There is **one model**. The two pipelines are two **cases**: two folders under
 | draws | 200,000 | 50,000 |
 | coefficients | yours, hand-filled | **invented**, generated |
 
-Adding a third (04_03, 04_04) means a new folder and a new line in `CASES`. No
-code changes. See [CASES.md](CASES.md).
+Adding a third (04_03, 04_04) means a new folder and pointing `run.data_folder`
+at it. No code changes. See [CASES.md](CASES.md).
 
 ---
 
@@ -86,8 +100,8 @@ overwrite each other and their figures compare directly.
 
 ## Changing what a run covers
 
-**In `src/params_schema.py`, under `run.*`** — facts about the run, shared by
-every case:
+**`src/params_schema.py`, under `run.*`** — facts about the run, shared by every
+case:
 
 | `run.years` | runs |
 |---|---|
@@ -96,7 +110,7 @@ every case:
 | `'2030-2050'` | that range |
 | `'2030-2050,10'` | every 10th year of it |
 
-**In `data_folder/<case>/input_data/source.csv`** — facts about the case: which
+**`data_folder/<case>/input_data/source.csv`** — facts about the case: which
 upstream export, which product(s), which layer the children sit at, how many
 draws. One case cannot disturb another. See [CASES.md](CASES.md).
 
@@ -113,26 +127,6 @@ Chunking bounds the working memory but not the result, so the two levers are
 | 04_02, 2 groups, 5 years | 600 | 0.96 GB at 200,000 |
 | 04_01, 5 drivetrains, 1 year | 4,117 | 0.30 GB at 50,000 |
 | 04_01, 5 drivetrains, 5 years | ~20,000 | would be refused at 200,000 |
-
----
-
-## The other files you can press Run on
-
-Each is a file you open and run the same way. None takes arguments; each uses
-`run.data_folder` from `src/params_schema.py` unless you say otherwise.
-
-| file | what it does |
-|---|---|
-| **`RUN.py`** | **everything, both pipelines. This is the one.** |
-| `00_parameters.py` | regenerates `params.xlsx` and `PARAMETER_REFERENCE.md` |
-| `01_check_inputs.py` | reports the totals and closure. Writes nothing. |
-| `02_run_model.py` | the deterministic answer and the Sankeys, no Monte Carlo |
-| `03_run_monte_carlo.py` | the Monte Carlo, the workbook and its figures |
-| `99_check_all.py` | ten checks: six test suites, then the pipeline and mass balance |
-| `01_import_upstream.py` | writes `inputs.csv`/`composition.csv` so you can *see* a case. **Nothing reads them** — every run takes its numbers from the upstream draws. Delete them and the results are identical. |
-
-`02` and `03` do not depend on each other. `03` runs the deterministic solve
-itself, so `RUN.py` calling both is for the Sankeys, not for correctness.
 
 ---
 
@@ -165,7 +159,7 @@ Normally never. This model reads draws that are already on disk.
 
 You go upstream only to **add a year or a scenario**:
 
-| you want | set there | then run |
+| you want | set there | then press Run on |
 |---|---|---|
 | another year of electronics | `materials.bev_electronics_element_draws_years` | `code/04_02_BEVelectronics.py` |
 | another year of car composition | `materials.carcomposition_draws_years` **and** a matching single-year entry in `monte_carlo.output_periods` | `code/04_01_carcomposition.py` |
@@ -201,7 +195,7 @@ own.
 
 Two documents to maintain together:
 
-- **RUNNING.md** (this one) — what to press, and what comes out.
+- **RUNNING.md** (this one) — what to press, in what order, and what comes out.
 - **[CASES.md](CASES.md)** — how a case is configured, and why it is built that way.
 
 Anything that changes a file's job, a location, a setting's meaning, or what a
