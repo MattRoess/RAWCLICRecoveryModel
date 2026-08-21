@@ -36,6 +36,64 @@ Running it is naming it:
 With no argument each uses `run.data_folder`, so the everyday case still runs
 by typing nothing.
 
+## Running either one — the whole thing
+
+Switching between 04_01 and 04_02 is naming the folder. **Nothing in
+`src/params_schema.py` changes.**
+
+### 04_02 — BEV electronics
+
+```bash
+./.venv/bin/python 01_check_inputs.py    data_folder/bev_electronics
+./.venv/bin/python 02_run_model.py       data_folder/bev_electronics
+./.venv/bin/python 03_run_monte_carlo.py data_folder/bev_electronics
+```
+
+### 04_01 — car composition
+
+```bash
+./.venv/bin/python 01_check_inputs.py    data_folder/carcomposition_mockup
+./.venv/bin/python 02_run_model.py       data_folder/carcomposition_mockup
+./.venv/bin/python 03_run_monte_carlo.py data_folder/carcomposition_mockup
+```
+
+With no folder argument each uses `run.data_folder`, so the everyday case runs
+by typing nothing.
+
+Everything lands in `<case>/output_data/` — `recovery_results.xlsx` is the one
+to open — and figures in `figures/`, named after the case.
+
+## The two TC tools
+
+Both write `<case>/input_data/TCs.csv` from that case's own composition, so the
+table covers exactly what the case contains: no row that can never fire, and no
+resource left without coefficients.
+
+| case | tool | what it writes |
+|---|---|---|
+| 04_02 electronics | `tools/make_skeleton.py` | every row that needs a number, **blank**, for you to fill in |
+| 04_01 car composition | `tools/make_carcomposition_tcs.py` | the same rows **already filled with invented numbers** |
+
+```bash
+./.venv/bin/python tools/make_skeleton.py data_folder/bev_electronics
+```
+
+```bash
+./.venv/bin/python tools/make_carcomposition_tcs.py data_folder/carcomposition_mockup
+```
+
+**`make_skeleton.py` merges.** Re-run it whenever the case grows: values you
+have already filled in are kept, rows for new resources are added blank, and
+rows whose resource no longer exists are dropped. Nothing you typed is ever
+overwritten. That is what makes it safe to work one domain at a time — narrow
+`groups` in `source.csv`, run it, fill the handful of rows, widen, repeat.
+
+**`make_carcomposition_tcs.py` overwrites**, deliberately: everything it writes
+is invented and marked `MADE UP (Claude)` in the `source` column, so there is
+nothing of yours to protect. Once you start replacing those numbers with
+measured ones, stop running it — or move that case to `make_skeleton.py`, which
+does protect them.
+
 ## source.csv
 
 Two columns, `key` and `value`.
