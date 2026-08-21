@@ -87,8 +87,8 @@ def suites() -> list[tuple[str, bool, str]]:
 
 def pipeline(params) -> list[tuple[str, bool, str]]:
     """The stages, run on the real case exactly as a person would run them."""
-    stages = [('02_check_inputs.py', ()), ('03_run_model.py', ('--quiet',)),
-              ('04_run_monte_carlo.py', ())]
+    stages = [('01_check_inputs.py', ()), ('02_run_model.py', ('--quiet',)),
+              ('03_run_monte_carlo.py', ())]
     out = []
     for script, args in stages:
         ok, tail = run(script, script, *args)
@@ -166,7 +166,7 @@ def main(argv=None) -> int:
     print(f'\nYOUR CASE  {params.run.data_folder}')
     print(f'           years {params.run.years or "all"}, {params.data.draws:,} draws, '
           f'{params.run.working_unit}, domains '
-          f'{", ".join(params.data.import_domains) or "all"}')
+          f'{", ".join(params.data.groups) or "all"}')
     stages = pipeline(params)
     for name, ok, tail in stages:
         print(f'  {"ok  " if ok else "FAIL"}  {name:<24} {tail[:76]}')

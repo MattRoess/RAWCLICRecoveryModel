@@ -102,7 +102,7 @@ def plan(total_rows: int, draws: int, budget_gb: float,
             f'src/params_schema.py:\n'
             f'  data.draws                 halving it -> about {halved:.1f} GB\n'
             f'  run.years                  fewer years, proportionally fewer rows\n'
-            f'  data.import_domains        fewer domains, fewer rows\n'
+            f'  data.groups        fewer domains, fewer rows\n'
             f'  monte_carlo.memory_budget_gb  raise it if the machine has the memory')
 
     if chunk:

@@ -57,10 +57,12 @@ import os
 import numpy as np
 import pandas as pd
 
-DOMAIN_MARKER = '__domain__'
-MATERIAL_SUFFIX = '_mixed'
-PRODUCT = 'BEV'
-FLOW = 'F_collected'
+# What the item is called, how its files are named and what its placeholder
+# material layer is called are all DATA, not code. They live in
+# src/params_schema.py so that a different recovery item -- a panel, a battery,
+# anything upstream exports in this layout -- is a settings change rather than
+# an edit here. tests/test_generality.py solves a non-vehicle item to keep that
+# true.
 
 class UpstreamError(FileNotFoundError):
     """Raised when the upstream draws are missing or do not cover the request."""
@@ -79,7 +81,7 @@ def is_upstream_case(params, folder: str) -> bool:
         os.path.join('data_folder', params.data.import_case))
 
 
-def read_draws(folder: str, flow: str):
+def read_draws(folder: str, flow: str, group_marker: str = '__domain__'):
     """Every array upstream wrote for one flow, memory-mapped."""
     years_path = os.path.join(folder, 'years.npy')
     if not os.path.exists(years_path):
@@ -100,13 +102,13 @@ def read_draws(folder: str, flow: str):
         # Split on the LAST '__': the domain files are named '__domain____Motors',
         # which begins with the separator, so splitting from the front loses them.
         left, _, right = stem.rpartition('__')
-        if left == DOMAIN_MARKER:
+        if left == group_marker:
             domain_mass[right] = np.load(path, mmap_mode='r')
         elif right != 'total':
             element_mass[(left, right)] = np.load(path, mmap_mode='r')
 
     if not domain_mass:
-        raise UpstreamError(f'{flow_dir} holds no {DOMAIN_MARKER}__*.npy arrays.')
+        raise UpstreamError(f'{flow_dir} holds no {group_marker}__*.npy arrays.')
     return years, domain_mass, element_mass
 
 
@@ -132,7 +134,9 @@ def wanted_years(available: np.ndarray, setting: str) -> list[int]:
 
 
 def build(years, domain_mass, element_mass, keep_years: list[int],
-          draws: int, keep_domains: tuple[str, ...] = ()):
+          draws: int, keep_groups: tuple[str, ...] = (),
+          product: str = 'BEV', flow_id: str = 'F_collected',
+          material_suffix: str = '_mixed'):
     """
     The inflow and composition tables, one set of rows per year.
 
@@ -141,11 +145,11 @@ def build(years, domain_mass, element_mass, keep_years: list[int],
     carried separately by the Monte Carlo.
     """
     domains = sorted(domain_mass)
-    if keep_domains:
-        unknown = sorted(set(keep_domains) - set(domains))
+    if keep_groups:
+        unknown = sorted(set(keep_groups) - set(domains))
         if unknown:
-            raise UpstreamError(f'import_domains names {unknown}; upstream has {domains}.')
-        domains = [d for d in domains if d in keep_domains]
+            raise UpstreamError(f'groups names {unknown}; upstream has {domains}.')
+        domains = [d for d in domains if d in keep_groups]
 
     inflow_rows, composition_rows, report = [], [], {}
     for year in keep_years:
@@ -159,13 +163,13 @@ def build(years, domain_mass, element_mass, keep_years: list[int],
         product_total = sum(totals.values())
         report[year] = totals
 
-        inflow_rows.append({'Year': year, 'Stock/Flow ID': FLOW,
-                            'Substance_main_parent': PRODUCT,
+        inflow_rows.append({'Year': year, 'Stock/Flow ID': flow_id,
+                            'Substance_main_parent': product,
                             'Value': product_total, 'Unit': 'kt'})
 
         for domain in sorted(totals):
-            material = f'{domain}{MATERIAL_SUFFIX}'
-            base = {'Year': year, 'Stock/ID': FLOW, 'Layer 1': PRODUCT,
+            material = f'{domain}{material_suffix}'
+            base = {'Year': year, 'Stock/ID': flow_id, 'Layer 1': product,
                     'Layer 2': domain}
             composition_rows.append({**base, 'Layer 3': '', 'Layer 4': '',
                                      'Value': totals[domain] / product_total,
@@ -195,7 +199,8 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
         return None
 
     source = source_dir(params)
-    years, domain_mass, element_mass = read_draws(source, params.data.upstream_flow)
+    years, domain_mass, element_mass = read_draws(
+        source, params.data.upstream_flow, params.data.group_marker)
     keep_years = wanted_years(years, params.run.years)
 
     available = next(iter(domain_mass.values())).shape[0]
@@ -203,14 +208,16 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
 
     inflow, composition, report = build(
         years, domain_mass, element_mass, keep_years, draws,
-        tuple(params.data.import_domains))
+        tuple(params.data.groups), product=params.data.product,
+        flow_id=params.data.inflow_flow_id,
+        material_suffix=params.data.material_suffix)
 
     if not quiet:
         span = (f'{keep_years[0]}' if len(keep_years) == 1
                 else f'{keep_years[0]}-{keep_years[-1]} ({len(keep_years)} years)')
         print(f'Upstream  : {os.path.relpath(source)}')
         print(f'            {params.data.upstream_flow}, {span}, {draws:,} draws, '
-              f'domains {", ".join(params.data.import_domains) or "all"}')
+              f'domains {", ".join(params.data.groups) or "all"}')
         for year, totals in report.items():
             print(f'            {year}: {sum(totals.values()):,.4g} kt  '
                   + '  '.join(f'{d} {v:,.4g}' for d, v in sorted(totals.items())))

@@ -25,7 +25,7 @@ What the transfer coefficients in a dataset actually total, and whether
 composition closes to 1:
 
 ```bash
-./.venv/bin/python 02_check_inputs.py data_folder/reference/basic_test
+./.venv/bin/python 01_check_inputs.py data_folder/reference/basic_test
 ```
 
 Read MODEL_MECHANICS.md §4 first — the grouping this uses is not the obvious
@@ -34,7 +34,7 @@ one, and the obvious one produces numbers that are not quantities.
 ## Running the Monte Carlo
 
 ```bash
-./.venv/bin/python 04_run_monte_carlo.py
+./.venv/bin/python 03_run_monte_carlo.py
 ```
 
 Writes `monte_carlo_summary.csv` next to the case's other output, and five
@@ -55,7 +55,7 @@ these are drawn by every run, so there is no separate command. Run the model
 and they appear in `figures/`.
 
 ```bash
-./.venv/bin/python 03_run_model.py
+./.venv/bin/python 02_run_model.py
 ```
 
 That is deliberate. The Sankeys are a picture of a *result*, so a run that

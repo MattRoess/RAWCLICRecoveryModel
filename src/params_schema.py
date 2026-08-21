@@ -52,7 +52,7 @@ class RunParams:
     # A folder holding an `input_data/` with the three CSV files: inputs.csv,
     # composition.csv and TCs.csv. The path is written from the project root.
     # SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
-    # To see which folders qualify, run:  ./.venv/bin/python 03_run_model.py --list
+    # To see which folders qualify, run:  ./.venv/bin/python 02_run_model.py --list
     data_folder: str = 'data_folder/bev_electronics'
 
     # WHICH SCENARIO TO RUN.  Blank when the data has no scenario dimension,
@@ -202,7 +202,35 @@ class DataParams:
     # SAFE TO CHANGE: yes.
     import_case: str = 'bev_electronics'
 
-    # WHICH ELECTRONICS DOMAINS TO IMPORT.  Empty means all of them.
+    # WHAT THE PRODUCT IS CALLED, at Layer 1.
+    # Whatever the upstream item is: 'BEV', 'PVPanel', 'Battery'. It is the
+    # parent every composition share is a share OF, and it appears in the
+    # output rows, so it should read as the thing being recycled.
+    # SAFE TO CHANGE: yes -- it is a label, and nothing matches on it.
+    product: str = 'BEV'
+
+    # WHAT THE INFLOW FLOW IS CALLED.
+    # The flow the upstream mass arrives in, and therefore the one the first
+    # process reads from. It must match the Input_FlowID of the first row in
+    # processes.csv.
+    # SAFE TO CHANGE: yes, together with processes.csv.
+    inflow_flow_id: str = 'F_collected'
+
+    # WHAT THE PLACEHOLDER MATERIAL LAYER IS CALLED, appended to the group name.
+    # Upstream has no material resolution -- it goes straight from a group to
+    # the elements in it -- so each group gets exactly one material named after
+    # it. The layer is carried for the model's sake and means nothing.
+    # SAFE TO CHANGE: yes -- it is a label.
+    material_suffix: str = '_mixed'
+
+    # HOW THE UPSTREAM FILES NAME A GROUP'S OWN MASS.
+    # Files are `<child>__<parent>.npy`, and the group's own mass is written as
+    # `<group_marker>__<group>.npy`. Only change it if the upstream export
+    # changes its naming.
+    # SAFE TO CHANGE: yes, together with the upstream export.
+    group_marker: str = '__domain__'
+
+    # WHICH GROUPS TO IMPORT.  Empty means all of them.
     #
     # Narrowing this is the honest way to start: every domain kept is a set of
     # element yields somebody has to supply, and a study of wiring and motors
@@ -214,7 +242,7 @@ class DataParams:
     # it. What it is NOT is a recovery rate for vehicle electronics as a whole --
     # the domains left out are simply not in the answer.
     # SAFE TO CHANGE: yes. Names must match upstream: Wiring, Motors, PCB, Sensors.
-    import_domains: tuple[str, ...] = ('Wiring', 'Motors') 
+    groups: tuple[str, ...] = ('Wiring', 'Motors') 
 
 
 @dataclass

@@ -1,11 +1,11 @@
 """
-04_run_monte_carlo.py
+03_run_monte_carlo.py
 =====================
 
 Run the model over many draws and write the figures that show what the spread
 actually is.
 
-    ./.venv/bin/python 04_run_monte_carlo.py
+    ./.venv/bin/python 03_run_monte_carlo.py
 
 Everything it uses is set in `src/params_schema.py`: which case, which years,
 how many draws, the seed, the chunk size and the figure formats. Change a value

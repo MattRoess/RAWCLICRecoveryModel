@@ -70,7 +70,7 @@ def overview(params, run) -> pd.DataFrame:
         ('scenario', params.run.scenario or 'BAU'),
         ('years', params.run.years or 'all available'),
         ('upstream flow', params.data.upstream_flow),
-        ('domains', ', '.join(params.data.import_domains) or 'all'),
+        ('domains', ', '.join(params.data.groups) or 'all'),
         ('draws', f'{run.draws:,}'),
         ('seed', params.monte_carlo.seed),
         ('unit', params.run.working_unit),

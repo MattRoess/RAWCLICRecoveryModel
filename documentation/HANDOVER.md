@@ -43,7 +43,7 @@ What it still lacks is real data. Coefficients are sampled from the ranges in
 the upstream per-draw arrays are not readable yet (§8).
 
 ```bash
-./.venv/bin/python 04_run_monte_carlo.py
+./.venv/bin/python 03_run_monte_carlo.py
 ```
 
 ## 2. Environment — decisions and why
@@ -144,11 +144,11 @@ resolve — was **answered on 2026-08-17** and is now DEFECTS.md §2.3.
 2. ~~**Validate the input tables on load**~~ — **done**, `src/validate_inputs.py`.
 3. ~~**Fix the engine divergences**~~ — **done**, all seven (DEFECTS.md §2).
 4. **Add the mass balance assertion on load**, once the table has loss flows.
-   `02_check_inputs.py` already computes everything it needs; this is
+   `01_check_inputs.py` already computes everything it needs; this is
    promoting a report into a hard failure. Blocked on question 1.
 5. ~~**Restructure for Monte Carlo**~~ — **done 2026-08-20**. `src/sampling.py`
    draws the coefficients, `src/monte_carlo.py` solves every draw at once,
-   `04_run_monte_carlo.py` runs it and `src/plot_monte_carlo.py` draws five
+   `03_run_monte_carlo.py` runs it and `src/plot_monte_carlo.py` draws five
    figures. 24 + 7 checks in `test_sampling.py` and `test_monte_carlo.py`.
 6. **Feed it the real inflow draws.** The engine already takes inflows as a
    `(rows, draws)` array — it is handed a repeated column today only because
@@ -219,7 +219,7 @@ If both pass, that machine is in the same state as this one.
 **5. Run the model.**
 
 ```bash
-./.venv/bin/python 03_run_model.py
+./.venv/bin/python 02_run_model.py
 ```
 
 That solves the case in the settings and writes every figure to `figures/`.

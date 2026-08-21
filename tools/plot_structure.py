@@ -7,7 +7,7 @@ the transfer coefficients behind each arrow.
 
     ./.venv/bin/python tools/plot_structure.py
 
-NOT a numbered step. `03_run_model.py` already draws this whenever
+NOT a numbered step. `02_run_model.py` already draws this whenever
 `draw_structure` is True, which it is by default. This file is here for when
 you want the diagram on its own -- looking at a TC table you are still
 building, or redrawing after editing one -- without solving anything.

@@ -29,10 +29,26 @@ The individual stages, in order:
 | | |
 |---|---|
 | `00_parameters.py` | Regenerate `params.xlsx` from the settings. `--check` prints them. |
-| `01_make_skeleton.py` | Write every TC row that needs a number, from `processes.csv`. |
-| `02_check_inputs.py` | Validate the tables and report what they total to. |
-| `03_run_model.py` | Solve, and draw the Sankeys and the structure diagram. |
-| `04_run_monte_carlo.py` | Solve over many draws; write the summary and the MC figures. |
+| `01_check_inputs.py` | Validate the tables and report what they total to. |
+| `02_run_model.py` | Solve, and draw the Sankeys and the structure diagram. |
+| `03_run_monte_carlo.py` | Solve over many draws; write the summary, the workbook and the MC figures. |
+
+`tools/make_skeleton.py` is **not** a stage. It writes the TC rows that need a
+number, from `processes.csv`, and is run when the network changes — not on
+every run.
+
+## Not specific to vehicles
+
+The item being modelled is data, not code. `data.product`,
+`data.inflow_flow_id`, `data.groups`, `data.material_suffix` and
+`data.group_marker` are settings, so a different recovery item — a panel, a
+battery, anything upstream exports in the `<child>__<parent>.npy` layout — is a
+settings change.
+
+`tests/test_generality.py` proves it rather than asserting it: it builds a
+photovoltaic-panel dataset sharing no name with the vehicle case, and puts it
+through the same code — read, derive `rest`, solve, close mass balance, run the
+Monte Carlo. If someone re-specialises the code, that suite fails.
 
 Any interpreter works — each script re-executes itself under `.venv`.
 
@@ -67,19 +83,19 @@ what it does. Edit there, then run `00_parameters.py`. `params.xlsx` and
 `documentation/PARAMETER_REFERENCE.md` are reports — editing them changes
 nothing.
 
-The ones that change most: `data_folder`, `years`, `data.import_domains`
+The ones that change most: `data_folder`, `years`, `data.groups`
 (which electronics domains to include), `data.draws`, `working_unit`.
 
 ## Growing the case one component at a time
 
-`01_make_skeleton.py` **merges**: values already filled in are kept, rows for
+`tools/make_skeleton.py` **merges**: values already filled in are kept, rows for
 new resources are added blank, rows whose resource no longer exists are dropped.
 So the intended way to work is:
 
 ```python
-import_domains = ('Wiring',)              # one domain, eight rows
-import_domains = ('Wiring', 'Motors')     # re-run the skeleton, fill the new rows
-import_domains = ()                       # all of them
+groups = ('Wiring',)              # one domain, eight rows
+groups = ('Wiring', 'Motors')     # re-run the skeleton, fill the new rows
+groups = ()                       # all of them
 ```
 
 ## Layout

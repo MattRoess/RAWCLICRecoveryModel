@@ -102,7 +102,7 @@ not a quantity.
 
 ### What that total looks like in practice
 
-From `02_check_inputs.py` on `basic_test`:
+From `01_check_inputs.py` on `basic_test`:
 
 | | count |
 |---|---|
@@ -132,7 +132,7 @@ network is full of separation steps — a shredder splitting into ferrous,
 non-ferrous and ASR — where one input resource genuinely does divide between
 several output flows. In that data, split sets could be the majority.
 
-> **Run `02_check_inputs.py` against the real TC table before designing the
+> **Run `01_check_inputs.py` against the real TC table before designing the
 > constraint handling.** The ratio of split sets to single-destination sets
 > determines how much of §4 you actually need.
 
@@ -235,7 +235,7 @@ Also to decide:
 These need answers before implementation, in roughly this order:
 
 0. **How many resources in the real TC table actually split?** Run
-   `02_check_inputs.py` against it. This is a five-minute empirical question
+   `01_check_inputs.py` against it. This is a five-minute empirical question
    and it determines how much of §4 is needed at all — in `basic_test` the
    answer is 2 of 24, which would make the simplex machinery a corner case
    rather than the core of the design.

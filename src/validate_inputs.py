@@ -79,7 +79,7 @@ def _load(folder: str, tables: dict | None = None
             if not os.path.exists(tcs_path):
                 raise InputDataError(
                     f"{tcs_path} does not exist.\nThe transfer coefficients are the "
-                    f"one table you write; run 01_make_skeleton.py to generate it.")
+                    f"one table you write; run tools/make_skeleton.py to generate it.")
             tcs = pd.read_csv(tcs_path, **READ)
         return tables['inputs'], tables['composition'], tcs
 
@@ -178,7 +178,7 @@ def _check_coefficients_present(tcs: pd.DataFrame) -> list[Problem]:
     """
     Every transfer coefficient has to be a number.
 
-    A skeleton written by 01_make_skeleton.py has the rows and no values, which
+    A skeleton written by tools/make_skeleton.py has the rows and no values, which
     is the point -- but it must be said plainly. Left to reach the arithmetic, a
     blank value is read as the empty string and surfaces as
     "unsupported operand type(s) for -: 'str' and 'int'" from somewhere deep in

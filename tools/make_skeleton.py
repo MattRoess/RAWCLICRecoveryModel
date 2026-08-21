@@ -1,10 +1,10 @@
 """
-01_make_skeleton.py
+tools/make_skeleton.py
 ===================
 
 Write a TCs.csv with every row that needs a number, and no numbers in it.
 
-    ./.venv/bin/python 01_make_skeleton.py data_folder/bev_electronics
+    ./.venv/bin/python tools/make_skeleton.py data_folder/bev_electronics
 
 The flow network is domain knowledge and this script does not invent it. It
 reads a small, editable list of processes and expands it against the resources
@@ -21,9 +21,9 @@ in is kept, rows for new resources are added blank, and rows whose resource no
 longer exists are dropped. So the intended way to work is one component at a
 time --
 
-    import_domains = ('Wiring',)             one domain, eight rows, run it
-    import_domains = ('Wiring', 'Motors')    re-import, re-run this, fill the new rows
-    import_domains = ()                      all of them
+    groups = ('Wiring',)             one domain, eight rows, run it
+    groups = ('Wiring', 'Motors')    re-import, re-run this, fill the new rows
+    groups = ()                      all of them
 
 -- rather than facing the whole table at once. Nothing you have filled in is
 ever overwritten by this script.
@@ -74,7 +74,7 @@ is a coefficient you are certain about.
 For each resource, the values across its destinations should sum to 1 -- that
 is what makes mass balance checkable rather than aspirational. Check it with:
 
-    ./.venv/bin/python 02_check_inputs.py <case>
+    ./.venv/bin/python 01_check_inputs.py <case>
 """
 
 from __future__ import annotations
@@ -156,7 +156,7 @@ def resources_at(composition: pd.DataFrame, keyed_at: str) -> list[tuple[str, st
     return sorted({(row[parent], row[target]) for _, row in rows.iterrows()})
 
 
-def build(case: str) -> pd.DataFrame:
+def build(case: str, composition: pd.DataFrame | None = None) -> pd.DataFrame:
     """Expand the process list against the resources in the composition."""
     input_dir = os.path.join(case, 'input_data')
 
@@ -184,14 +184,17 @@ def build(case: str) -> pd.DataFrame:
                   f'are left blank for you to split.')
 
     # Straight from the upstream draws; there is no composition.csv on disk.
-    from src.params_schema import current
-    params = current()
-    tables = refresh(params, case, quiet=True)
-    if tables is None:
-        composition = pd.read_csv(os.path.join(input_dir, 'composition.csv'),
-                                  keep_default_na=False, na_values=[])
-    else:
-        composition = tables['composition']
+    # A caller that already has it -- a test, or a stage that has just read it --
+    # passes it in rather than making the reader run twice.
+    if composition is None:
+        from src.params_schema import current
+        params = current()
+        tables = refresh(params, case, quiet=True)
+        if tables is None:
+            composition = pd.read_csv(os.path.join(input_dir, 'composition.csv'),
+                                      keep_default_na=False, na_values=[])
+        else:
+            composition = tables['composition']
     # rest is a resource like any other and needs coefficients like any other.
     composition, _ = add_rest(composition)
 
@@ -288,15 +291,15 @@ def main(case: str) -> int:
 
     if not blank.any():
         print('\n  Nothing left to fill. Run it:')
-        print('    ./.venv/bin/python 03_run_model.py')
-        print('    ./.venv/bin/python 04_run_monte_carlo.py')
+        print('    ./.venv/bin/python 02_run_model.py')
+        print('    ./.venv/bin/python 03_run_monte_carlo.py')
         return 0
 
     resources = skeleton[blank].groupby(
         ['Input_FlowID', 'Input_layer_key', 'TC_target_key']).ngroups
     print(f'\n  {resources} resources still need values, each of whose coefficients')
     print('  should sum to 1 across its destinations. Check with:')
-    print(f'    ./.venv/bin/python 02_check_inputs.py {case}')
+    print(f'    ./.venv/bin/python 01_check_inputs.py {case}')
     return 0
 
 

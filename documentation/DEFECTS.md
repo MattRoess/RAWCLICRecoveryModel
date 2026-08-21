@@ -102,7 +102,7 @@ Two inflows, FA composed of C1 and FB composed of C2:
 | FB / P1 / C2 | 100 | 100 |
 
 The component layer of FA now sums to 200 against a product layer of 100. Mass
-is invented, silently. The optimized engine is the one `03_run_model.py` uses.
+is invented, silently. The optimized engine is the one `02_run_model.py` uses.
 
 **Severity: high.** Any real dataset where two flows carry the same product with
 different compositions was wrong, in the direction of overestimating recovery.
@@ -396,7 +396,7 @@ The optimized engine does not fail at all:
 In (b) the orphan flow's mass enters the system, expands through the full
 composition tree, and goes nowhere. No warning from either engine.
 
-**Severity: high for the optimized engine**, which is the one `03_run_model.py`
+**Severity: high for the optimized engine**, which is the one `02_run_model.py`
 uses and the one that fails silently; medium for LA, where the failure is loud
 but the message is useless.
 
@@ -419,7 +419,7 @@ nothing records the shortfall.
 
 The meaningful check is per transferred resource, totalled over the output
 flows it reaches — see MODEL_MECHANICS.md §4 for why other groupings are not
-quantities. `02_check_inputs.py` computes it. On `basic_test`, totals range
+quantities. `01_check_inputs.py` computes it. On `basic_test`, totals range
 [0, 0.66], none exceed 1, and the unaccounted fraction averages 0.78. That mass
 has no residual or loss flow: it leaves the system unrecorded.
 
