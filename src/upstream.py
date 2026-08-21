@@ -275,7 +275,7 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
     keep_years = wanted_years(years, params.run.years)
 
     available = next(iter(per_product[described['products'][0]][0].values())).shape[0]
-    draws = min(params.data.draws, available)
+    draws = min(described['draws'], available)
 
     inflow, composition, report = build(
         years, per_product, keep_years, draws,

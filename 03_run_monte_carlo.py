@@ -122,7 +122,11 @@ def main(argv=None) -> int:
         print(f"There is no case folder called '{folder}'.", file=sys.stderr)
         return 1
 
-    draws = params.data.draws
+    # The case says how many draws it has (src/source.py); the setting is only
+    # the fallback for a case that does not.
+    from src import source as source_module
+    draws = source_module.read(folder, params)['draws'] \
+        if source_module.exists(folder) else params.data.draws
     print(f'Case      : {folder}')
     print(f'Draws     : {draws:,}  (seed {params.monte_carlo.seed})')
 

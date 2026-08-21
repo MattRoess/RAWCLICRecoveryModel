@@ -45,6 +45,7 @@ keeps working exactly as before.
     material_suffix   _mixed                         placeholder material, when needed
     groups            Wiring;Motors                  blank means all of them
     flow              {product}_collected            which upstream folder(s) to read
+    draws             50000                          how many draws this case has
 
 SEVERAL PRODUCTS IN ONE CASE
 ----------------------------
@@ -103,6 +104,7 @@ FALLBACK = {
     'material_suffix': 'material_suffix',
     'groups': 'groups',
     'flow': 'upstream_flow',
+    'draws': 'draws',
 }
 
 
@@ -163,6 +165,18 @@ def read(case: str, params) -> dict:
         out['groups'] = tuple(g.strip() for g in out['groups'].split(';') if g.strip())
     else:
         out['groups'] = tuple(out['groups'])
+
+    # How wide this case's arrays are is a fact about the case, not about the
+    # machine: 04_01 exported 50,000 and 04_02 exported 200,000, and running the
+    # coefficients at a width the inflow does not have is a mismatch nothing
+    # downstream reports. A shared setting could only ever be right for one.
+    try:
+        out['draws'] = int(out['draws'])
+    except (TypeError, ValueError):
+        raise SourceError(
+            f"{path_for(case)}: draws is {out['draws']!r}, which is not a whole number.")
+    if out['draws'] <= 0:
+        raise SourceError(f'{path_for(case)}: draws must be above zero.')
 
     out['products'] = tuple(x.strip() for x in str(out['product']).split(';') if x.strip())
     if not out['products']:
