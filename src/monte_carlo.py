@@ -55,6 +55,68 @@ from src.recovery_model_optimized import RecoveryModelOptimized
 
 KEY_COLUMNS = ['Stock/Flow ID'] + LAYERS
 
+BYTES_PER_VALUE = 8          # float64
+
+# Everything that is not the result array or the chunk: the interpreter, numpy,
+# pandas, scipy, matplotlib, the figures while they are being drawn, and the
+# workbook. MEASURED rather than guessed -- two runs of the same case at
+# different chunk sizes give both constants:
+#
+#   chunk  20,000 -> 2.75 GB peak
+#   chunk 159,027 -> 3.46 GB peak      600 rows, 200,000 draws, result 0.96 GB
+#
+# The difference over the change in chunk gives the transient factor (~1.0 x
+# rows x chunk x 8), and either point then gives the fixed part.
+OVERHEAD_GB = 1.8
+TRANSIENT_FACTOR = 1.0
+
+
+class MemoryBudgetExceeded(MemoryError):
+    """Raised before allocating, when the result would not fit the budget."""
+
+
+def plan(total_rows: int, draws: int, budget_gb: float,
+         chunk: int = 0) -> tuple[int, str]:
+    """
+    Decide the chunk size, and refuse a run that cannot fit.
+
+    The result array is rows x draws x 8 bytes and is unavoidable if exact
+    percentiles are wanted. Everything else is transient and is what the chunk
+    bounds, so the chunk is sized from whatever budget is left over rather than
+    guessed at a round number.
+
+    Raises before anything is allocated. A run that cannot fit should say so in
+    a second, not after ten minutes of swapping.
+    """
+    result_gb = total_rows * draws * BYTES_PER_VALUE / 1e9
+    floor_gb = result_gb + OVERHEAD_GB
+
+    if floor_gb > budget_gb:
+        halved = result_gb / 2 + OVERHEAD_GB
+        raise MemoryBudgetExceeded(
+            f'This run needs about {floor_gb:.1f} GB and the budget is '
+            f'{budget_gb:.1f} GB.\n'
+            f'  {result_gb:.2f} GB  the result: {total_rows:,} rows x {draws:,} draws\n'
+            f'  {OVERHEAD_GB:.2f} GB  the libraries and the figures\n\n'
+            f'Nothing has been allocated. Pull one of these in '
+            f'src/params_schema.py:\n'
+            f'  data.draws                 halving it -> about {halved:.1f} GB\n'
+            f'  run.years                  fewer years, proportionally fewer rows\n'
+            f'  data.import_domains        fewer domains, fewer rows\n'
+            f'  monte_carlo.memory_budget_gb  raise it if the machine has the memory')
+
+    if chunk:
+        return chunk, f'{chunk:,} draws per chunk (set by hand)'
+
+    # Whatever the budget has left over goes to the chunk. Never more than the
+    # draw count, and never so small that per-chunk overhead dominates.
+    spare_gb = budget_gb - floor_gb
+    per_draw = max(1, total_rows * BYTES_PER_VALUE) * TRANSIENT_FACTOR
+    sized = int(min(draws, max(1_000, spare_gb * 1e9 / per_draw)))
+    return sized, (f'{sized:,} draws per chunk, {floor_gb:.1f} of '
+                   f'{budget_gb:.1f} GB budget')
+
+
 
 class Structure:
     """
@@ -200,7 +262,8 @@ class Structure:
     # ------------------------------------------------------------------
 
     def evaluate(self, inflow_values: np.ndarray, tc_values: np.ndarray,
-                 composition_values: np.ndarray | None = None) -> np.ndarray:
+                 composition_values: np.ndarray | None = None,
+                 out: np.ndarray | None = None) -> np.ndarray:
         """
         Solve for a block of draws.
 
@@ -238,8 +301,14 @@ class Structure:
         for step in self.steps:
             values[step['writes']] = values[step['reads']] * tc_values[step['coefficient']]
 
-        # Step 3 -- collapse duplicate keys.
-        result = np.zeros((len(self.result_keys), draws), dtype=np.float64)
+        # Step 3 -- collapse duplicate keys, straight into the caller's array
+        # when one is given. Returning a fresh array and letting the caller copy
+        # it meant a second full-size allocation for nothing.
+        if out is None:
+            result = np.zeros((len(self.result_keys), draws), dtype=np.float64)
+        else:
+            result = out
+            result[:] = 0.0
         np.add.at(result, self.group_of_row, values)
         return result
 
@@ -269,37 +338,79 @@ class MonteCarloRun:
 
 def solve_draws(data_folder: str, layer_names: list[str], draws: int,
                 start: int = 0, seed: int = 0, scenario: str | None = None,
-                years: str | None = None, tables: dict | None = None) -> MonteCarloRun:
-    """Run the model over a block of draws, for every year in the selection."""
+                years: str | None = None, tables: dict | None = None,
+                chunk: int | None = None, budget_gb: float = 1e9,
+                quiet: bool = True) -> MonteCarloRun:
+    """
+    Run the model over `draws` draws, for every year in the selection.
+
+    Draws are processed in blocks of `chunk`, so the transient arrays -- the
+    sampled coefficients, the working values, the group-sum scratch -- are
+    bounded by the chunk rather than by the full draw count. Only the result
+    itself is held at full width.
+
+    Chunking cannot change the answer: draw i is fixed by its own stream and its
+    index, not by what was drawn before it, so a chunked run reproduces an
+    unchunked one value for value (test_monte_carlo.py checks exactly that).
+    """
     from src.sampling import sample
 
     model = RecoveryModelOptimized(data_folder=data_folder, layer_names=layer_names,
                                    scenario=scenario, years=years, tables=tables)
 
-    key_frames, value_blocks, report = [], [], {}
+    # Preallocated once and filled per year. Collecting per-year blocks and
+    # stacking them at the end held every block AND the stacked copy live at the
+    # same time -- two full-size arrays for no reason.
+    key_frames, report = [], {}
     sampled_tcs, sampled_values = None, None
+
+    structures = []
     for entry in model.input_data:
-        structure = Structure(entry['inflows_df'], entry['composition_df'], entry['tcs_df'])
+        structures.append((entry, Structure(entry['inflows_df'],
+                                            entry['composition_df'],
+                                            entry['tcs_df'])))
+    total_rows = sum(len(s.result_keys) for _, s in structures)
+    block, how = plan(total_rows, draws, budget_gb, chunk or 0)
+    if not quiet:
+        print(f'Memory    : {total_rows * draws * BYTES_PER_VALUE / 1e9:.2f} GB result, '
+              f'{how}')
+    values = np.zeros((total_rows, draws), dtype=np.float64)
 
-        tc_values, report = sample(entry['tcs_df'], draws=draws, start=start, seed=seed)
-        inflow_values = np.broadcast_to(
-            entry['inflows_df']['Value'].to_numpy(dtype=float)[:, None],
-            (len(entry['inflows_df']), draws))
+    block, how = plan(total_rows, draws, budget_gb, chunk or 0)
+    n_coefficients = len(structures[0][0]['tcs_df']) if structures else 0
+    all_tc_values = np.zeros((n_coefficients, draws), dtype=np.float64)
+    for offset in range(0, draws, block):
+        width = min(block, draws - offset)
+        written = 0
+        for entry, structure in structures:
+            rows = len(structure.result_keys)
+            target = values[written:written + rows, offset:offset + width]
 
-        block = structure.evaluate(inflow_values, tc_values)
-        # Kept from the last year solved. Every year shares one coefficient
-        # table here; when they stop doing so this becomes per year.
-        sampled_tcs, sampled_values = entry['tcs_df'], tc_values
+            tc_values, report = sample(entry['tcs_df'], draws=width,
+                                       start=start + offset, seed=seed)
+            inflow_values = np.broadcast_to(
+                entry['inflows_df']['Value'].to_numpy(dtype=float)[:, None],
+                (len(entry['inflows_df']), width))
 
+            structure.evaluate(inflow_values, tc_values, out=target)
+            written += rows
+
+            # The coefficients are kept at full width: the sensitivity figure
+            # correlates them against the results, so they have to line up draw
+            # for draw with what is stored above.
+            all_tc_values[:, offset:offset + width] = tc_values
+            sampled_tcs = entry['tcs_df']
+
+    for entry, structure in structures:
         keys = structure.result_keys.copy()
         keys.insert(0, 'Year', entry['Year'])
         key_frames.append(keys)
-        value_blocks.append(block)
+    sampled_values = all_tc_values
 
     if not key_frames:
         raise ValueError(f'{data_folder} produced no years to solve.')
 
     return MonteCarloRun(keys=pd.concat(key_frames, ignore_index=True),
-                         values=np.vstack(value_blocks), report=report,
+                         values=values, report=report,
                          tcs=sampled_tcs, tc_values=sampled_values,
                          case=data_folder)

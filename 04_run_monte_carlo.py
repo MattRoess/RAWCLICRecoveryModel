@@ -58,7 +58,7 @@ import numpy as np
 import pandas as pd
 
 
-from src.monte_carlo import solve_draws
+from src.monte_carlo import MemoryBudgetExceeded, solve_draws
 from src.params_schema import ParameterError, current
 from src.upstream import UpstreamError, load as refresh
 from src.plot_monte_carlo import draw_all
@@ -116,8 +116,15 @@ def main() -> int:
     print(f'Draws     : {draws:,}  (seed {params.monte_carlo.seed})')
 
     tables = refresh(params, params.run.data_folder)
-    run = solve_draws(params.run.data_folder, LAYER_NAMES, draws=draws,
-                      seed=params.monte_carlo.seed, tables=tables)
+    try:
+        run = solve_draws(params.run.data_folder, LAYER_NAMES, draws=draws,
+                          seed=params.monte_carlo.seed, tables=tables,
+                          chunk=params.monte_carlo.chunk,
+                          budget_gb=params.monte_carlo.memory_budget_gb,
+                          quiet=False)
+    except MemoryBudgetExceeded as error:
+        print(error, file=sys.stderr)
+        return 1
 
     report = run.report
     if not report.get('uncertain'):

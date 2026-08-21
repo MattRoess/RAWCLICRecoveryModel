@@ -246,7 +246,25 @@ class MonteCarloParams:
     # a little more speed on a small case.
     # SAFE TO CHANGE: yes. It changes nothing about the answer -- a chunked run
     # reproduces an unchunked one exactly, which test_monte_carlo.py checks.
-    chunk: int = 20_000
+    chunk: int = 0
+
+    # HOW MUCH MEMORY THE RUN MAY USE, in gigabytes.
+    #
+    # The result is rows x draws x 8 bytes and cannot be avoided if exact
+    # percentiles are wanted, so this is what decides whether a run is possible
+    # at all. Everything else -- the sampled coefficients, the working values,
+    # the sorting scratch -- is transient and is bounded by the chunk, which is
+    # sized from this budget rather than guessed.
+    #
+    # A run whose result alone exceeds the budget stops BEFORE allocating
+    # anything, and says which lever to pull: fewer draws, fewer years, fewer
+    # domains. That is the point -- the alternative is the machine swapping for
+    # ten minutes and then the process being killed with no explanation.
+    #
+    # Raise it if the machine has the memory. 4 GB suits a 16 GB laptop with
+    # something else open.
+    # SAFE TO CHANGE: yes. A number above zero.
+    memory_budget_gb: float = 4.0
 
 
 @dataclass
@@ -351,9 +369,14 @@ class Params:
             issues.append(f'draws is {self.data.draws!r}, but must be a whole number '
                           f'above zero, such as 200000')
 
-        if not isinstance(self.monte_carlo.chunk, int) or self.monte_carlo.chunk <= 0:
+        if not isinstance(self.monte_carlo.chunk, int) or self.monte_carlo.chunk < 0:
             issues.append(f'chunk is {self.monte_carlo.chunk!r}, but must be a whole '
-                          f'number above zero, such as 20000')
+                          f'number -- 0 to size it from the memory budget')
+
+        if not isinstance(self.monte_carlo.memory_budget_gb, (int, float)) \
+                or self.monte_carlo.memory_budget_gb <= 0:
+            issues.append(f'memory_budget_gb is {self.monte_carlo.memory_budget_gb!r}, '
+                          f'but must be a number above zero, such as 4.0')
 
         # Deliberately NOT checked here: whether the draw directories exist.
         # current() runs at the start of every stage, including the ones that
