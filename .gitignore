@@ -37,6 +37,7 @@ data_folder/*
 # These outputs are regenerated on every run; only the inputs matter.
 data_folder/defect_cases/*/output_data/
 data_folder/template/output_data/
+data_folder/carcomposition_mockup/output_data/
 
 # Model outputs are regenerated on every run. The one exception is
 # basic_test's solution.csv, which is the committed reference result.
