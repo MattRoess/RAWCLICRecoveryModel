@@ -89,9 +89,26 @@ def overview(params, run) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=['setting', 'value'])
 
 
+def finest_layer(summary: pd.DataFrame) -> str:
+    """
+    The deepest layer this case actually resolves.
+
+    NOT always Layer 4. 04_02 resolves elements within a placeholder material,
+    so Layer 4 is the answer; 04_01 stops at material, so Layer 4 is empty
+    everywhere and Layer 3 is. Assuming Layer 4 gave an empty headline sheet
+    and a KeyError rather than a wrong number, which is the good failure, but
+    reading it from the data is the right one.
+    """
+    for column in ('Layer 4', 'Layer 3', 'Layer 2'):
+        if column in summary.columns and (summary[column] != '').any():
+            return column
+    return 'Layer 2'
+
+
 def recovered(summary: pd.DataFrame, tcs: pd.DataFrame, case: str) -> pd.DataFrame:
     """
-    The headline: recovered mass per element per year.
+    The headline: recovered mass per resource per year, at the finest layer the
+    case resolves -- element for 04_02, material for 04_01.
 
     Recovered means reaching a terminal flow that is not a loss. The gap to the
     deterministic run is given as a percentage of the mean, because that is the
@@ -104,14 +121,17 @@ def recovered(summary: pd.DataFrame, tcs: pd.DataFrame, case: str) -> pd.DataFra
     from src.rest import recovered_flows
     keep = recovered_flows(case, tcs)
 
+    layer = finest_layer(summary)
+    label = {'Layer 4': 'element', 'Layer 3': 'material'}.get(layer, 'component')
+
     rows = []
-    for (year, element), group in summary[
-            summary['Stock/Flow ID'].isin(keep) & (summary['Layer 4'] != '')
-            ].groupby(['Year', 'Layer 4']):
+    for (year, resource), group in summary[
+            summary['Stock/Flow ID'].isin(keep) & (summary[layer] != '')
+            ].groupby(['Year', layer]):
         mean = group['mean'].sum()
         point = group['deterministic'].sum()
         rows.append({
-            'Year': year, 'element': element,
+            'Year': year, label: resource,
             'mean': mean, 'p2.5': group['p2_5'].sum(), 'p50': group['p50'].sum(),
             'p97.5': group['p97_5'].sum(),
             'deterministic': point,
@@ -119,7 +139,7 @@ def recovered(summary: pd.DataFrame, tcs: pd.DataFrame, case: str) -> pd.DataFra
             'relative spread %': (100.0 * (group['p97_5'].sum() - group['p2_5'].sum()) / mean)
                                  if mean else np.nan,
         })
-    return pd.DataFrame(rows).sort_values(['element', 'Year'])
+    return pd.DataFrame(rows).sort_values([label, 'Year'])
 
 
 def by_flow(summary: pd.DataFrame) -> pd.DataFrame:
@@ -149,11 +169,11 @@ def mass_balance(summary: pd.DataFrame, tcs: pd.DataFrame) -> pd.DataFrame:
 
 
 def write(path: str, params, run, summary: pd.DataFrame, tcs: pd.DataFrame,
-          composition: pd.DataFrame) -> list[str]:
+          composition: pd.DataFrame, case: str = '') -> list[str]:
     """Write the workbook. Returns the sheet names written."""
     sheets = {
         'Overview': overview(params, run),
-        'Recovered': recovered(summary, tcs, params.run.data_folder),
+        'Recovered': recovered(summary, tcs, case or params.run.data_folder),
         'By flow': by_flow(summary),
         'Mass balance': mass_balance(summary, tcs),
         'Distribution': summary,

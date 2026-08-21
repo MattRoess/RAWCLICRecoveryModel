@@ -2,8 +2,8 @@ Input_FlowID,Input_layer,Input_layer_key,Output_FlowID,TC_target_layer,TC_target
 ELV_collected,product,BEV,ELV_dismantled,component,elvBIW,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBIW out of a BEV"
 ELV_collected,product,BEV,ELV_loss_dismantling,component,elvBIW,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBIW out of a BEV"
 ELV_collected,product,BEV,ELV_shredded,component,elvBIW,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,BEV,ELV_dismantled,component,elvBattery,0.95,0.8,1,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBattery out of a BEV"
-ELV_collected,product,BEV,ELV_loss_dismantling,component,elvBattery,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBattery out of a BEV"
+ELV_collected,product,BEV,ELV_dismantled,component,elvBattery,0.95,0.8,0.955,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvBattery out of a BEV"
+ELV_collected,product,BEV,ELV_loss_dismantling,component,elvBattery,0.03,0,0.045,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvBattery out of a BEV"
 ELV_collected,product,BEV,ELV_shredded,component,elvBattery,0.02,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,BEV,ELV_dismantled,component,elvBrakes,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBrakes out of a BEV"
 ELV_collected,product,BEV,ELV_loss_dismantling,component,elvBrakes,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBrakes out of a BEV"
@@ -17,8 +17,8 @@ ELV_collected,product,BEV,ELV_shredded,component,elvClosures,0.82,,,1,dismantlin
 ELV_collected,product,BEV,ELV_dismantled,component,elvDriveline,0.45,0.3,0.6,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvDriveline out of a BEV"
 ELV_collected,product,BEV,ELV_loss_dismantling,component,elvDriveline,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvDriveline out of a BEV"
 ELV_collected,product,BEV,ELV_shredded,component,elvDriveline,0.52,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,BEV,ELV_dismantled,component,elvPowertrain,0.8,0.65,0.95,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowertrain out of a BEV"
-ELV_collected,product,BEV,ELV_loss_dismantling,component,elvPowertrain,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowertrain out of a BEV"
+ELV_collected,product,BEV,ELV_dismantled,component,elvPowertrain,0.8,0.65,0.885,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvPowertrain out of a BEV"
+ELV_collected,product,BEV,ELV_loss_dismantling,component,elvPowertrain,0.03,0,0.115,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvPowertrain out of a BEV"
 ELV_collected,product,BEV,ELV_shredded,component,elvPowertrain,0.17,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,BEV,ELV_dismantled,component,elvSteering,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvSteering out of a BEV"
 ELV_collected,product,BEV,ELV_loss_dismantling,component,elvSteering,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvSteering out of a BEV"
@@ -26,8 +26,8 @@ ELV_collected,product,BEV,ELV_shredded,component,elvSteering,0.82,,,1,dismantlin
 ELV_collected,product,BEV,ELV_dismantled,component,elvThermalManagement,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvThermalManagement out of a BEV"
 ELV_collected,product,BEV,ELV_loss_dismantling,component,elvThermalManagement,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvThermalManagement out of a BEV"
 ELV_collected,product,BEV,ELV_shredded,component,elvThermalManagement,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,BEV,ELV_dismantled,component,elvTransmission,0.7,0.55,0.85,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTransmission out of a BEV"
-ELV_collected,product,BEV,ELV_loss_dismantling,component,elvTransmission,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTransmission out of a BEV"
+ELV_collected,product,BEV,ELV_dismantled,component,elvTransmission,0.7,0.55,0.835,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvTransmission out of a BEV"
+ELV_collected,product,BEV,ELV_loss_dismantling,component,elvTransmission,0.03,0,0.165,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvTransmission out of a BEV"
 ELV_collected,product,BEV,ELV_shredded,component,elvTransmission,0.27,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,BEV,ELV_dismantled,component,elvTrim,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTrim out of a BEV"
 ELV_collected,product,BEV,ELV_loss_dismantling,component,elvTrim,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTrim out of a BEV"
@@ -41,8 +41,8 @@ ELV_collected,product,Diesel,ELV_shredded,component,elvBIW,0.82,,,1,dismantling,
 ELV_collected,product,Diesel,ELV_dismantled,component,elvBrakes,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBrakes out of a Diesel"
 ELV_collected,product,Diesel,ELV_loss_dismantling,component,elvBrakes,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBrakes out of a Diesel"
 ELV_collected,product,Diesel,ELV_shredded,component,elvBrakes,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,Diesel,ELV_dismantled,component,elvCatalyticConverters,0.95,0.8,1,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvCatalyticConverters out of a Diesel"
-ELV_collected,product,Diesel,ELV_loss_dismantling,component,elvCatalyticConverters,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvCatalyticConverters out of a Diesel"
+ELV_collected,product,Diesel,ELV_dismantled,component,elvCatalyticConverters,0.95,0.8,0.955,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvCatalyticConverters out of a Diesel"
+ELV_collected,product,Diesel,ELV_loss_dismantling,component,elvCatalyticConverters,0.03,0,0.045,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvCatalyticConverters out of a Diesel"
 ELV_collected,product,Diesel,ELV_shredded,component,elvCatalyticConverters,0.02,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,Diesel,ELV_dismantled,component,elvChassis,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvChassis out of a Diesel"
 ELV_collected,product,Diesel,ELV_loss_dismantling,component,elvChassis,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvChassis out of a Diesel"
@@ -68,8 +68,8 @@ ELV_collected,product,Diesel,ELV_shredded,component,elvEmbeddedElectronicsHeadli
 ELV_collected,product,Diesel,ELV_dismantled,component,elvPowerElectronics,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowerElectronics out of a Diesel"
 ELV_collected,product,Diesel,ELV_loss_dismantling,component,elvPowerElectronics,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowerElectronics out of a Diesel"
 ELV_collected,product,Diesel,ELV_shredded,component,elvPowerElectronics,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,Diesel,ELV_dismantled,component,elvPowertrain,0.8,0.65,0.95,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowertrain out of a Diesel"
-ELV_collected,product,Diesel,ELV_loss_dismantling,component,elvPowertrain,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowertrain out of a Diesel"
+ELV_collected,product,Diesel,ELV_dismantled,component,elvPowertrain,0.8,0.65,0.885,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvPowertrain out of a Diesel"
+ELV_collected,product,Diesel,ELV_loss_dismantling,component,elvPowertrain,0.03,0,0.115,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvPowertrain out of a Diesel"
 ELV_collected,product,Diesel,ELV_shredded,component,elvPowertrain,0.17,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,Diesel,ELV_dismantled,component,elvSteering,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvSteering out of a Diesel"
 ELV_collected,product,Diesel,ELV_loss_dismantling,component,elvSteering,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvSteering out of a Diesel"
@@ -77,8 +77,8 @@ ELV_collected,product,Diesel,ELV_shredded,component,elvSteering,0.82,,,1,dismant
 ELV_collected,product,Diesel,ELV_dismantled,component,elvThermalManagement,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvThermalManagement out of a Diesel"
 ELV_collected,product,Diesel,ELV_loss_dismantling,component,elvThermalManagement,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvThermalManagement out of a Diesel"
 ELV_collected,product,Diesel,ELV_shredded,component,elvThermalManagement,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,Diesel,ELV_dismantled,component,elvTransmission,0.7,0.55,0.85,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTransmission out of a Diesel"
-ELV_collected,product,Diesel,ELV_loss_dismantling,component,elvTransmission,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTransmission out of a Diesel"
+ELV_collected,product,Diesel,ELV_dismantled,component,elvTransmission,0.7,0.55,0.835,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvTransmission out of a Diesel"
+ELV_collected,product,Diesel,ELV_loss_dismantling,component,elvTransmission,0.03,0,0.165,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvTransmission out of a Diesel"
 ELV_collected,product,Diesel,ELV_shredded,component,elvTransmission,0.27,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,Diesel,ELV_dismantled,component,elvTrim,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTrim out of a Diesel"
 ELV_collected,product,Diesel,ELV_loss_dismantling,component,elvTrim,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTrim out of a Diesel"
@@ -89,14 +89,14 @@ ELV_collected,product,Diesel,ELV_shredded,component,elvWheels,0.37,,,1,dismantli
 ELV_collected,product,HEV,ELV_dismantled,component,elvBIW,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBIW out of a HEV"
 ELV_collected,product,HEV,ELV_loss_dismantling,component,elvBIW,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBIW out of a HEV"
 ELV_collected,product,HEV,ELV_shredded,component,elvBIW,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,HEV,ELV_dismantled,component,elvBattery,0.95,0.8,1,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBattery out of a HEV"
-ELV_collected,product,HEV,ELV_loss_dismantling,component,elvBattery,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBattery out of a HEV"
+ELV_collected,product,HEV,ELV_dismantled,component,elvBattery,0.95,0.8,0.955,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvBattery out of a HEV"
+ELV_collected,product,HEV,ELV_loss_dismantling,component,elvBattery,0.03,0,0.045,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvBattery out of a HEV"
 ELV_collected,product,HEV,ELV_shredded,component,elvBattery,0.02,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,HEV,ELV_dismantled,component,elvBrakes,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBrakes out of a HEV"
 ELV_collected,product,HEV,ELV_loss_dismantling,component,elvBrakes,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBrakes out of a HEV"
 ELV_collected,product,HEV,ELV_shredded,component,elvBrakes,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,HEV,ELV_dismantled,component,elvCatalyticConverters,0.95,0.8,1,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvCatalyticConverters out of a HEV"
-ELV_collected,product,HEV,ELV_loss_dismantling,component,elvCatalyticConverters,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvCatalyticConverters out of a HEV"
+ELV_collected,product,HEV,ELV_dismantled,component,elvCatalyticConverters,0.95,0.8,0.955,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvCatalyticConverters out of a HEV"
+ELV_collected,product,HEV,ELV_loss_dismantling,component,elvCatalyticConverters,0.03,0,0.045,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvCatalyticConverters out of a HEV"
 ELV_collected,product,HEV,ELV_shredded,component,elvCatalyticConverters,0.02,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,HEV,ELV_dismantled,component,elvChassis,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvChassis out of a HEV"
 ELV_collected,product,HEV,ELV_loss_dismantling,component,elvChassis,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvChassis out of a HEV"
@@ -107,8 +107,8 @@ ELV_collected,product,HEV,ELV_shredded,component,elvClosures,0.82,,,1,dismantlin
 ELV_collected,product,HEV,ELV_dismantled,component,elvDriveline,0.45,0.3,0.6,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvDriveline out of a HEV"
 ELV_collected,product,HEV,ELV_loss_dismantling,component,elvDriveline,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvDriveline out of a HEV"
 ELV_collected,product,HEV,ELV_shredded,component,elvDriveline,0.52,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,HEV,ELV_dismantled,component,elvPowertrain,0.8,0.65,0.95,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowertrain out of a HEV"
-ELV_collected,product,HEV,ELV_loss_dismantling,component,elvPowertrain,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowertrain out of a HEV"
+ELV_collected,product,HEV,ELV_dismantled,component,elvPowertrain,0.8,0.65,0.885,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvPowertrain out of a HEV"
+ELV_collected,product,HEV,ELV_loss_dismantling,component,elvPowertrain,0.03,0,0.115,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvPowertrain out of a HEV"
 ELV_collected,product,HEV,ELV_shredded,component,elvPowertrain,0.17,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,HEV,ELV_dismantled,component,elvSteering,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvSteering out of a HEV"
 ELV_collected,product,HEV,ELV_loss_dismantling,component,elvSteering,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvSteering out of a HEV"
@@ -116,8 +116,8 @@ ELV_collected,product,HEV,ELV_shredded,component,elvSteering,0.82,,,1,dismantlin
 ELV_collected,product,HEV,ELV_dismantled,component,elvThermalManagement,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvThermalManagement out of a HEV"
 ELV_collected,product,HEV,ELV_loss_dismantling,component,elvThermalManagement,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvThermalManagement out of a HEV"
 ELV_collected,product,HEV,ELV_shredded,component,elvThermalManagement,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,HEV,ELV_dismantled,component,elvTransmission,0.7,0.55,0.85,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTransmission out of a HEV"
-ELV_collected,product,HEV,ELV_loss_dismantling,component,elvTransmission,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTransmission out of a HEV"
+ELV_collected,product,HEV,ELV_dismantled,component,elvTransmission,0.7,0.55,0.835,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvTransmission out of a HEV"
+ELV_collected,product,HEV,ELV_loss_dismantling,component,elvTransmission,0.03,0,0.165,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvTransmission out of a HEV"
 ELV_collected,product,HEV,ELV_shredded,component,elvTransmission,0.27,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,HEV,ELV_dismantled,component,elvTrim,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTrim out of a HEV"
 ELV_collected,product,HEV,ELV_loss_dismantling,component,elvTrim,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTrim out of a HEV"
@@ -134,14 +134,14 @@ ELV_collected,product,HEV,ELV_shredded,component,elvgeneratorperMagnet,0.82,,,1,
 ELV_collected,product,PHEV,ELV_dismantled,component,elvBIW,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBIW out of a PHEV"
 ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvBIW,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBIW out of a PHEV"
 ELV_collected,product,PHEV,ELV_shredded,component,elvBIW,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,PHEV,ELV_dismantled,component,elvBattery,0.95,0.8,1,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBattery out of a PHEV"
-ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvBattery,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBattery out of a PHEV"
+ELV_collected,product,PHEV,ELV_dismantled,component,elvBattery,0.95,0.8,0.955,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvBattery out of a PHEV"
+ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvBattery,0.03,0,0.045,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvBattery out of a PHEV"
 ELV_collected,product,PHEV,ELV_shredded,component,elvBattery,0.02,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,PHEV,ELV_dismantled,component,elvBrakes,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBrakes out of a PHEV"
 ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvBrakes,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBrakes out of a PHEV"
 ELV_collected,product,PHEV,ELV_shredded,component,elvBrakes,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,PHEV,ELV_dismantled,component,elvCatalyticConverters,0.95,0.8,1,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvCatalyticConverters out of a PHEV"
-ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvCatalyticConverters,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvCatalyticConverters out of a PHEV"
+ELV_collected,product,PHEV,ELV_dismantled,component,elvCatalyticConverters,0.95,0.8,0.955,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvCatalyticConverters out of a PHEV"
+ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvCatalyticConverters,0.03,0,0.045,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvCatalyticConverters out of a PHEV"
 ELV_collected,product,PHEV,ELV_shredded,component,elvCatalyticConverters,0.02,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,PHEV,ELV_dismantled,component,elvChassis,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvChassis out of a PHEV"
 ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvChassis,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvChassis out of a PHEV"
@@ -152,8 +152,8 @@ ELV_collected,product,PHEV,ELV_shredded,component,elvClosures,0.82,,,1,dismantli
 ELV_collected,product,PHEV,ELV_dismantled,component,elvDriveline,0.45,0.3,0.6,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvDriveline out of a PHEV"
 ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvDriveline,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvDriveline out of a PHEV"
 ELV_collected,product,PHEV,ELV_shredded,component,elvDriveline,0.52,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,PHEV,ELV_dismantled,component,elvPowertrain,0.8,0.65,0.95,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowertrain out of a PHEV"
-ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvPowertrain,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowertrain out of a PHEV"
+ELV_collected,product,PHEV,ELV_dismantled,component,elvPowertrain,0.8,0.65,0.885,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvPowertrain out of a PHEV"
+ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvPowertrain,0.03,0,0.115,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvPowertrain out of a PHEV"
 ELV_collected,product,PHEV,ELV_shredded,component,elvPowertrain,0.17,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,PHEV,ELV_dismantled,component,elvSteering,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvSteering out of a PHEV"
 ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvSteering,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvSteering out of a PHEV"
@@ -161,8 +161,8 @@ ELV_collected,product,PHEV,ELV_shredded,component,elvSteering,0.82,,,1,dismantli
 ELV_collected,product,PHEV,ELV_dismantled,component,elvThermalManagement,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvThermalManagement out of a PHEV"
 ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvThermalManagement,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvThermalManagement out of a PHEV"
 ELV_collected,product,PHEV,ELV_shredded,component,elvThermalManagement,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,PHEV,ELV_dismantled,component,elvTransmission,0.7,0.55,0.85,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTransmission out of a PHEV"
-ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvTransmission,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTransmission out of a PHEV"
+ELV_collected,product,PHEV,ELV_dismantled,component,elvTransmission,0.7,0.55,0.835,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvTransmission out of a PHEV"
+ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvTransmission,0.03,0,0.165,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvTransmission out of a PHEV"
 ELV_collected,product,PHEV,ELV_shredded,component,elvTransmission,0.27,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,PHEV,ELV_dismantled,component,elvTrim,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTrim out of a PHEV"
 ELV_collected,product,PHEV,ELV_loss_dismantling,component,elvTrim,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTrim out of a PHEV"
@@ -182,8 +182,8 @@ ELV_collected,product,Petrol,ELV_shredded,component,elvBIW,0.82,,,1,dismantling,
 ELV_collected,product,Petrol,ELV_dismantled,component,elvBrakes,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBrakes out of a Petrol"
 ELV_collected,product,Petrol,ELV_loss_dismantling,component,elvBrakes,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvBrakes out of a Petrol"
 ELV_collected,product,Petrol,ELV_shredded,component,elvBrakes,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,Petrol,ELV_dismantled,component,elvCatalyticConverters,0.95,0.8,1,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvCatalyticConverters out of a Petrol"
-ELV_collected,product,Petrol,ELV_loss_dismantling,component,elvCatalyticConverters,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvCatalyticConverters out of a Petrol"
+ELV_collected,product,Petrol,ELV_dismantled,component,elvCatalyticConverters,0.95,0.8,0.955,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvCatalyticConverters out of a Petrol"
+ELV_collected,product,Petrol,ELV_loss_dismantling,component,elvCatalyticConverters,0.03,0,0.045,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvCatalyticConverters out of a Petrol"
 ELV_collected,product,Petrol,ELV_shredded,component,elvCatalyticConverters,0.02,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,Petrol,ELV_dismantled,component,elvChassis,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvChassis out of a Petrol"
 ELV_collected,product,Petrol,ELV_loss_dismantling,component,elvChassis,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvChassis out of a Petrol"
@@ -209,8 +209,8 @@ ELV_collected,product,Petrol,ELV_shredded,component,elvEmbeddedElectronicsHeadli
 ELV_collected,product,Petrol,ELV_dismantled,component,elvPowerElectronics,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowerElectronics out of a Petrol"
 ELV_collected,product,Petrol,ELV_loss_dismantling,component,elvPowerElectronics,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowerElectronics out of a Petrol"
 ELV_collected,product,Petrol,ELV_shredded,component,elvPowerElectronics,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,Petrol,ELV_dismantled,component,elvPowertrain,0.8,0.65,0.95,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowertrain out of a Petrol"
-ELV_collected,product,Petrol,ELV_loss_dismantling,component,elvPowertrain,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvPowertrain out of a Petrol"
+ELV_collected,product,Petrol,ELV_dismantled,component,elvPowertrain,0.8,0.65,0.885,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvPowertrain out of a Petrol"
+ELV_collected,product,Petrol,ELV_loss_dismantling,component,elvPowertrain,0.03,0,0.115,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvPowertrain out of a Petrol"
 ELV_collected,product,Petrol,ELV_shredded,component,elvPowertrain,0.17,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,Petrol,ELV_dismantled,component,elvSteering,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvSteering out of a Petrol"
 ELV_collected,product,Petrol,ELV_loss_dismantling,component,elvSteering,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvSteering out of a Petrol"
@@ -218,8 +218,8 @@ ELV_collected,product,Petrol,ELV_shredded,component,elvSteering,0.82,,,1,dismant
 ELV_collected,product,Petrol,ELV_dismantled,component,elvThermalManagement,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvThermalManagement out of a Petrol"
 ELV_collected,product,Petrol,ELV_loss_dismantling,component,elvThermalManagement,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvThermalManagement out of a Petrol"
 ELV_collected,product,Petrol,ELV_shredded,component,elvThermalManagement,0.82,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
-ELV_collected,product,Petrol,ELV_dismantled,component,elvTransmission,0.7,0.55,0.85,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTransmission out of a Petrol"
-ELV_collected,product,Petrol,ELV_loss_dismantling,component,elvTransmission,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTransmission out of a Petrol"
+ELV_collected,product,Petrol,ELV_dismantled,component,elvTransmission,0.7,0.55,0.835,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvTransmission out of a Petrol"
+ELV_collected,product,Petrol,ELV_loss_dismantling,component,elvTransmission,0.03,0,0.165,,dismantling,manual,"MADE UP (Claude); value_max capped so the resource cannot sum past 1 -- not data, illustration of shape only: elvTransmission out of a Petrol"
 ELV_collected,product,Petrol,ELV_shredded,component,elvTransmission,0.27,,,1,dismantling,manual,derived: what is neither pulled nor lost stays in the hulk
 ELV_collected,product,Petrol,ELV_dismantled,component,elvTrim,0.15,0,0.3,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTrim out of a Petrol"
 ELV_collected,product,Petrol,ELV_loss_dismantling,component,elvTrim,0.03,0,0.18,,dismantling,manual,"MADE UP (Claude) -- not data, illustration of shape only: elvTrim out of a Petrol"

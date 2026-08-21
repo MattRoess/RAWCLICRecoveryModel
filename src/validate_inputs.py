@@ -291,6 +291,19 @@ def check(folder: str, tables: dict | None = None) -> list[Problem]:
             f'Layer 2 filled and no gaps between them.'))
 
     # ---- TC keys and layer names have to name something --------------------
+    #
+    # An unmatched key is NOT automatically an error. One coefficient table is
+    # meant to serve several runs of the same study -- 04_01's table carries all
+    # five drivetrains, and a run covering BEV leaves four fifths of its
+    # product-keyed rows matching nothing. Those rows are inert: they are never
+    # looked up, and nothing they could affect exists.
+    #
+    # What IS an error is a table where NOTHING at a layer matches, because then
+    # it is not this case's table at all -- a typo, or the wrong folder. So the
+    # keys are collected first and judged together, which also turns 342 lines
+    # of the same complaint into one line naming the four drivetrains.
+    unmatched: dict[tuple[str, str], dict[str, list[int]]] = {}
+    matched: dict[tuple[str, str], set[str]] = {}
     for column, layer_column in (('Input_layer_key', 'Input_layer'),
                                  ('TC_target_key', 'TC_target_layer')):
         for index, row in tcs.iterrows():
@@ -304,11 +317,29 @@ def check(folder: str, tables: dict | None = None) -> list[Problem]:
                     f"a layer name. Expected one of {', '.join(LAYER_NAMES)}."))
                 continue
             if key not in known[layer]:
-                problems.append(Problem(
-                    'ERROR', '-',
-                    f"TCs.csv row {index + 2}, column '{column}': {key!r} is not a "
-                    f"{layer} in composition.csv. Known: "
-                    f"{', '.join(sorted(known[layer])) or 'none'}."))
+                unmatched.setdefault((column, layer), {}).setdefault(key, []).append(index + 2)
+            else:
+                matched.setdefault((column, layer), set()).add(key)
+
+    for (column, layer), keys in sorted(unmatched.items()):
+        rows = sum(len(where) for where in keys.values())
+        named = ', '.join(sorted(keys))
+        if matched.get((column, layer)):
+            problems.append(Problem(
+                'WARNING', '-',
+                f"TCs.csv, column '{column}': {len(keys)} {layer}(s) in "
+                f"{rows} row(s) are not in this case's composition, so those rows "
+                f"never fire: {named}.\n"
+                f"          Expected when one coefficient table serves several runs. "
+                f"If one of those is a typo, it is inert and silent -- check it."))
+        else:
+            problems.append(Problem(
+                'ERROR', '-',
+                f"TCs.csv, column '{column}': NO {layer} matches this case's "
+                f"composition, so not one of these {rows} row(s) can ever fire.\n"
+                f"          TCs.csv names: {named}\n"
+                f"          composition has: "
+                f"{', '.join(sorted(known[layer])) or 'none'}"))
 
     # ---- 3.3  units ---------------------------------------------------------
     problems += _check_units(inputs)

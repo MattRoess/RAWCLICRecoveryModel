@@ -48,8 +48,9 @@ Scale, on the 2040 collected flow:
 | (drivetrain, component, material) | 476 |
 | years | 96, annual, 1975–2070 |
 
-Collected mass in 2040: BEV 7.56 kt, Petrol 2.83, Diesel 1.57, HEV 1.29,
-PHEV 1.10.
+Collected mass in 2040: BEV 7.56 Mt, Petrol 2.83, Diesel 1.57, HEV 1.29,
+PHEV 1.10. (Corrected: this said kt, a factor of 1,000 out. The measured export
+gives BEV 7,067 kt for 2040, which is 3.44 M vehicles at about 2,050 kg each.)
 
 ## The layer mapping — better than electronics
 
@@ -211,8 +212,47 @@ and 101 material pairs is 605 composition rows per year against the electronics
 case's 70 for five, which is 29 GB at 200,000 draws over five years. The budget
 guard refuses that before allocating. Years and draws are the levers.
 
+### A single-year period did not need 03_02 re-run
+
+`mc_stage03_02_summary` holds only cumulative distributions for the periods
+03_02 itself was run with, so a single-year period appeared to require re-running
+03_02 — hours of simulation, and it rewrites the 2.6 GB `bev_draws` the
+electronics case depends on.
+
+It did not. `data/processed/bev_draws/<scenario>/BEV_<segment>_collected.npy` is
+already `(n_draws, n_years)` per-year vehicle counts, written by 03_02 for stage
+04_02. 04_01 now reads those for a single-year period — the same quantity the
+histogram bootstrap approximates, only exact. **03_02 is unmodified.**
+
+Only BEV has such an export, so a single-year run covers BEV and skips the other
+four as before. Widening 03_02's BEV-only filter is a one-line change for
+whenever it next runs.
+
+### The result, BEV 2040, 50,000 draws
+
+7,067 kt collected. Mass balance closes to 7e-11. 5,599 kt recovered across 16
+materials — 79.2% — with the `rest` convention making that a lower bound.
+
+| material | mean kt | 95% interval | spread |
+|---|---|---|---|
+| battery | 1,014 | 841 – 1,180 | 33% |
+| calmildSteel | 898 | 619 – 1,186 | 63% |
+| calHSS | 733 | 507 – 966 | 63% |
+
+Running every coefficient at its mode overstates the mean by a median 8.3%.
+
+**These numbers are illustrations, not results** — the coefficients are invented.
+
 ### What is still open
 
 - **The coefficients.** The mockup's numbers are invented and marked as such.
-- **Running it.** 04_01 must be re-run with `carcomposition_draws_years` set
-  and matching single-year `output_periods` before the case has any data.
+  Capping their maxima (below) fixed their arithmetic, not their truth.
+- **The other four drivetrains**, which need 03_02's per-year export widened.
+
+### The invented ranges were internally impossible
+
+17 of 278 resources had `value_max` summing past 1 — e.g. a battery "up to 100%
+dismantled" *and* "up to 18% lost", which forces the residual to −18%. The Monte
+Carlo caught it as 153,135 negative residuals and a negative 2.5th percentile on
+`ELV_loss_ASR`. Capped so each resource's maxima sum to at most 1, preserving the
+modes and the relative widths; the affected rows say so in `source`.

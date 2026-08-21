@@ -1,7 +1,7 @@
 key,value
 upstream_dir,data/processed/carcomposition_draws
 flow,{product}_collected
-product,BEV;Diesel;HEV;PHEV;Petrol
+product,BEV
 inflow_flow_id,ELV_collected
 child_layer,material
 group_marker,__component__

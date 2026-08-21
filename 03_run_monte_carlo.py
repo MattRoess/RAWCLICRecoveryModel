@@ -195,7 +195,8 @@ def main(argv=None) -> int:
     # column, so the numbers and what produced them stay together.
     workbook = model.output_path('recovery_results.xlsx')
     sheets = write_workbook(workbook, params, run, merged, run.tcs,
-                            tables['composition'] if tables else pd.DataFrame())
+                            tables['composition'] if tables else pd.DataFrame(),
+                            case=folder)
     print(f'{workbook}: {len(sheets)} sheets -- {", ".join(sheets)}')
 
     written = draw_all(run, determined, params.figures.out_dir,
