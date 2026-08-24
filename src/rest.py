@@ -250,24 +250,37 @@ ROLES = ('recovered', 'loss', 'handoff', 'intermediate')
 
 def flow_roles(case: str) -> dict[str, str]:
     """
-    {flow: role} from the case's processes.csv, empty when there is none.
+    {flow: role} from the case's processes table, empty when there is none.
 
-    A flow with no role stated falls back to `is_loss`, and to 'recovered' when
-    even that is absent -- so an older table keeps working, just less precisely.
+    Every row must state one of ROLES, and there is deliberately no default.
+    The fallback this replaced treated anything unrecognised as 'recovered',
+    so a misspelling added mass to the recovery figure rather than stopping the
+    run -- the same silent inflation as guessing the role from the flow's NAME,
+    which is what the column was introduced to stop.
     """
     from src import case_tables
 
     if not case_tables.exists(case, 'processes'):
         return {}
 
+    allowed = ', '.join(ROLES)
     processes = case_tables.read(case, 'processes')
+    if 'role' not in processes.columns:
+        raise ValueError(
+            f'{case}: the processes table has no `role` column. Every row needs '
+            f'one of {allowed} -- see documentation/CASES.md.')
+
     roles: dict[str, str] = {}
     for _, step in processes.iterrows():
+        flow = step['Output_FlowID']
         stated = str(step.get('role', '')).strip()
         if stated not in ROLES:
-            stated = ('loss' if str(step.get('is_loss', '')).strip() in ('1', 'True', 'true')
-                      else 'recovered')
-        roles[step['Output_FlowID']] = stated
+            step_name = f"{step['Input_FlowID']} -> {flow}"
+            raise ValueError(
+                f'{case}: {step_name} has role {stated!r}, which is not one of '
+                f'{allowed}.\nThe role decides whether that flow counts as '
+                f'recovery, so it cannot be guessed.')
+        roles[flow] = stated
     return roles
 
 

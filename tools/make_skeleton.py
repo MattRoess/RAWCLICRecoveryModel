@@ -30,7 +30,7 @@ ever overwritten by this script.
 
 WHAT A PROCESS LINE SAYS
 ------------------------
-    Input_FlowID,Output_FlowID,process,technology,keyed_at,is_loss
+    Input_FlowID,Output_FlowID,process,technology,keyed_at,role
 
 `keyed_at` is the layer whose yield actually differs, and it decides which rows
 get written (MODEL_MECHANICS.md section 3):
@@ -130,15 +130,35 @@ LAYER_COLUMN = {'product': 'Layer 1', 'component': 'Layer 2',
 # A starting point, not a proposal about your system. Seven lines: three ways
 # out of the collected flow, then one recovery and one loss per treatment.
 DEFAULT_PROCESSES = """\
-Input_FlowID,Output_FlowID,process,technology,keyed_at,is_loss
-F_collected,F_dismantled,dismantling,manual,component,0
-F_collected,F_shredded,dismantling,manual,component,0
-F_collected,F_loss_dismantling,dismantling,manual,component,1
-F_dismantled,F_refined,refining,pyro,element,0
-F_dismantled,F_loss_refining,refining,pyro,element,1
-F_shredded,F_recovered_shredder,shredding,hammer_mill,element,0
-F_shredded,F_loss_shredding,shredding,hammer_mill,element,1
+Input_FlowID,Output_FlowID,process,technology,keyed_at,role
+F_collected,F_dismantled,dismantling,manual,component,intermediate
+F_collected,F_shredded,dismantling,manual,component,intermediate
+F_collected,F_loss_dismantling,dismantling,manual,component,loss
+F_dismantled,F_refined,refining,pyro,element,recovered
+F_dismantled,F_loss_refining,refining,pyro,element,loss
+F_shredded,F_recovered_shredder,shredding,hammer_mill,element,recovered
+F_shredded,F_loss_shredding,shredding,hammer_mill,element,loss
 """
+
+
+
+def loss_destinations_of(processes: pd.DataFrame) -> dict[str, int]:
+    """
+    How many loss destinations each input flow has.
+
+    A `rest` row is only filled in automatically where there is exactly one:
+    with none there is nowhere to send it, and with several the split between
+    them is a judgement this script will not make.
+
+    Read from `role`, so a handoff does not count -- material going to another
+    model has left this system without being lost by it.
+    """
+    counts: dict[str, int] = {}
+    for _, step in processes.iterrows():
+        flow = step['Input_FlowID']
+        is_loss = str(step.get('role', '')).strip() == 'loss'
+        counts[flow] = counts.get(flow, 0) + int(is_loss)
+    return counts
 
 
 def resources_at(composition: pd.DataFrame, keyed_at: str) -> list[tuple[str, str]]:
@@ -177,14 +197,7 @@ def build(case: str, composition: pd.DataFrame | None = None) -> pd.DataFrame:
 
     processes = case_tables.read(case, 'processes')
 
-    # How many loss destinations each flow has. `rest` is only filled in
-    # automatically where there is exactly one: with none there is nowhere to
-    # send it, and with several the split is a judgement this script cannot make.
-    loss_destinations: dict[str, int] = {}
-    for _, step in processes.iterrows():
-        flag = str(step.get('is_loss', '')).strip() in ('1', 'True', 'true')
-        loss_destinations[step['Input_FlowID']] = \
-            loss_destinations.get(step['Input_FlowID'], 0) + int(flag)
+    loss_destinations = loss_destinations_of(processes)
 
     for flow, count in sorted(loss_destinations.items()):
         if count != 1:
@@ -215,7 +228,7 @@ def build(case: str, composition: pd.DataFrame | None = None) -> pd.DataFrame:
                 f"{step['Input_FlowID']} -> {step['Output_FlowID']}. "
                 f"Must be one of {', '.join(INPUT_LAYER_FOR)}.")
 
-        is_loss = str(step.get('is_loss', '')).strip() in ('1', 'True', 'true')
+        is_loss = str(step.get('role', '')).strip() == 'loss'
 
         for parent_key, target_key in resources_at(composition, keyed_at):
             # Unspecified material is treated as unrecovered: all of it to the

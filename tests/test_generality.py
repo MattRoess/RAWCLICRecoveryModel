@@ -138,15 +138,15 @@ def write_case(case: str, child_layer: str = 'element',
     finest = 'element' if child_layer == 'element' else 'material'
     pd.DataFrame([
         dict(Input_FlowID=FLOW, Output_FlowID='PV_delaminated', process='delamination',
-             technology='thermal', keyed_at='component', is_loss=0, role='intermediate'),
+             technology='thermal', keyed_at='component', role='intermediate'),
         dict(Input_FlowID=FLOW, Output_FlowID='PV_loss_handling', process='delamination',
-             technology='thermal', keyed_at='component', is_loss=1, role='loss'),
+             technology='thermal', keyed_at='component', role='loss'),
         dict(Input_FlowID='PV_delaminated', Output_FlowID='PV_recovered',
              process='leaching', technology='hydro', keyed_at=finest,
-             is_loss=0, role='recovered'),
+             role='recovered'),
         dict(Input_FlowID='PV_delaminated', Output_FlowID='PV_loss_leaching',
              process='leaching', technology='hydro', keyed_at=finest,
-             is_loss=1, role='loss'),
+             role='loss'),
     ]).to_csv(os.path.join(case, 'input_data', 'processes.csv'), index=False)
 
 
@@ -528,6 +528,85 @@ def test_every_written_sheet_marks_its_header_row() -> None:
             assert not sheet['A2'].font.bold, f'{name}: row 2 is bold too'
     finally:
         shutil.rmtree(case, ignore_errors=True)
+
+
+def test_role_alone_decides_what_a_flow_counts_as() -> None:
+    """
+    `role` is the only column consulted. There is no `is_loss` to agree or
+    disagree with it, and a role that is missing or misspelled is refused by
+    name rather than quietly counted as recovered -- which is the failure the
+    column was added to prevent in the first place.
+    """
+    from src.rest import flow_roles
+
+    case = tempfile.mkdtemp(prefix='roles-')
+    os.makedirs(os.path.join(case, 'input_data'), exist_ok=True)
+    rows = [
+        dict(Input_FlowID='a', Output_FlowID='b', process='p', technology='t',
+             keyed_at='component', role='intermediate'),
+        dict(Input_FlowID='a', Output_FlowID='a_loss', process='p', technology='t',
+             keyed_at='component', role='loss'),
+        dict(Input_FlowID='b', Output_FlowID='c', process='q', technology='t',
+             keyed_at='element', role='recovered'),
+    ]
+    try:
+        path = os.path.join(case, 'input_data', 'processes.csv')
+        pd.DataFrame(rows).to_csv(path, index=False)
+        roles = flow_roles(case)
+        assert roles == {'b': 'intermediate', 'a_loss': 'loss', 'c': 'recovered'}, roles
+
+        # A misspelling must not silently become 'recovered'.
+        bad = [dict(row) for row in rows]
+        bad[2]['role'] = 'recoverd'
+        pd.DataFrame(bad).to_csv(path, index=False)
+        try:
+            flow_roles(case)
+        except ValueError as error:
+            assert 'recoverd' in str(error), error
+            assert 'c' in str(error), error
+        else:
+            raise AssertionError("a misspelled role was accepted")
+
+        # So must a blank one.
+        blank = [dict(row) for row in rows]
+        blank[2]['role'] = ''
+        pd.DataFrame(blank).to_csv(path, index=False)
+        try:
+            flow_roles(case)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('a blank role was accepted')
+    finally:
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_the_skeleton_counts_loss_destinations_from_role() -> None:
+    """
+    make_skeleton fills a `rest` row in only where a flow has exactly one loss
+    destination, and it now learns that from `role`, not from `is_loss`.
+    With two losses the split is a judgement it will not make.
+    """
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from tools.make_skeleton import loss_destinations_of
+
+    one = pd.DataFrame([
+        dict(Input_FlowID='a', Output_FlowID='b', role='intermediate'),
+        dict(Input_FlowID='a', Output_FlowID='a_loss', role='loss'),
+    ])
+    assert loss_destinations_of(one) == {'a': 1}, loss_destinations_of(one)
+
+    two = pd.DataFrame([
+        dict(Input_FlowID='a', Output_FlowID='a_loss1', role='loss'),
+        dict(Input_FlowID='a', Output_FlowID='a_loss2', role='loss'),
+    ])
+    assert loss_destinations_of(two) == {'a': 2}, loss_destinations_of(two)
+
+    # A handoff is not a loss: material leaves, but to another model.
+    handed = pd.DataFrame([
+        dict(Input_FlowID='a', Output_FlowID='elsewhere', role='handoff'),
+    ])
+    assert loss_destinations_of(handed) == {'a': 0}, loss_destinations_of(handed)
 
 
 def main() -> int:

@@ -231,7 +231,6 @@ flow, by this process. Seven columns.
 | `process` | what happens — dismantling, shredding, refining. Labelling only |
 | `technology` | how it happens — manual, hammer_mill, pyro. Labelling only |
 | `keyed_at` | the layer this step's coefficients are written at — `component`, `material` or `element` |
-| `is_loss` | `1` if the output flow is mass leaving the system, blank otherwise |
 | `role` | what the output flow **means** when recovery is totalled |
 
 `process` and `technology` are descriptive: they name the step for figures and
@@ -260,24 +259,27 @@ rather than read out of the spelling.
 from the total anyway, by not being terminal, so the value is a statement of
 intent rather than something the sum depends on.
 
-### `is_loss` — the older, cruder version of `role`
+### There is no default, on purpose
 
-`is_loss` answers the same question with one bit: loss, or not. `role` answers
-it with four. Where both are given, **`role` wins** — `src/rest.py` falls back
-to `is_loss` only when `role` is missing or not one of the four, and to
-`recovered` when even that is absent, so a table predating the column keeps
-working.
+A row whose `role` is blank, misspelled, or missing stops the run and names the
+step. It is not guessed.
 
-Every row of both cases here states a `role`, so `is_loss` decides nothing in
-the recovery total. It is not idle, though: `tools/make_skeleton.py` counts
-loss destinations with it, to know whether a flow's `rest` row can be filled in
-with 1.0 automatically — with one loss destination it can, with two the split
-is a judgement the tool will not make and it leaves the rows blank.
+That is a deliberate reversal. The table used to carry a second column,
+`is_loss`, answering the same question with one bit, and `role` fell back to it
+— then to `recovered` when neither was readable. So `recoverd` for `recovered`
+did not fail; it added that flow's mass to the recovery figure and said
+nothing. A column that exists to stop mass being counted by accident cannot
+have a default that counts mass by accident.
 
-So the column is redundant in one place and load-bearing in another. It is
-derivable — `is_loss` is exactly `role == 'loss'` — and collapsing the two is
-worth doing, but it changes the skeleton generator and so belongs in its own
-change rather than as a side effect of one.
+`is_loss` was removed in the same change. It was exactly `role == 'loss'`, so
+it carried no information of its own — only the chance of contradicting the
+column beside it. `tools/make_skeleton.py`, which counts each flow's loss
+destinations to decide whether a `rest` row can be filled in with 1.0
+automatically, now counts them from `role`.
+
+One thing that count gets right for free: a `handoff` is **not** a loss.
+Material going to another model has left this system without being lost by it,
+so it does not become somewhere the unspecified remainder can be sent.
 
 ## Several products in one case
 
