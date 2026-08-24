@@ -94,11 +94,17 @@ ensure_venv()
 
 import os
 import sys
+import tempfile
 
 import pandas as pd
 
 
 from src.rest import REST, add_rest
+# Same spelling the stages use, so the call sites read alike:
+# 01_check_inputs, 02_run_model, 03_run_monte_carlo and make_carcomposition_tcs
+# all import it as `refresh`. This file called it and never imported it, so the
+# tool raised NameError before writing anything.
+from src.upstream import load as refresh
 
 COLUMNS = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
            'Output_FlowID', 'TC_target_layer', 'TC_target_key',
@@ -267,6 +273,44 @@ def merge(existing: pd.DataFrame, skeleton: pd.DataFrame) -> tuple[pd.DataFrame,
             {'kept': kept, 'added': added, 'dropped': dropped})
 
 
+def write_atomically(frame: pd.DataFrame, path: str) -> None:
+    """
+    Write the table so that a failure leaves the old one, not half a new one.
+
+    This matters more here than it would elsewhere, because this tool MERGES.
+    A plain `to_csv` interrupted partway -- an iCloud timeout is the case that
+    prompted it, and one killed `00_parameters.py` twice in an evening -- leaves
+    a file with some rows missing. Nothing about that file looks damaged: it is
+    valid CSV with fewer lines. The next run would then read the survivors,
+    treat every lost row as a resource that needs adding, and hand back blanks
+    where filled-in coefficients used to be. Hours of work would disappear
+    looking exactly like ordinary output.
+
+    Writing beside the target and renaming makes the switch atomic. The temp
+    file goes in the same directory so the rename stays on one filesystem, and
+    the bytes are flushed and fsynced before it, so the name can never end up
+    pointing at an empty file.
+    """
+    directory = os.path.dirname(path) or '.'
+    handle = tempfile.NamedTemporaryFile(
+        'w', dir=directory, prefix='.TCs-', suffix='.tmp',
+        delete=False, newline='')
+    try:
+        with handle:
+            frame.to_csv(handle, index=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(handle.name, path)
+    except BaseException:
+        # The original is untouched; drop the partial temp rather than leave
+        # a stray .TCs-*.tmp in the case folder.
+        try:
+            os.unlink(handle.name)
+        except OSError:
+            pass
+        raise
+
+
 def main(case: str) -> int:
     path = os.path.join(case, 'input_data', 'TCs.csv')
     skeleton = build(case)
@@ -277,7 +321,7 @@ def main(case: str) -> int:
         existing = pd.read_csv(path, keep_default_na=False, na_values=[], dtype=str)
         skeleton, change = merge(existing, skeleton)
 
-    skeleton.to_csv(path, index=False)
+    write_atomically(skeleton, path)
 
     blank = skeleton['value'].astype(str).str.strip() == ''
     print(f'\n{path}: {len(skeleton)} rows')
