@@ -9,6 +9,11 @@ __pycache__/
 venv/
 
 # --- Editor / OS ---
+# Excel writes ~$name.xlsx beside a workbook while it is open, and deletes it on
+# close. It is a lock file, not data, and it appeared in a commit the first time
+# a case workbook was opened to look at.
+~$*
+
 # .vscode is NOT ignored wholesale: settings.json is committed so that
 # Positron picks up the right interpreter for everyone who clones this.
 .vscode/*
@@ -36,6 +41,11 @@ data_folder/**/output_data/**
 # spreadsheet says nothing, so without this a result could change with no way
 # to see which coefficient moved. This file is text, so it diffs.
 !data_folder/**/output_data/TCs_used.csv
+
+# ...but not for the fixtures. The suites solve them on every run, so their
+# TCs_used.csv would churn in every commit while saying nothing: a fixture's
+# coefficients are pinned in the test, not something anyone edits.
+data_folder/reference/**/output_data/TCs_used.csv
 
 # The reference solution both engines are checked against.
 !data_folder/reference/basic_test/output_data/solution.csv

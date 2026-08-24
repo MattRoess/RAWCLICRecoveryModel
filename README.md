@@ -14,14 +14,14 @@ stock-and-flow model; transfer coefficients are the part you write.
 Two separate questions, answered separately:
 
 - **The code** — the six test suites. They run entirely against the fixed
-  fixtures in `data_folder/reference/`, so **nothing you do to `TCs.csv` can
-  make them fail.** Use `--code` while a coefficient table is half-written.
+  fixtures in `data_folder/reference/`, so **nothing you do to your coefficient
+  table can make them fail.** Use `--code` while a coefficient table is half-written.
 - **Your case** — the pipeline and mass balance on your data. A failure there
   names your table, not the model.
 
 Neither asserts any particular coefficient value: mass balance holds for any
 well-formed table, because it is a property of the coefficients summing to 1,
-not of what they sum from. Change every number in `TCs.csv` and every check
+not of what they sum from. Change every number in the `TCs` sheet and every check
 here is still meaningful.
 
 The individual stages, in order:

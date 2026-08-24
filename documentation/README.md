@@ -14,7 +14,7 @@ rather than from anyone's recollection.
 | [DESIGN_04_01_carcomposition.md](DESIGN_04_01_carcomposition.md) | What it would take to read stage 04_01 (car composition) as well as 04_02. Effort estimate, layer mapping, and a made-up TC table on the real component and material names. |
 | [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | The design problem for the Monte Carlo version: architecture, the compute budget, sampling asymmetric triangulars, and how to sample under the sum-to-1 constraint. **Built 2026-08-20** — see `src/monte_carlo.py`. |
 | [HANDOVER.md](HANDOVER.md) | Picking the work back up: where both pipelines stand, what is real and what is a placeholder, what changed upstream and what did not, what to do next, what will bite you, and how to work with this user. |
-| [CASES.md](CASES.md) | One model, one case per upstream stage. What `source.csv` says, and how to add 04_03 or 04_04 without touching the settings. |
+| [CASES.md](CASES.md) | One model, one case per upstream stage. The three tables a case carries, what `source` says, how to fill the coefficients in, and how to add 04_03 or 04_04 without touching the settings. |
 | [PARAMETER_REFERENCE.md](PARAMETER_REFERENCE.md) | Every setting, its current value, and what changing it does. Generated from `src/params_schema.py` — do not edit by hand; edit the settings file. |
 
 The input file format is specified in `../doc/User guide.docx` (Harmjan de

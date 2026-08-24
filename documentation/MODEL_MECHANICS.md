@@ -82,7 +82,7 @@ Two things follow, and both matter:
   sits in an intermediate flow where totalling the terminal flows never sees it.
   A run reports this rather than inventing a route: generating coefficients
   automatically would double-count the part already carried. Give `rest` its own
-  coefficients in `TCs.csv` to route it explicitly. Untouched, it is treated as
+  coefficients in the `TCs` table to route it explicitly. Untouched, it is treated as
   unrecovered, which makes recovery figures a **lower bound**.
 
 ### Step 1 — expand the inflow by composition
