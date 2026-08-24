@@ -25,6 +25,16 @@ failure is silent -- the resource simply has no coefficients and its mass stops.
 Generating it from the composition means the two cannot drift apart, and it is
 the only way a table covering five drivetrains and ~480 resources stays correct.
 
+IT REFUSES TO OVERWRITE YOUR WORK
+---------------------------------
+This regenerates the WHOLE table; it does not merge. That is right while every
+number is invented and wrong the moment one is not, and from inside the script
+the two look identical. So the `source` column decides: every row written here
+says `MADE UP (Claude) ...` or `derived: ...`, and a table holding a row that
+says anything else is left alone. `--overwrite` forces it. To add rows for
+resources the export has gained without losing what is filled in, use
+tools/make_skeleton.py, which merges.
+
 CLOSURE HOLDS BY CONSTRUCTION
 -----------------------------
 Each resource gets one residual row carrying whatever the named rows do not, so
@@ -173,8 +183,75 @@ def build(composition: pd.DataFrame) -> pd.DataFrame:
     return tcs
 
 
+def hand_written(existing) -> "pd.DataFrame":
+    """
+    The rows somebody has edited: any whose `source` this tool did not write.
+
+    Every row it generates is marked either `MADE UP (Claude) ...` or
+    `derived: ...`. A row saying anything else came from a person, and is the
+    thing that must not be destroyed.
+    """
+    source = existing['source'].astype(str).str.strip() \
+        if 'source' in existing.columns else None
+    if source is None:
+        # No source column at all means the table was not written by this tool.
+        return existing
+    generated = source.str.startswith(MADE_UP) | source.str.startswith('derived:')
+    return existing[~generated]
+
+
+def refuse_if_edited(folder: str, overwrite: bool) -> None:
+    """
+    Stop before overwriting a table somebody has put real numbers into.
+
+    This tool OVERWRITES -- it does not merge, unlike make_skeleton -- because
+    it generates the whole table from the composition. That is right while every
+    number is a placeholder and wrong the moment one is not, and the difference
+    is invisible from inside the script: a real coefficient looks exactly like
+    an invented one. So the `source` column decides, and a table holding any row
+    this tool did not write is left alone.
+
+    The alternative was a warning in the handover, which is a poor guard: it is
+    read once, months before the run that would destroy the work.
+    """
+    from src import case_tables
+
+    if overwrite or not case_tables.exists(folder, 'TCs'):
+        return
+
+    edited = hand_written(case_tables.read(folder, 'TCs'))
+    if edited.empty:
+        return
+
+    lines = []
+    for _, row in edited.head(5).iterrows():
+        lines.append(f"    {row.get('Input_FlowID', '?')} -> "
+                     f"{row.get('Output_FlowID', '?')}  "
+                     f"{row.get('TC_target_key', '?')}  "
+                     f"value={row.get('value', '?')}  "
+                     f"source={str(row.get('source', ''))[:60]}")
+    more = f'\n    ... and {len(edited) - 5} more' if len(edited) > 5 else ''
+
+    raise SystemExit(
+        f"\nRefusing to overwrite {case_tables.where(folder, 'TCs')[1]}.\n\n"
+        f"{len(edited)} of its rows were not written by this tool -- somebody has\n"
+        f"edited them. This script regenerates the WHOLE table and does not merge,\n"
+        f"so running it would replace those numbers with invented ones.\n\n"
+        + '\n'.join(lines) + more + "\n\n"
+        f"If the table really should be thrown away and rebuilt, say so:\n"
+        f"    ./.venv/bin/python tools/make_carcomposition_tcs.py {folder} --overwrite\n"
+        f"To add rows for resources the export has gained WITHOUT losing what is\n"
+        f"filled in, use tools/make_skeleton.py, which merges.")
+
+
 def main() -> int:
-    folder = sys.argv[1] if len(sys.argv) > 1 else current().run.data_folder
+    arguments = [a for a in sys.argv[1:] if not a.startswith('--')]
+    overwrite = '--overwrite' in sys.argv[1:]
+    folder = arguments[0] if arguments else current().run.data_folder
+
+    # Before anything is generated: this tool replaces the table wholesale.
+    refuse_if_edited(folder, overwrite)
+
     params = current()
     composition = refresh(params, folder, quiet=True)['composition']
 

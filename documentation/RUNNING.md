@@ -147,8 +147,12 @@ safe to work one domain at a time.
 
 **`make_carcomposition_tcs.py` overwrites**, deliberately: everything in it is
 marked `MADE UP (Claude)` in the `source` column, so there is nothing of yours
-to protect. 278 resources is not fillable by hand. Once you start putting
-measured numbers in, stop running it.
+to protect. 278 resources is not fillable by hand.
+
+It refuses to run once that stops being true: any row whose `source` it did not
+write is treated as yours, and the run stops rather than replacing it. Use
+`make_skeleton.py` to add rows without losing what is filled in, or
+`--overwrite` to rebuild deliberately.
 
 ---
 

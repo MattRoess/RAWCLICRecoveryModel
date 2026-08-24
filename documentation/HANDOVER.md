@@ -176,7 +176,8 @@ existing figure and saved table there is keyed on it.
    `tools/make_skeleton.py` writes the rows and **merges**, so you can do it a
    domain at a time without losing what you filled in. For car composition,
    `tools/make_carcomposition_tcs.py` generated the current invented table and
-   **overwrites** — once you start putting real numbers in, stop running it.
+   **overwrites** — but it now refuses to, once any row's `source` says
+   something it did not write. `--overwrite` forces a deliberate rebuild.
 2. **Decide the segment question for 04_01.** Twelve segments are currently
    summed, on the assumption that recovery does not depend on car size. If it
    does, the alternative is a run per segment, not a new layer.

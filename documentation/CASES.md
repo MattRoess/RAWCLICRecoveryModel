@@ -139,28 +139,64 @@ overwritten. That is what makes it safe to work one domain at a time — narrow
 
 **`make_carcomposition_tcs.py` overwrites**, deliberately: everything it writes
 is invented and marked `MADE UP (Claude)` in the `source` column, so there is
-nothing of yours to protect. Once you start replacing those numbers with
-measured ones, stop running it — or move that case to `make_skeleton.py`, which
-does protect them.
+nothing of yours to protect. 278 resources is not fillable by hand.
+
+**It refuses once it is not true.** Before generating anything it reads the
+existing table and looks at the `source` column: every row it wrote says either
+`MADE UP (Claude) ...` or `derived: ...`, so a row saying anything else came
+from a person. Find one and the run stops, names the rows, and points at
+`make_skeleton.py`, which merges. `--overwrite` forces it, for when the table
+really should be thrown away and rebuilt.
+
+That check replaced a sentence telling you to stop running it — a poor guard,
+read once, months before the run that would have destroyed the work.
 
 ## The `source` table
 
-Two columns, `key` and `value`.
+Two columns, `key` and `value`. Nine keys, and **every one of them differs
+between the two cases** — which is the point: this sheet is the only place the
+two studies differ, so everything that makes them different has to be in it.
 
-| key | example | what it is |
+| key | electronics (04_02) | car composition (04_01) | what it decides |
+|---|---|---|---|
+| `upstream_dir` | `data/processed/element_draws` | `data/processed/carcomposition_draws` | which export to read, under `data.upstream_root` |
+| `product` | `BEV` | `BEV;Diesel;HEV;PHEV;Petrol` | Layer 1. One name or several |
+| `flow` | `collected` | `{product}_collected` | the upstream folder. `{product}` is substituted, so 04_01 reads five |
+| `inflow_flow_id` | `F_collected` | `ELV_collected` | the flow the inflow enters as |
+| `child_layer` | `element` | `material` | **the one that matters** — see below |
+| `group_marker` | `__domain__` | `__component__` | the separator in the upstream `.npy` filenames |
+| `material_suffix` | `_mixed` | *(blank)* | the placeholder material, where one is needed |
+| `groups` | `Wiring;Motors` | *(blank)* | which groups to include; blank means all |
+| `draws` | *(absent)* | `50000` | how wide this case's arrays are |
+
+### What each one accepts
+
+| key | allowed | refused on load? |
 |---|---|---|
-| `upstream_dir` | `data/processed/element_draws` | under `data.upstream_root` |
-| `flow` | `{product}_collected` | which upstream folder(s) to read |
-| `product` | `BEV;Diesel;Petrol` | Layer 1; one name or several |
-| `inflow_flow_id` | `F_collected` | must match the first `Input_FlowID` in `processes` |
-| `child_layer` | `element` | `element` or `material` — see below |
-| `group_marker` | `__domain__` | how a group's own mass is named upstream |
-| `material_suffix` | `_mixed` | the placeholder material, where one is needed |
-| `groups` | `Wiring;Motors` | blank means all of them |
+| `child_layer` | `element` or `material`, nothing else | **yes** |
+| `draws` | a whole number above zero | **yes** |
+| `product` | one name, or several separated by `;` | **yes** — blank is refused |
+| `flow` | a folder name; must contain `{product}` when `product` names more than one | **yes** |
+| `upstream_dir` | any path under `data.upstream_root` | no — fails when the folder is not found |
+| `inflow_flow_id` | any flow id, but it must match the first `Input_FlowID` in `processes` | no |
+| `group_marker` | any string | no — **a wrong one silently matches no files** |
+| `material_suffix` | any string, or blank | no |
+| `groups` | `;`-separated, blank for all | no |
 
-A key that is **present** settles the matter, blank or not — blank `groups`
-means every group. A key that is **absent** falls back to the matching `data.*`
-setting, which is what lets an older case with no `source` table keep working.
+Four of the nine are checked when the case loads. The rest fail later, or not
+at all: `group_marker` is the one to be careful with, because getting it wrong
+finds nothing rather than finding the wrong thing.
+
+### Present, blank, and absent are three different answers
+
+A key that is **present settles the matter even when blank** — blank `groups`
+means *every* group, blank `material_suffix` means *no* placeholder is wanted.
+Only an **absent** key falls back to the matching `data.*` setting, which is
+what lets an older case with no `source` table keep working. `child_layer`
+absent defaults to `element`, the 04_02 shape.
+
+So deleting a row and emptying a row do different things, and only deleting it
+means "use the default".
 
 ## Several products in one case
 
