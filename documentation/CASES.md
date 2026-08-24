@@ -219,6 +219,66 @@ be right, but only by luck: as `src/source.py` puts it, how wide a case's
 arrays are is a fact about the case, not about the machine, and one shared
 setting can only ever be right for one of two cases.
 
+## The `processes` table
+
+One row per arrow in the flow network: this input flow becomes that output
+flow, by this process. Seven columns.
+
+| column | what it decides |
+|---|---|
+| `Input_FlowID` | the flow going in |
+| `Output_FlowID` | the flow coming out |
+| `process` | what happens — dismantling, shredding, refining. Labelling only |
+| `technology` | how it happens — manual, hammer_mill, pyro. Labelling only |
+| `keyed_at` | the layer this step's coefficients are written at — `component`, `material` or `element` |
+| `is_loss` | `1` if the output flow is mass leaving the system, blank otherwise |
+| `role` | what the output flow **means** when recovery is totalled |
+
+`process` and `technology` are descriptive: they name the step for figures and
+for reading, and nothing computes from them.
+
+### `role` — what a flow counts as
+
+Four values, and only one of them is counted as recovery:
+
+| role | counted as recovered? | meaning |
+|---|---|---|
+| `recovered` | **yes** | an endpoint material comes back from |
+| `loss` | no | mass leaving the system |
+| `handoff` | no | an endpoint, but handed to a **different** model — recovered elsewhere, not here |
+| `intermediate` | no | not an endpoint; feeds the next process |
+
+The one that earns its keep is `handoff`. The role used to be guessed from the
+flow's *name*, and that guess counted `F_separated_electronics` as recovered
+because the string `loss` does not appear in it. That flow is material handed
+to a separate recovery model. It carried no mass at the time, so nothing looked
+wrong — and it would have inflated the recovery figure, silently, the moment
+boards and sensors were included again. `role` exists so the meaning is stated
+rather than read out of the spelling.
+
+`intermediate` marks a flow that is consumed further on. Those are excluded
+from the total anyway, by not being terminal, so the value is a statement of
+intent rather than something the sum depends on.
+
+### `is_loss` — the older, cruder version of `role`
+
+`is_loss` answers the same question with one bit: loss, or not. `role` answers
+it with four. Where both are given, **`role` wins** — `src/rest.py` falls back
+to `is_loss` only when `role` is missing or not one of the four, and to
+`recovered` when even that is absent, so a table predating the column keeps
+working.
+
+Every row of both cases here states a `role`, so `is_loss` decides nothing in
+the recovery total. It is not idle, though: `tools/make_skeleton.py` counts
+loss destinations with it, to know whether a flow's `rest` row can be filled in
+with 1.0 automatically — with one loss destination it can, with two the split
+is a judgement the tool will not make and it leaves the rows blank.
+
+So the column is redundant in one place and load-bearing in another. It is
+derivable — `is_loss` is exactly `role == 'loss'` — and collapsing the two is
+worth doing, but it changes the skeleton generator and so belongs in its own
+change rather than as a side effect of one.
+
 ## Several products in one case
 
 04_01 covers five drivetrains, and they are **one study**: the same shredder,

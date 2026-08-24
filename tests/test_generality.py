@@ -504,6 +504,32 @@ def test_the_source_sheet_offers_the_child_layer_choices() -> None:
         shutil.rmtree(case, ignore_errors=True)
 
 
+def test_every_written_sheet_marks_its_header_row() -> None:
+    """Row 1 comes out bold on a fill, so it reads as headings, not as data."""
+    import openpyxl
+
+    from src import case_tables
+
+    case = tempfile.mkdtemp(prefix='header-style-')
+    try:
+        frame = pd.DataFrame([{'key': 'product', 'value': 'BEV'}])
+        case_tables.write_sheet(case, 'source', frame)
+        case_tables.write_sheet(case, 'processes', pd.DataFrame(
+            [{'Input_FlowID': 'a', 'Output_FlowID': 'b'}]))
+
+        book = openpyxl.load_workbook(case_tables.workbook_path(case))
+        for name in ('source', 'processes'):
+            sheet = book[name]
+            for cell in sheet[1]:
+                assert cell.font.bold, f'{name}!{cell.coordinate} is not bold'
+                assert cell.fill.start_color.rgb.endswith(case_tables.HEADER_FILL), \
+                    f'{name}!{cell.coordinate} fill is {cell.fill.start_color.rgb}'
+            # The first data row must NOT be styled, or nothing stands out.
+            assert not sheet['A2'].font.bold, f'{name}: row 2 is bold too'
+    finally:
+        shutil.rmtree(case, ignore_errors=True)
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

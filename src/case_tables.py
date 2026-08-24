@@ -180,6 +180,22 @@ def describe(case: str) -> str:
 # drops the validation silently and the dropdown simply is not there.
 LISTS_SHEET = '_lists'
 
+# Row 1 of every sheet is column names, not data. Freezing it keeps it on
+# screen; colouring it is what makes it read as a heading on the first look,
+# before anyone has scrolled far enough for the freeze to show.
+HEADER_FILL = 'D9E1F2'
+
+
+
+def style_header(sheet) -> None:
+    """Bold on a fill across row 1, so the column names look like column names."""
+    from openpyxl.styles import Font, PatternFill
+
+    fill = PatternFill('solid', start_color=HEADER_FILL, end_color=HEADER_FILL)
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+        cell.fill = fill
+
 
 def write_sheet(case: str, table: str, frame: pd.DataFrame, *,
                 dropdowns: dict[str, list[str]] | None = None,
@@ -216,6 +232,7 @@ def write_sheet(case: str, table: str, frame: pd.DataFrame, *,
         sheet.append(['' if value is None else value for value in row])
 
     sheet.freeze_panes = 'A2'
+    style_header(sheet)
     for index, column in enumerate(frame.columns, start=1):
         letter = get_column_letter(index)
         sheet.column_dimensions[letter].width = (widths or {}).get(column, 18)
