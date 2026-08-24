@@ -32,10 +32,16 @@ suites on fixed fixtures, then the pipeline and a mass balance.
 **Every transfer coefficient in this project is a placeholder I invented.**
 Not one is measured.
 
-| case | rows | provenance |
-|---|---|---|
-| `bev_electronics` | 52 | 26 `PLACEHOLDER (Claude, not data)`, 26 derived residuals and routing decisions |
-| `carcomposition_mockup` | 632 | all `MADE UP (Claude)` |
+| case | rows | invented outright | derived from those |
+|---|---|---|---|
+| `bev_electronics` | 52 | 24 `PLACEHOLDER (Claude, not data)` | 28 residuals and routing decisions |
+| `carcomposition_mockup` | 632 | 354 `MADE UP (Claude)` | 278 residuals |
+
+**The derived rows are not measurements either.** A residual is
+`parent − Σ known children`, so it is arithmetic on the invented numbers beside
+it — which is why the headline above says every coefficient and means it. The
+split is worth stating only because the `source` column distinguishes them, and
+a reader comparing this table against the file should find them agreeing.
 
 The `source` column says so on every row, and it is carried into the workbook's
 Coefficients sheet. The uncertainty ranges are invented too, so **the 95%
@@ -87,17 +93,31 @@ Full detail in [CASES.md](CASES.md).
 ### No intermediate steps
 
 The engines read the upstream `.npy` draws directly through `src/upstream.py`,
-every run. `01_import_upstream.py` writes `inputs.csv` and `composition.csv` so
-you can *look* at a case — **nothing reads them.** Delete them and the results
-are identical. (`bev_electronics` has them on disk; `carcomposition_mockup` does
-not. Both run the same.)
+every run. There is no import step and no intermediate file: neither case has
+an `inputs.csv` or a `composition.csv` on disk, and both run.
+
+`01_import_upstream.py` used to write those two files so a case could be looked
+at. It was **deleted on 2026-08-24** along with the `data.import_case` and
+`data.import_year` settings that existed only to serve it. It had already been
+deleted once, restored, and then left out of the pipeline, which is a fair sign
+that its real job was answering "what will the model solve?" — a question the
+`01_check_inputs.py` report and the figures now answer from the draws
+themselves.
+
+Four modules still *can* read those files, as a fallback when a caller has not
+already passed the frames in: `src/validate_inputs.py`, `src/mass_balance.py`,
+`src/plot_flows.py` and `tools/make_skeleton.py`. Each tries the upstream draws
+first, so the fallback is unreachable in the normal pipeline. It is left in
+place deliberately — it is what lets a hand-written case folder be solved
+without any upstream at all, which is how `tests/test_generality.py` builds its
+photovoltaic case.
 
 ---
 
 ## 3. What changed upstream, and what did not
 
-Branch **`carcomposition-draw-export`** in `RAWCLICStockAndFlow`, pushed, three
-commits:
+Branch **`carcomposition-draw-export`** in `RAWCLICStockAndFlow`, pushed. Three
+commits are this work:
 
 | commit | what |
 |---|---|
@@ -105,8 +125,12 @@ commits:
 | `00af52a` | A single-year period reads the per-year draws 03_02 already writes, instead of demanding a period histogram that does not exist. |
 | `7d6c9dd` | Every drivetrain gets a single-year vehicle count, without re-running 03_02. |
 
+Those three touch **only** `code/04_01_carcomposition.py`.
 **`03_02_adjustedflows.py` and `04_02_BEVelectronics.py` are unmodified**, and
 `data/processed/bev_draws` (2.6 GB) was never rewritten.
+
+The branch itself is **20 commits ahead of `main`** — the other 17 are earlier
+work that had not been merged. Merging it brings all twenty, not three.
 
 ### The one honest approximation
 
@@ -220,8 +244,17 @@ Read this before doing anything. Every item cost time to learn.
 9. **Keep [RUNNING.md](RUNNING.md) and [CASES.md](CASES.md) current in the same
    commit** as any change to what a file does or what a run produces.
 
-Settled conventions: **kg**, not Mg. **95% interval** on every distribution
-figure. Plain figure titles.
+Settled conventions: **95% interval** on every distribution figure. Plain
+figure titles.
+
+**Units — three are in play at once, and this document uses all three.** The
+data folders are written in **Mg**, the upstream pipeline delivers **kt**, and
+the arithmetic and every output file are in **kg** (`run.working_unit`). The
+inflow is converted on load, from whatever the file declares to the working
+unit, so nothing is converted by hand. Figures pick a display scale per figure
+— which is why §1 reports 640.7 kt while the summary file holds 640,684,957.
+A wrong unit is a silent factor of 1000, so `src/units.py` is worth reading
+before touching any of it.
 
 ---
 

@@ -16,39 +16,30 @@ venv/
 .DS_Store
 
 # --- Data ---
-# Real input data stays local. Two small case sets are tracked: basic_test,
-# the reference case the model is checked against, and defect_cases, the
-# minimal inputs that reproduce the engine divergences in documentation/.
-data_folder/*
-!data_folder/basic_test/
-!data_folder/basic_test/**
-!data_folder/defect_cases/
-!data_folder/defect_cases/**
+# The input tables ARE the work, so every case folder is tracked. Only the
+# generated outputs are ignored.
+#
+# This used to be inverted: ignore data_folder/* wholesale, then un-ignore each
+# case by name. When basic_test, defect_cases and template moved into
+# reference/, those un-ignore rules stopped matching anything -- and
+# data_folder/bev_electronics, created later, was never named at all. The real
+# case, with the only hand-written coefficient table in the project, went
+# untracked for its whole life and nothing anywhere said so. Ignoring only the
+# outputs cannot fail that way.
+data_folder/**/output_data/
 
-# The worked example of the proposed TC table schema (documentation/DESIGN_tc_table.md).
-!data_folder/template/
-!data_folder/template/**
-
-# The made-up 04_01 table: real component and material names, invented numbers
-# (documentation/DESIGN_04_01_carcomposition.md).
-!data_folder/carcomposition_mockup/
-!data_folder/carcomposition_mockup/**
-
-# These outputs are regenerated on every run; only the inputs matter.
-data_folder/defect_cases/*/output_data/
-data_folder/template/output_data/
-data_folder/carcomposition_mockup/output_data/
-
-# Model outputs are regenerated on every run. The one exception is
-# basic_test's solution.csv, which is the committed reference result.
-data_folder/basic_test/output_data/*
-!data_folder/basic_test/output_data/solution.csv
+# The one exception: the reference solution both engines are checked against.
+# The directory has to be un-ignored before anything inside it can be, then its
+# other contents -- this run's two engine outputs -- ignored again.
+!data_folder/reference/basic_test/output_data/
+data_folder/reference/basic_test/output_data/*
+!data_folder/reference/basic_test/output_data/solution.csv
 
 # --- Figures ---
-# Not tracked at all. Every figure is regenerated from the inputs and
-# params.xlsx by run_model.py, in whichever formats figures.formats asks for,
-# so a committed copy is a stale copy the moment a parameter changes. Same
-# stance as output_data/ above: the inputs and the settings are the record.
+# Not tracked at all. Every figure is regenerated from the inputs and the
+# settings by 02_run_model.py and 03_run_monte_carlo.py, so a committed copy is
+# a stale copy the moment a setting changes. Same stance as output_data/ above:
+# the inputs and the settings are the record.
 figures/
 
 # --- Profiling scratch ---

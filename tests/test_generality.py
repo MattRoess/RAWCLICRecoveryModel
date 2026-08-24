@@ -160,7 +160,6 @@ def settings(root: str, case_name: str) -> Params:
     params.data.upstream_root = root
     params.data.inflow_draws_dir = '.'
     params.data.upstream_flow = 'collected'
-    params.data.import_case = case_name
     # NOT set here: product, inflow_flow_id, groups, material_suffix,
     # child_layer. Those come from the case's own source.csv, which is the
     # whole point -- they are left at their vehicle defaults on purpose, so

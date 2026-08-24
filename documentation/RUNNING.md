@@ -33,11 +33,10 @@ refuse a broken table, so nothing silently uses bad numbers if you skip them.
 itself. Run `02` when you want the diagrams; run `03` when you want the numbers
 and the uncertainty. Either can be run alone.
 
-Two more you can press when you want them:
+One more you can press when you want it:
 
 | file | what it does |
 |---|---|
-| `01_import_upstream.py` | writes `inputs.csv`/`composition.csv` into the case so you can *see* the numbers the model will solve. **Nothing reads them** — every run takes its numbers from the upstream draws. Delete them and the results are identical. |
 | `tools/plot_structure.py` | the structure diagram on its own, without solving anything |
 
 ---

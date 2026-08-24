@@ -49,7 +49,8 @@ class RunParams:
     """What gets solved, and with which engine."""
 
     # ******************************************************************
-    #  WHICH PIPELINE RUNS.  Set it here, then press Run on RUN.py.
+    #  WHICH PIPELINE RUNS.  Set it here, then press Run on the stages in
+    #  order: 00, 01, 02, 03 -- or 99 to run the checks and the pipeline.
     #
     #    'data_folder/bev_electronics'        04_02  electronics in BEVs,
     #                                                resolved to ELEMENTS
@@ -65,7 +66,7 @@ class RunParams:
     #  and its own coefficients in its own folder.
     # ******************************************************************
     # A folder holding an `input_data/`, written from the project root.
-    # RUN.py lists the folders that qualify if this one does not exist.
+    # `02_run_model.py --list` prints the folders that qualify.
     # SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
     data_folder: str = 'data_folder/bev_electronics'
 
@@ -179,9 +180,9 @@ class DataParams:
     coefficients, which is exactly the mistake nothing else would catch.
     See src/source.py.
 
-    `upstream_root`, `draws` and `import_year` are NOT by case: where the
-    sibling repository is checked out, and how much of it to read, are
-    properties of this machine and this run, not of the study.
+    `upstream_root` and `draws` are NOT by case: where the sibling repository
+    is checked out, and how much of it to read, are properties of this machine
+    and this run, not of the study.
     """
 
     # WHERE THE UPSTREAM PROJECT IS, as a path from this project's root.
@@ -225,19 +226,6 @@ class DataParams:
     # other two are the fleet's own story and are not handed to a recycler.
     # SAFE TO CHANGE: yes. One of 'collected', 'outflow', 'inflow'.
     upstream_flow: str = 'collected'
-
-    # WHICH YEAR TO IMPORT.
-    # Must be one of the years upstream exported -- see
-    # bev_electronics_element_draws_years in the RAWCLICStockAndFlow settings.
-    # One year at a time is the normal way to work here: a recovery result is
-    # reported for a year, and the memory cost is linear in how many are held.
-    # `run.years` then selects within whatever the case folder holds.
-    # SAFE TO CHANGE: yes, together with the upstream export.
-    import_year: int = 2040
-
-    # WHERE import_upstream.py WRITES THE CASE FOLDER, under data_folder/.
-    # SAFE TO CHANGE: yes.
-    import_case: str = 'bev_electronics'
 
     # BY CASE (`product` in source.csv).
     # WHAT THE PRODUCT IS CALLED, at Layer 1.
