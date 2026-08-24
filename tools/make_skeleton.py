@@ -99,7 +99,7 @@ import tempfile
 import pandas as pd
 
 
-from src.rest import REST, add_rest
+from src.rest import KEYED_AT, REST, add_rest
 # Same spelling the stages use, so the call sites read alike:
 # 01_check_inputs, 02_run_model, 03_run_monte_carlo and make_carcomposition_tcs
 # all import it as `refresh`. This file called it and never imported it, so the
@@ -117,15 +117,20 @@ COLUMNS = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
 # six months on, "0.85" and "0.85 [Smith 2023]" and "0.85 (guessed)" are
 # indistinguishable, and only one of them should survive review.
 
-# The layer a coefficient reads FROM, given the layer it targets. A component
-# coefficient is keyed on the product it sits in, an element coefficient on its
-# material -- which is what makes it "copper as found in a harness" rather than
-# copper everywhere.
-INPUT_LAYER_FOR = {'component': 'product', 'material': 'component',
-                   'element': 'material'}
-
 LAYER_COLUMN = {'product': 'Layer 1', 'component': 'Layer 2',
                 'material': 'Layer 3', 'element': 'Layer 4'}
+
+# The layer a coefficient reads FROM, given the layer it targets: the one
+# directly above it. A component coefficient is keyed on the product it sits
+# in, an element coefficient on its material -- which is what makes it "copper
+# as found in a harness" rather than copper everywhere.
+#
+# Derived from the nesting rather than written out again, so its keys are
+# exactly the layers below the product -- which is what src.rest.KEYED_AT says
+# a process may be keyed at. A test checks the two still agree.
+_NESTING = list(LAYER_COLUMN)
+INPUT_LAYER_FOR = {child: _NESTING[depth - 1]
+                   for depth, child in enumerate(_NESTING) if depth}
 
 # A starting point, not a proposal about your system. Seven lines: three ways
 # out of the collected flow, then one recovery and one loss per treatment.
@@ -156,8 +161,8 @@ def loss_destinations_of(processes: pd.DataFrame) -> dict[str, int]:
     counts: dict[str, int] = {}
     for _, step in processes.iterrows():
         flow = step['Input_FlowID']
-        is_loss = str(step.get('role', '')).strip() == 'loss'
-        counts[flow] = counts.get(flow, 0) + int(is_loss)
+        to_loss = str(step.get('role', '')).strip() == 'loss'
+        counts[flow] = counts.get(flow, 0) + int(to_loss)
     return counts
 
 
@@ -222,20 +227,20 @@ def build(case: str, composition: pd.DataFrame | None = None) -> pd.DataFrame:
     rows = []
     for _, step in processes.iterrows():
         keyed_at = str(step['keyed_at']).strip()
-        if keyed_at not in INPUT_LAYER_FOR:
+        if keyed_at not in KEYED_AT:
             raise ValueError(
-                f"processes.csv: keyed_at={keyed_at!r} for "
+                f"processes: keyed_at={keyed_at!r} for "
                 f"{step['Input_FlowID']} -> {step['Output_FlowID']}. "
-                f"Must be one of {', '.join(INPUT_LAYER_FOR)}.")
+                f"Must be one of {', '.join(KEYED_AT)}.")
 
-        is_loss = str(step.get('role', '')).strip() == 'loss'
+        to_loss = str(step.get('role', '')).strip() == 'loss'
 
         for parent_key, target_key in resources_at(composition, keyed_at):
             # Unspecified material is treated as unrecovered: all of it to the
             # loss flow, none of it anywhere else, with no spread. See the
             # module docstring for why this is filled in rather than left blank.
             fills_in = target_key == REST and loss_destinations[step['Input_FlowID']] == 1
-            value = (1.0 if is_loss else 0.0) if fills_in else ''
+            value = (1.0 if to_loss else 0.0) if fills_in else ''
 
             rows.append({
                 'Input_FlowID': step['Input_FlowID'],

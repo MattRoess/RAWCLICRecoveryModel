@@ -283,11 +283,17 @@ def write_sheet(case: str, table: str, frame: pd.DataFrame, *,
         sheet.add_data_validation(rule)
         rule.add(target)
 
+    def offer_column(name: str, allowed) -> None:
+        """Constrain a whole column, header row excepted."""
+        letter = get_column_letter(list(frame.columns).index(name) + 1)
+        offer(name, allowed, f'{letter}2:{letter}{max(len(frame) + 1, 2)}')
+
+    covered = set()
     for column, allowed in sorted((dropdowns or {}).items()):
         if column not in frame.columns or not allowed:
             continue
-        letter = get_column_letter(list(frame.columns).index(column) + 1)
-        offer(column, allowed, f'{letter}2:{letter}{max(len(frame) + 1, 2)}')
+        offer_column(column, allowed)
+        covered.add(column)
 
     # `source` is a key/value sheet, so a fixed vocabulary constrains ONE cell
     # rather than a column: the value beside `child_layer` is element or
@@ -297,6 +303,13 @@ def write_sheet(case: str, table: str, frame: pd.DataFrame, *,
     # this sheet today -- a parameter nobody passes is a parameter nobody
     # remembers, and the dropdown has to come back on a sheet rewritten later
     # by someone who never read this file.
+    if table == 'processes':
+        from src.rest import VOCABULARY as PROCESS_VOCABULARY
+
+        for column, allowed in sorted(PROCESS_VOCABULARY.items()):
+            if column in frame.columns and column not in covered:
+                offer_column(column, allowed)
+
     if table == 'source' and {'key', 'value'} <= set(frame.columns):
         from src.source import VOCABULARY
 

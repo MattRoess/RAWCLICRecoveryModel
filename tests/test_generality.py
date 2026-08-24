@@ -609,6 +609,68 @@ def test_the_skeleton_counts_loss_destinations_from_role() -> None:
     assert loss_destinations_of(handed) == {'a': 0}, loss_destinations_of(handed)
 
 
+def test_the_processes_sheet_offers_role_and_keyed_at() -> None:
+    """
+    Both fixed-vocabulary columns come out as dropdowns over the data rows,
+    and the header row is left alone. `role` matters most: it has no default,
+    so a misspelling stops the run -- and a list you pick from cannot be
+    misspelled.
+    """
+    import openpyxl
+
+    from src import case_tables
+    from src.rest import KEYED_AT, ROLES
+
+    case = tempfile.mkdtemp(prefix='processes-dropdown-')
+    try:
+        frame = pd.DataFrame([
+            dict(Input_FlowID='a', Output_FlowID='b', process='p',
+                 technology='t', keyed_at='component', role='intermediate'),
+            dict(Input_FlowID='a', Output_FlowID='a_loss', process='p',
+                 technology='t', keyed_at='component', role='loss'),
+        ])
+        case_tables.write_sheet(case, 'processes', frame)
+
+        book = openpyxl.load_workbook(case_tables.workbook_path(case))
+        sheet = book['processes']
+        ranges = {}
+        for rule in sheet.data_validations.dataValidation:
+            for area in rule.sqref.ranges:
+                ranges[str(area)] = rule.formula1
+
+        # role is column F, keyed_at column E; rows 2-3 are the data.
+        assert set(ranges) == {'E2:E3', 'F2:F3'}, sorted(ranges)
+
+        lists = book[case_tables.LISTS_SHEET]
+        header = [cell.value for cell in lists[1]]
+        for name, expected in (('role', ROLES), ('keyed_at', KEYED_AT)):
+            column = header.index(name) + 1
+            offered = tuple(lists.cell(row=line, column=column).value
+                            for line in range(2, len(expected) + 2))
+            assert offered == tuple(expected), f'{name} offers {offered}'
+    finally:
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_the_keyed_at_vocabulary_has_one_definition() -> None:
+    """
+    make_skeleton derives each layer's parent from the nesting, so the layers
+    it accepts are the layers src.rest declares. Two lists that must agree are
+    two lists that will not -- the point of deriving one from the other.
+    """
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from tools.make_skeleton import INPUT_LAYER_FOR, LAYER_COLUMN
+    from src.rest import KEYED_AT
+
+    assert tuple(INPUT_LAYER_FOR) == KEYED_AT, \
+        f'make_skeleton accepts {tuple(INPUT_LAYER_FOR)}, rest declares {KEYED_AT}'
+    # Every parent is the layer directly above its child.
+    order = list(LAYER_COLUMN)
+    for child, parent in INPUT_LAYER_FOR.items():
+        assert order.index(parent) == order.index(child) - 1, \
+            f'{child} reads from {parent}, which is not the layer above it'
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

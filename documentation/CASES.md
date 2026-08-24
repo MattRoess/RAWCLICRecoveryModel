@@ -259,6 +259,13 @@ rather than read out of the spelling.
 from the total anyway, by not being terminal, so the value is a statement of
 intent rather than something the sum depends on.
 
+Both `role` and `keyed_at` are **dropdowns** in the sheet — click the cell and
+Excel offers the legal values. The vocabularies live in `VOCABULARY` in
+`src/rest.py`, and are reapplied whenever the sheet is written, so they cannot
+be lost by a rewrite. `make_skeleton.py` derives each layer's parent from the
+same list rather than keeping its own, so the layers it accepts and the layers
+the sheet offers cannot drift apart.
+
 ### There is no default, on purpose
 
 A row whose `role` is blank, misspelled, or missing stops the run and names the

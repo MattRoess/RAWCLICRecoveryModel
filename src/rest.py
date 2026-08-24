@@ -247,6 +247,16 @@ def stranded(solution: pd.DataFrame, tcs: pd.DataFrame) -> pd.DataFrame:
 # boards and sensors were included again.
 ROLES = ('recovered', 'loss', 'handoff', 'intermediate')
 
+# What a process may be keyed at: every layer except the product, which is the
+# parent of everything and so is never itself a target.
+KEYED_AT = ('component', 'material', 'element')
+
+# The `processes` columns that hold one of a fixed set of values. Same idea as
+# VOCABULARY in src/source.py, one table along: the case workbook turns these
+# into dropdowns. It matters most for `role`, which has no default -- a
+# misspelling stops the run, and a list you pick from cannot be misspelled.
+VOCABULARY = {'role': ROLES, 'keyed_at': KEYED_AT}
+
 
 def flow_roles(case: str) -> dict[str, str]:
     """
