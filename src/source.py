@@ -113,12 +113,16 @@ class SourceError(ValueError):
 
 
 def path_for(case: str) -> str:
-    return os.path.join(case, 'input_data', FILENAME)
+    """Where the source table is, for a message. Either format."""
+    from src import case_tables
+    found = case_tables.where(case, 'source')
+    return found[1] if found else os.path.join(case, 'input_data', FILENAME)
 
 
 def exists(case: str) -> bool:
     """Whether this case declares where its numbers come from."""
-    return os.path.exists(path_for(case))
+    from src import case_tables
+    return case_tables.exists(case, 'source')
 
 
 def read(case: str, params) -> dict:
@@ -131,7 +135,8 @@ def read(case: str, params) -> dict:
     """
     described: dict[str, str] = {}
     if exists(case):
-        frame = pd.read_csv(path_for(case), keep_default_na=False, na_values=[])
+        from src import case_tables
+        frame = case_tables.read(case, 'source')
         missing = {'key', 'value'} - set(frame.columns)
         if missing:
             raise SourceError(

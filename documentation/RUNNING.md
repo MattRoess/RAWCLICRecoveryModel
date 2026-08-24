@@ -109,7 +109,7 @@ case:
 | `'2030-2050'` | that range |
 | `'2030-2050,10'` | every 10th year of it |
 
-**`data_folder/<case>/input_data/source.csv`** — facts about the case: which
+**The `source` table** (a sheet of `case.xlsx`, or `source.csv`) — facts about the case: which
 upstream export, which product(s), which layer the children sit at, how many
 draws. One case cannot disturb another. See [CASES.md](CASES.md).
 
@@ -131,7 +131,7 @@ Chunking bounds the working memory but not the result, so the two levers are
 
 ## The coefficient tables
 
-Two files in `tools/`. Both write `<case>/input_data/TCs.csv` from that case's
+Two files in `tools/`. Both write that case's coefficient table from its own
 own composition, so the table covers exactly what the case contains — no row
 that can never fire, no resource left without coefficients.
 

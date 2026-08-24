@@ -1,9 +1,0 @@
-key,value
-upstream_dir,data/processed/element_draws
-flow,collected
-product,BEV
-inflow_flow_id,F_collected
-child_layer,element
-group_marker,__domain__
-material_suffix,_mixed
-groups,Wiring;Motors

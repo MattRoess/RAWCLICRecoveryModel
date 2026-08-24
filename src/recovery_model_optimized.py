@@ -153,9 +153,10 @@ class RecoveryModelOptimized:
         composition_df = composition_df.copy()
         tcs_df = given.get('tcs')
         if tcs_df is None:
-            tcs_df = pd.read_csv(
-                os.path.join(self.data_folder, INPUT_DATA_FOLDER_NAME, TCS_FILENAME),
-                **read)
+            # Wherever this case keeps them: the TCs sheet of case.xlsx, or
+            # TCs.csv for a hand-built folder (src/case_tables.py).
+            from src import case_tables
+            tcs_df = case_tables.read(self.data_folder, 'TCs')
         tcs_df = tcs_df.copy()
 
         # Real composition data is incomplete: the copper in a wire is often
@@ -181,6 +182,11 @@ class RecoveryModelOptimized:
         # no error and no warning, so an entire flow simply went missing from
         # the results (DEFECTS.md 2.2).
         tcs_df = self.expand_wildcards(tcs_df, composition_df)
+
+        # Kept so the run can write down the table it actually solved. That is
+        # the table AFTER rest-derivation, precedence and wildcard expansion --
+        # what was applied, rather than what was typed.
+        self.resolved_tcs = tcs_df.copy()
 
 
         # What this run covers. inputs.csv is the defining basis for which
@@ -293,6 +299,15 @@ class RecoveryModelOptimized:
         full_solution = full_solution.drop(columns=empty_cols)
         full_solution = full_solution[full_solution.Value!=0]
         full_solution.to_csv(self.output_path(SOLUTION_FILENAME), index=False)
+
+        # A plain-text record of the coefficients this result came from.
+        # The coefficients now live in a workbook, and `git diff` on an .xlsx
+        # says nothing -- so a run that produced different numbers would give
+        # no way to see which coefficient moved. This file is text, it is
+        # written every run, and being the RESOLVED table it shows what was
+        # applied rather than what was written.
+        if getattr(self, 'resolved_tcs', None) is not None:
+            self.resolved_tcs.to_csv(self.output_path('TCs_used.csv'), index=False)
         return full_solution
 
     def solve_model(self, inflows_df: pd.DataFrame, composition_df: pd.DataFrame, tcs_df: pd.DataFrame) -> pd.DataFrame:

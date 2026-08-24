@@ -72,31 +72,37 @@ def _load(folder: str, tables: dict | None = None
     if tables is not None:
         # The inflow and composition come straight from the upstream draws and
         # are never written to disk; only TCs.csv is a file anyone keeps.
-        path = os.path.join(folder, 'input_data')
+        from src import case_tables
         tcs = tables.get('tcs')
         if tcs is None:
-            tcs_path = os.path.join(path, 'TCs.csv')
-            if not os.path.exists(tcs_path):
+            if not case_tables.exists(folder, 'TCs'):
                 raise InputDataError(
-                    f"{tcs_path} does not exist.\nThe transfer coefficients are the "
-                    f"one table you write; run tools/make_skeleton.py to generate it.")
-            tcs = pd.read_csv(tcs_path, **READ)
+                    f"{folder} has no transfer coefficients.\nThey are the one "
+                    f"table you write; run tools/make_skeleton.py to generate it.")
+            tcs = case_tables.read(folder, 'TCs')
         return tables['inputs'], tables['composition'], tcs
 
     return _load_from_disk(folder)
 
 
 def _load_from_disk(folder: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    from src import case_tables
+
     path = os.path.join(folder, 'input_data')
-    missing = [name for name in ('inputs.csv', 'composition.csv', 'TCs.csv')
+    # inputs and composition are only ever files for a hand-built case with no
+    # upstream -- the fixtures, and test_generality's panel. TCs may be a sheet.
+    missing = [name for name in ('inputs.csv', 'composition.csv')
                if not os.path.exists(os.path.join(path, name))]
+    if not case_tables.exists(folder, 'TCs'):
+        missing.append('TCs')
     if missing:
         raise InputDataError(
             f"{path} is missing {', '.join(missing)}.\n"
-            f"A case folder needs all three: inputs.csv, composition.csv, TCs.csv.")
+            f"A case folder needs inputs.csv, composition.csv, and transfer "
+            f"coefficients as either TCs.csv or a TCs sheet in case.xlsx.")
     return (pd.read_csv(os.path.join(path, 'inputs.csv'), **READ),
             pd.read_csv(os.path.join(path, 'composition.csv'), **READ),
-            pd.read_csv(os.path.join(path, 'TCs.csv'), **READ))
+            case_tables.read(folder, 'TCs'))
 
 
 def _known_keys(composition: pd.DataFrame) -> dict[str, set[str]]:

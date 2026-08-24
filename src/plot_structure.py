@@ -49,7 +49,9 @@ def find_cases(roots=SEARCH_ROOTS) -> list[str]:
         if not os.path.isdir(root):
             continue
         for path, _, files in os.walk(root):
-            if os.path.basename(path) == 'input_data' and 'TCs.csv' in files:
+            if os.path.basename(path) != 'input_data':
+                continue
+            if 'TCs.csv' in files or 'case.xlsx' in files:
                 found.add(os.path.normpath(os.path.dirname(path)))
     return sorted(found)
 
@@ -66,17 +68,21 @@ def resolve(target: str) -> tuple[str, str]:
         case = os.path.basename(os.path.dirname(os.path.dirname(target)))
         return target, case or os.path.splitext(os.path.basename(target))[0]
 
-    nested = os.path.join(target, 'input_data', 'TCs.csv')
-    if os.path.isfile(nested):
-        return nested, os.path.basename(target)
+    from src import case_tables
+
+    # A case keeps its coefficients either in case.xlsx or in TCs.csv.
+    found = case_tables.where(target, 'TCs')
+    if found is not None:
+        return found[1], os.path.basename(target)
 
     direct = os.path.join(target, 'TCs.csv')
     if os.path.isfile(direct):
         return direct, os.path.basename(os.path.dirname(target))
 
     raise SystemExit(
-        f"No TCs.csv for '{target}'.\n"
-        f"Looked for {nested} and {direct}.\n"
+        f"No transfer coefficients for '{target}'.\n"
+        f"Looked for a TCs sheet in {case_tables.workbook_path(target)}, "
+        f"{case_tables.csv_path(target, 'TCs')} and {direct}.\n"
         f"Available: {', '.join(find_cases()) or 'none found'}"
     )
 
@@ -85,7 +91,7 @@ def choose() -> str:
     """List the discoverable cases and let the user pick one."""
     cases = find_cases()
     if not cases:
-        raise SystemExit('No data folder with an input_data/TCs.csv found here.')
+        raise SystemExit('No data folder with transfer coefficients found here.')
     if len(cases) == 1:
         print(f'Only one case found: {cases[0]}')
         return cases[0]
@@ -253,8 +259,11 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light'):
 
 def draw(target: str | None = None, params: Params | None = None) -> None:
     params = params or current()
-    tcs_path, case = resolve(target or params.run.data_folder)
-    tcs = pd.read_csv(tcs_path, keep_default_na=False, na_values=[])
+    folder = target or params.run.data_folder
+    tcs_path, case = resolve(folder)
+    from src import case_tables
+    tcs = (case_tables.read(folder, 'TCs') if case_tables.exists(folder, 'TCs')
+           else pd.read_csv(tcs_path, keep_default_na=False, na_values=[]))
     # A row derived as its group's residual has blank bounds, and a blank read as
     # a string breaks the ':g' formatting in tc_blocks. Read blank as "no range",
     # which is what a derived row has, before anything formats it.

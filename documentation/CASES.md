@@ -20,9 +20,15 @@ another stage's coefficients and no check anywhere notices.
 
 ```
 data_folder/<case>/input_data/
-    source.csv      where the numbers come from, and how they map to layers
-    processes.csv   the flow network
-    TCs.csv         the coefficients
+    case.xlsx       one workbook, three sheets
+        source      where the numbers come from, and how they map to layers
+        processes   the flow network
+        TCs         the coefficients
+
+A case may keep the three as separate CSVs instead -- `source.csv`,
+`processes.csv`, `TCs.csv` -- and the reference fixtures do. Not both for the
+same table: two files of one name with different contents is how someone edits
+one while the model reads the other.
 ```
 
 Running it is naming it:
@@ -63,9 +69,52 @@ by typing nothing.
 Everything lands in `<case>/output_data/` — `recovery_results.xlsx` is the one
 to open — and figures in `figures/`, named after the case.
 
+## Filling in the coefficients
+
+The coefficient table is the one thing in a case a person writes by hand, and
+it is the largest — 52 rows for the electronics case, 632 for car composition.
+So it is kept in a workbook rather than a CSV, and the generator writes into
+that workbook rather than beside it.
+
+**You never type a flow name, a layer or a resource key.** `make_skeleton.py`
+writes every row that needs a number, with all six identifying columns already
+filled, and puts a dropdown on each of them. The lists come from the case
+itself: flow names from `processes`, resource keys from what the upstream draws
+actually contain. A name that cannot be chosen cannot be mistyped, which
+removes the one class of input error the loader can only catch after the fact.
+
+What you fill in is `value`, and `value_min` / `value_max` beside it, while you
+are still thinking about the range. The `source` column is there as you work,
+so provenance gets written down rather than reconstructed later.
+
+**Add your own columns if they help.** A `notes` column recording where a
+number came from survives regeneration — the merge carries through any column
+the generator does not know about, rather than dropping it.
+
+**The dropdown lists live on a hidden `_lists` sheet.** They are ranges rather
+than typed-in lists because Excel silently discards an inline list over 255
+characters: a real element list passes that without a warning, and the dropdown
+would simply not be there.
+
+### Growing a case one domain at a time
+
+`make_skeleton.py` **merges**. A value already filled in is never overwritten —
+not even by the `rest` rows the script fills in itself, since those may have
+been changed deliberately. So the intended way to work is to narrow `groups`,
+run it, fill the handful of rows that appear, widen, and run it again.
+
+### Seeing what changed
+
+`git diff` on a workbook says nothing. Every run therefore writes
+`output_data/<case>/TCs_used.csv`, which is tracked: plain text, and the table
+*after* rest-derivation, precedence and wildcard expansion. So it shows what was
+applied rather than what was typed, and a result that moves can be traced to the
+coefficient that moved with it.
+
 ## The two TC tools
 
-Both write `<case>/input_data/TCs.csv` from that case's own composition, so the
+Both write that case's coefficients -- the `TCs` sheet, or `TCs.csv` for a
+case kept as files -- from its own composition, so the
 table covers exactly what the case contains: no row that can never fire, and no
 resource left without coefficients.
 
@@ -86,7 +135,7 @@ resource left without coefficients.
 have already filled in are kept, rows for new resources are added blank, and
 rows whose resource no longer exists are dropped. Nothing you typed is ever
 overwritten. That is what makes it safe to work one domain at a time — narrow
-`groups` in `source.csv`, run it, fill the handful of rows, widen, repeat.
+`groups` in `source`, run it, fill the handful of rows, widen, repeat.
 
 **`make_carcomposition_tcs.py` overwrites**, deliberately: everything it writes
 is invented and marked `MADE UP (Claude)` in the `source` column, so there is
@@ -94,7 +143,7 @@ nothing of yours to protect. Once you start replacing those numbers with
 measured ones, stop running it — or move that case to `make_skeleton.py`, which
 does protect them.
 
-## source.csv
+## The `source` table
 
 Two columns, `key` and `value`.
 
@@ -103,7 +152,7 @@ Two columns, `key` and `value`.
 | `upstream_dir` | `data/processed/element_draws` | under `data.upstream_root` |
 | `flow` | `{product}_collected` | which upstream folder(s) to read |
 | `product` | `BEV;Diesel;Petrol` | Layer 1; one name or several |
-| `inflow_flow_id` | `F_collected` | must match the first `Input_FlowID` in `processes.csv` |
+| `inflow_flow_id` | `F_collected` | must match the first `Input_FlowID` in `processes` |
 | `child_layer` | `element` | `element` or `material` — see below |
 | `group_marker` | `__domain__` | how a group's own mass is named upstream |
 | `material_suffix` | `_mixed` | the placeholder material, where one is needed |
@@ -111,7 +160,7 @@ Two columns, `key` and `value`.
 
 A key that is **present** settles the matter, blank or not — blank `groups`
 means every group. A key that is **absent** falls back to the matching `data.*`
-setting, which is what lets an older case with no `source.csv` keep working.
+setting, which is what lets an older case with no `source` table keep working.
 
 ## Several products in one case
 

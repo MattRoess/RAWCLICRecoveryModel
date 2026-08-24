@@ -34,7 +34,7 @@ The individual stages, in order:
 | `03_run_monte_carlo.py` | Solve over many draws; write the summary, the workbook and the MC figures. |
 
 `tools/make_skeleton.py` is **not** a stage. It writes the TC rows that need a
-number, from `processes.csv`, and is run when the network changes — not on
+number, from the `processes` table, and is run when the network changes — not on
 every run.
 
 ## Not specific to vehicles
@@ -68,8 +68,9 @@ A case folder therefore holds only what a person writes:
 
 ```
 data_folder/bev_electronics/input_data/
-    processes.csv    the flow network -- seven lines
-    TCs.csv          the transfer coefficients
+    case.xlsx
+        processes    the flow network -- seven lines
+        TCs          the transfer coefficients
 ```
 
 The upstream stage only exports the years named in its own settings

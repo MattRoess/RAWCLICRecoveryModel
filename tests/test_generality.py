@@ -363,6 +363,65 @@ def test_several_products_close_on_their_own_totals() -> None:
         shutil.rmtree(case, ignore_errors=True)
 
 
+def test_a_workbook_case_solves_the_same_as_a_csv_case() -> None:
+    """
+    The three tables may be a case.xlsx with three sheets instead of three
+    CSVs, and the answer must not move.
+
+    Excel is offered because the coefficient table is filled in by hand and a
+    spreadsheet is a better surface for that -- dropdowns instead of typed
+    flow names, a note beside a number. None of that is worth a different
+    result, so this solves the same fixture both ways and compares.
+
+    It also pins the type behaviour, which is where this went wrong first. A
+    CSV read with keep_default_na=False gives '' and '1' as strings; Excel has
+    no empty string, so the column arrives float64 as nan and 1.0, and
+    `is_residual` -- tested with str(value) in ('1', 'True', 'true') -- stops
+    matching anything. The Monte Carlo then refuses a group whose residual rows
+    it cannot identify. src/case_tables.normalise exists for exactly this.
+    """
+    from src import case_tables
+    from src.upstream import load
+
+    params, case, root = build_everything()
+    try:
+        tables = load(params, params.run.data_folder, quiet=True)
+        coefficients(case, tables['composition'])
+
+        def solve():
+            return RecoveryModelOptimized(
+                data_folder=case, layer_names=NAMES, tables=tables,
+                working_unit=params.run.working_unit, years='',
+            ).solve_models_and_write_to_output()
+
+        from_csv = solve()
+
+        # Same table, moved into a workbook sheet; the CSV goes, so nothing
+        # can silently read the old one.
+        written = case_tables.read(case, 'TCs')
+        case_tables.write_sheet(case, 'TCs', written)
+        os.unlink(case_tables.csv_path(case, 'TCs'))
+        assert case_tables.where(case, 'TCs')[0] == 'xlsx'
+
+        from_workbook = solve()
+
+        assert len(from_csv) == len(from_workbook), \
+            f'{len(from_csv)} rows from CSV, {len(from_workbook)} from the workbook'
+
+        keys = ['Year', 'Stock/Flow ID', 'Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
+        merged = from_csv.merge(from_workbook, on=keys, how='outer',
+                                suffixes=('_csv', '_xlsx'), indicator=True)
+        assert (merged['_merge'] == 'both').all(), \
+            'the two runs produced different rows'
+
+        worst = (pd.to_numeric(merged['Value_csv'])
+                 - pd.to_numeric(merged['Value_xlsx'])).abs().max()
+        assert worst < 1e-9, f'workbook and CSV differ by {worst:g}'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
 def test_the_monte_carlo_runs_on_a_different_item() -> None:
     """Sampling, the sum-to-1 groups and the spread all work off vehicle data."""
     from src.upstream import load

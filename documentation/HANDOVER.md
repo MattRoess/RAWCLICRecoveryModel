@@ -62,9 +62,10 @@ differs between studies is a **case**: a folder under `data_folder/` holding
 
 ```
 input_data/
-    source.csv      where the numbers come from, and how they map to layers
-    processes.csv   the flow network
-    TCs.csv         the coefficients
+    case.xlsx
+        source      where the numbers come from, and how they map to layers
+        processes   the flow network
+        TCs         the coefficients
 ```
 
 Switching studies is changing `run.data_folder` in `src/params_schema.py`.

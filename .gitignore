@@ -26,13 +26,18 @@ venv/
 # case, with the only hand-written coefficient table in the project, went
 # untracked for its whole life and nothing anywhere said so. Ignoring only the
 # outputs cannot fail that way.
-data_folder/**/output_data/
+# The CONTENTS are ignored, not the directory itself: git cannot re-include a
+# file whose parent directory is excluded, and two files below need including.
+data_folder/**/output_data/**
 
-# The one exception: the reference solution both engines are checked against.
-# The directory has to be un-ignored before anything inside it can be, then its
-# other contents -- this run's two engine outputs -- ignored again.
-!data_folder/reference/basic_test/output_data/
-data_folder/reference/basic_test/output_data/*
+# TCs_used.csv is the coefficient table each run actually solved -- after
+# rest-derivation, precedence and wildcard expansion. It is tracked on purpose.
+# The coefficients themselves now live in case.xlsx, and `git diff` on a
+# spreadsheet says nothing, so without this a result could change with no way
+# to see which coefficient moved. This file is text, so it diffs.
+!data_folder/**/output_data/TCs_used.csv
+
+# The reference solution both engines are checked against.
 !data_folder/reference/basic_test/output_data/solution.csv
 
 # --- Figures ---

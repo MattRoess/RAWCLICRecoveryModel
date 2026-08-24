@@ -166,14 +166,16 @@ def build(case: str, composition: pd.DataFrame | None = None) -> pd.DataFrame:
     """Expand the process list against the resources in the composition."""
     input_dir = os.path.join(case, 'input_data')
 
-    processes_path = os.path.join(input_dir, 'processes.csv')
-    if not os.path.exists(processes_path):
+    from src import case_tables
+
+    if not case_tables.exists(case, 'processes'):
+        processes_path = os.path.join(input_dir, 'processes.csv')
         with open(processes_path, 'w') as handle:
             handle.write(DEFAULT_PROCESSES)
         print(f'{processes_path}: written as a starting point. EDIT IT -- it is a')
         print('  placeholder network, not a description of your system.')
 
-    processes = pd.read_csv(processes_path, keep_default_na=False, na_values=[])
+    processes = case_tables.read(case, 'processes')
 
     # How many loss destinations each flow has. `rest` is only filled in
     # automatically where there is exactly one: with none there is nowhere to
@@ -269,7 +271,13 @@ def merge(existing: pd.DataFrame, skeleton: pd.DataFrame) -> tuple[pd.DataFrame,
             added += int(str(row['value']).strip() == '')
 
     dropped = len(filled) - kept
-    return (pd.DataFrame(merged, columns=skeleton.columns),
+
+    # Columns the skeleton does not know about -- a `notes` column somebody
+    # added while filling the table in -- are carried through. Restricting to
+    # skeleton.columns would silently delete them on the next run, which is
+    # exactly the kind of quiet loss this tool must not cause.
+    extra = [column for column in existing.columns if column not in skeleton.columns]
+    return (pd.DataFrame(merged, columns=list(skeleton.columns) + extra),
             {'kept': kept, 'added': added, 'dropped': dropped})
 
 
@@ -311,17 +319,62 @@ def write_atomically(frame: pd.DataFrame, path: str) -> None:
         raise
 
 
+WIDTHS = {'Input_FlowID': 20, 'Output_FlowID': 22, 'Input_layer': 13,
+          'Input_layer_key': 20, 'TC_target_layer': 16, 'TC_target_key': 18,
+          'value': 9, 'value_min': 10, 'value_max': 10, 'is_residual': 11,
+          'process': 14, 'technology': 14, 'source': 60}
+
+
+def processes_of(case: str) -> pd.DataFrame:
+    from src import case_tables
+    return case_tables.read(case, 'processes')
+
+
+def dropdowns_for(case: str, skeleton: pd.DataFrame,
+                  processes: pd.DataFrame) -> dict[str, list[str]]:
+    """
+    The values each column is allowed to hold, for the sheet's dropdowns.
+
+    Taken from the case itself rather than from a fixed list: the flow names
+    are whatever `processes` declares, and the resource keys are whatever the
+    upstream draws actually contain. A name that cannot be chosen cannot be
+    mistyped, which removes the one input error the loader can only catch
+    after the fact.
+    """
+    def unique(series) -> list[str]:
+        return sorted({str(value).strip() for value in series if str(value).strip()})
+
+    flows = unique(pd.concat([processes['Input_FlowID'], processes['Output_FlowID']]))
+    return {
+        'Input_FlowID': flows,
+        'Output_FlowID': flows,
+        'Input_layer': list(INPUT_LAYER_FOR.values()),
+        'TC_target_layer': list(INPUT_LAYER_FOR),
+        'Input_layer_key': unique(skeleton['Input_layer_key']),
+        'TC_target_key': unique(skeleton['TC_target_key']),
+        'is_residual': ['', 'TRUE', 'FALSE'],
+    }
+
+
 def main(case: str) -> int:
-    path = os.path.join(case, 'input_data', 'TCs.csv')
+    from src import case_tables
+
     skeleton = build(case)
+    where = case_tables.where(case, 'TCs')
+    path = where[1] if where else case_tables.csv_path(case, 'TCs')
 
     change = {'kept': 0, 'added': int((skeleton['value'].astype(str).str.strip() == '').sum()),
               'dropped': 0}
-    if os.path.exists(path):
-        existing = pd.read_csv(path, keep_default_na=False, na_values=[], dtype=str)
+    if where is not None:
+        existing = case_tables.read(case, 'TCs', dtype=str)
         skeleton, change = merge(existing, skeleton)
 
-    write_atomically(skeleton, path)
+    if where is not None and where[0] == 'xlsx':
+        case_tables.write_sheet(case, 'TCs', skeleton,
+                                dropdowns=dropdowns_for(case, skeleton, processes_of(case)),
+                                widths=WIDTHS)
+    else:
+        write_atomically(skeleton, path)
 
     blank = skeleton['value'].astype(str).str.strip() == ''
     print(f'\n{path}: {len(skeleton)} rows')

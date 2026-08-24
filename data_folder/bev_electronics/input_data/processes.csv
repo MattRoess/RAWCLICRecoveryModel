@@ -1,9 +1,0 @@
-Input_FlowID,Output_FlowID,process,technology,keyed_at,is_loss,role
-F_collected,F_dismantled,dismantling,manual,component,0,intermediate
-F_collected,F_separated_electronics,dismantling,manual,component,0,handoff
-F_collected,F_shredded,dismantling,manual,component,0,intermediate
-F_collected,F_loss_dismantling,dismantling,manual,component,1,loss
-F_dismantled,F_refined,refining,pyro,element,0,recovered
-F_dismantled,F_loss_refining,refining,pyro,element,1,loss
-F_shredded,F_recovered_shredder,shredding,hammer_mill,element,0,recovered
-F_shredded,F_loss_shredding,shredding,hammer_mill,element,1,loss

@@ -85,16 +85,21 @@ def check_composition(composition: pd.DataFrame) -> pd.DataFrame:
 def report(folder: str, tables: dict | None = None) -> bool:
     # Only TCs.csv is a file. The inflow and composition come from the upstream
     # draws in memory, so a case that has them handed over needs nothing on disk.
+    from src import case_tables
+
     given = tables or {}
-    missing = [name for name, key in (('TCs.csv', 'tcs'), ('composition.csv', 'composition'))
-               if given.get(key) is None
-               and not os.path.exists(os.path.join(folder, 'input_data', name))]
+    missing = []
+    if given.get('tcs') is None and not case_tables.exists(folder, 'TCs'):
+        missing.append('transfer coefficients')
+    if given.get('composition') is None and not os.path.exists(
+            os.path.join(folder, 'input_data', 'composition.csv')):
+        missing.append('composition.csv')
     if missing:
         print(f"\nNothing to check in '{folder}': missing {', '.join(missing)}")
         print(f"Expected them in {os.path.join(folder, 'input_data')}.")
         print("\nData folders that do have them:")
         for root, _, files in os.walk('data_folder'):
-            if 'TCs.csv' in files:
+            if 'TCs.csv' in files or 'case.xlsx' in files:
                 print(f"  {os.path.dirname(root)}")
         return False
 
@@ -102,7 +107,7 @@ def report(folder: str, tables: dict | None = None) -> bool:
     given = tables or {}
     tcs = given.get('tcs')
     if tcs is None:
-        tcs = pd.read_csv(f"{folder}/input_data/TCs.csv", **read)
+        tcs = case_tables.read(folder, 'TCs')
     # Coerce the three bound columns once, here, rather than at each use. A row
     # derived as its group's residual carries no range of its own, so its bounds
     # are blank -- and a blank read as a string turns every later comparison and

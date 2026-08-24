@@ -145,9 +145,10 @@ class RecoveryModelLA:
         composition_df = composition_df.copy()
         tcs_df = given.get('tcs')
         if tcs_df is None:
-            tcs_df = pd.read_csv(
-                os.path.join(self.data_folder, INPUT_DATA_FOLDER_NAME, TCS_FILENAME),
-                **read)
+            # Wherever this case keeps them: the TCs sheet of case.xlsx, or
+            # TCs.csv for a hand-built folder (src/case_tables.py).
+            from src import case_tables
+            tcs_df = case_tables.read(self.data_folder, 'TCs')
         tcs_df = tcs_df.copy()
 
         # Real composition data is incomplete: the copper in a wire is often

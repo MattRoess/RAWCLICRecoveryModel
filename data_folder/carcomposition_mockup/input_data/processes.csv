@@ -1,8 +1,0 @@
-Input_FlowID,Output_FlowID,process,technology,keyed_at,is_loss,role
-ELV_collected,ELV_dismantled,dismantling,manual,component,0,intermediate
-ELV_collected,ELV_shredded,dismantling,manual,component,0,intermediate
-ELV_collected,ELV_loss_dismantling,dismantling,manual,component,1,loss
-ELV_dismantled,ELV_reused,reuse_sorting,manual,material,0,recovered
-ELV_dismantled,ELV_loss_dismantled,reuse_sorting,manual,material,1,loss
-ELV_shredded,ELV_ferrous,separation,magnetic,material,0,recovered
-ELV_shredded,ELV_loss_ASR,separation,magnetic,material,1,loss

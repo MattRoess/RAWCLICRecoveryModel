@@ -255,13 +255,12 @@ def flow_roles(case: str) -> dict[str, str]:
     A flow with no role stated falls back to `is_loss`, and to 'recovered' when
     even that is absent -- so an older table keeps working, just less precisely.
     """
-    import os
+    from src import case_tables
 
-    path = os.path.join(case, 'input_data', 'processes.csv')
-    if not os.path.exists(path):
+    if not case_tables.exists(case, 'processes'):
         return {}
 
-    processes = pd.read_csv(path, keep_default_na=False, na_values=[])
+    processes = case_tables.read(case, 'processes')
     roles: dict[str, str] = {}
     for _, step in processes.iterrows():
         stated = str(step.get('role', '')).strip()

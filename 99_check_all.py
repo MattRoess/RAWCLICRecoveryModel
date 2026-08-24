@@ -115,8 +115,8 @@ def mass_balance(params) -> tuple[bool, str]:
     summary['mean'] = pd.to_numeric(summary['mean'])
     summary['depth'] = (summary[LAYERS] != '').sum(axis=1)
 
-    tcs = pd.read_csv(os.path.join(params.run.data_folder, 'input_data', 'TCs.csv'),
-                      keep_default_na=False, na_values=[])
+    from src import case_tables
+    tcs = case_tables.read(params.run.data_folder, 'TCs')
     sources = set(tcs['Input_FlowID'])
     terminals = set(tcs['Output_FlowID']) - sources
     starts = sources - set(tcs['Output_FlowID'])

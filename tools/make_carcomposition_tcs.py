@@ -179,8 +179,18 @@ def main() -> int:
     composition = refresh(params, folder, quiet=True)['composition']
 
     tcs = build(composition)
-    path = os.path.join(folder, 'input_data', 'TCs.csv')
-    tcs.to_csv(path, index=False)
+    # Written wherever this case keeps its coefficients -- the TCs sheet of
+    # case.xlsx, or TCs.csv for a case still on files. Same writer as
+    # make_skeleton, so both tools leave the workbook in the same shape.
+    from src import case_tables
+    from tools.make_skeleton import WIDTHS
+
+    where = case_tables.where(folder, 'TCs')
+    if where is not None and where[0] == 'xlsx':
+        path = case_tables.write_sheet(folder, 'TCs', tcs, widths=WIDTHS)
+    else:
+        path = case_tables.csv_path(folder, 'TCs')
+        tcs.to_csv(path, index=False)
 
     resources = len(tcs.groupby(RESOURCE))
     print(f'{path}: {len(tcs):,} rows covering {resources:,} resources')
