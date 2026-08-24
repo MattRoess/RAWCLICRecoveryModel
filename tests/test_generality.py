@@ -440,6 +440,70 @@ def test_the_monte_carlo_runs_on_a_different_item() -> None:
         shutil.rmtree(case, ignore_errors=True)
 
 
+def test_the_source_sheet_offers_the_child_layer_choices() -> None:
+    """
+    Writing `source` constrains the cell beside `child_layer` to the two
+    layers, wherever in the sheet that row happens to sit -- and writing the
+    sheet again does not accumulate a second copy of every list.
+
+    child_layer is refused on load if it is wrong, so this buys no safety. It
+    buys the sheet SAYING what the choices are, which matters because the two
+    are not guessable and the wrong one still balances.
+    """
+    import openpyxl
+
+    from src import case_tables
+    from src.source import CHILD_LAYERS
+
+    case = tempfile.mkdtemp(prefix='source-dropdown-')
+    try:
+        # child_layer LAST, so a hard-coded row number cannot pass by luck.
+        frame = pd.DataFrame([
+            {'key': 'product', 'value': 'BEV'},
+            {'key': 'flow', 'value': 'collected'},
+            {'key': 'child_layer', 'value': 'material'},
+        ])
+        case_tables.write_sheet(case, 'source', frame)
+
+        book = openpyxl.load_workbook(case_tables.workbook_path(case))
+        rules = book['source'].data_validations.dataValidation
+        assert len(rules) == 1, f'{len(rules)} validations, expected 1'
+
+        cells = [str(area) for rule in rules for area in rule.sqref.ranges]
+        assert cells == ['B4'], f'constrained {cells}, expected the B4 cell'
+
+        # The rule points at a range on the hidden sheet, never an inline list:
+        # Excel truncates an inline list at 255 characters without saying so.
+        assert case_tables.LISTS_SHEET in rules[0].formula1
+        assert book[case_tables.LISTS_SHEET].sheet_state == 'hidden'
+
+        header = [c.value for c in book[case_tables.LISTS_SHEET][1]]
+        column = header.index('child_layer') + 1
+        offered = tuple(
+            book[case_tables.LISTS_SHEET].cell(row=line, column=column).value
+            for line in (2, 3))
+        assert offered == CHILD_LAYERS, f'offers {offered}, not {CHILD_LAYERS}'
+
+        # Writing again must reuse the column rather than append another.
+        width = book[case_tables.LISTS_SHEET].max_column
+        for _ in range(3):
+            case_tables.write_sheet(case, 'source',
+                                    case_tables.read(case, 'source'))
+        again = openpyxl.load_workbook(case_tables.workbook_path(case))
+        grown = again[case_tables.LISTS_SHEET].max_column
+        assert grown == width, \
+            f'_lists grew from {width} to {grown} columns over three rewrites'
+        assert len(again['source'].data_validations.dataValidation) == 1
+
+        # And a sheet that never mentions child_layer gets no rule at all.
+        plain = pd.DataFrame([{'key': 'product', 'value': 'BEV'}])
+        case_tables.write_sheet(case, 'source', plain)
+        bare = openpyxl.load_workbook(case_tables.workbook_path(case))
+        assert not bare['source'].data_validations.dataValidation
+    finally:
+        shutil.rmtree(case, ignore_errors=True)
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

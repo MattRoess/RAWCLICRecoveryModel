@@ -157,6 +157,11 @@ Two columns, `key` and `value`. Nine keys, and **every one of them differs
 between the two cases** — which is the point: this sheet is the only place the
 two studies differ, so everything that makes them different has to be in it.
 
+**Both cases spell out all nine.** Neither leans on a `data.*` setting for any
+of them, so either sheet works as a template: copy it, change the values, and
+you have never had to know which keys have defaults. The fallback described at
+the end of this section still exists, but nothing shipped here uses it.
+
 | key | electronics (04_02) | car composition (04_01) | what it decides |
 |---|---|---|---|
 | `upstream_dir` | `data/processed/element_draws` | `data/processed/carcomposition_draws` | which export to read, under `data.upstream_root` |
@@ -167,7 +172,7 @@ two studies differ, so everything that makes them different has to be in it.
 | `group_marker` | `__domain__` | `__component__` | the separator in the upstream `.npy` filenames |
 | `material_suffix` | `_mixed` | *(blank)* | the placeholder material, where one is needed |
 | `groups` | `Wiring;Motors` | *(blank)* | which groups to include; blank means all |
-| `draws` | *(absent)* | `50000` | how wide this case's arrays are |
+| `draws` | `200000` | `50000` | how wide this case's arrays are |
 
 ### What each one accepts
 
@@ -187,6 +192,14 @@ Four of the nine are checked when the case loads. The rest fail later, or not
 at all: `group_marker` is the one to be careful with, because getting it wrong
 finds nothing rather than finding the wrong thing.
 
+`child_layer` is a **dropdown** in the sheet — click the cell beside it and
+Excel offers `element` and `material`. That is not extra safety, since a wrong
+value is refused on load anyway; it is so the sheet says what the choices are,
+which a rejection message only does after a run has failed. Any key with a
+fixed set of values gets this automatically: the set lives in `VOCABULARY` in
+`src/source.py`, and the dropdown is reapplied whenever the sheet is written,
+so it cannot be lost by a rewrite.
+
 ### Present, blank, and absent are three different answers
 
 A key that is **present settles the matter even when blank** — blank `groups`
@@ -197,6 +210,14 @@ absent defaults to `element`, the 04_02 shape.
 
 So deleting a row and emptying a row do different things, and only deleting it
 means "use the default".
+
+The simplest way to never think about this again is the one both cases now
+follow: **write all nine keys down**. Then present-or-absent never arises, and
+a blank cell means what it looks like it means. `draws` used to be absent from
+the electronics case, inheriting 200,000 from `data.draws` — which happened to
+be right, but only by luck: as `src/source.py` puts it, how wide a case's
+arrays are is a fact about the case, not about the machine, and one shared
+setting can only ever be right for one of two cases.
 
 ## Several products in one case
 

@@ -220,32 +220,75 @@ def write_sheet(case: str, table: str, frame: pd.DataFrame, *,
         letter = get_column_letter(index)
         sheet.column_dimensions[letter].width = (widths or {}).get(column, 18)
 
-    if dropdowns:
-        lists = book[LISTS_SHEET] if LISTS_SHEET in book.sheetnames \
-            else book.create_sheet(LISTS_SHEET)
-        lists.sheet_state = 'hidden'
-        start = lists.max_column + 1 if lists.max_row > 1 else 1
+    held = [None]  # the hidden sheet, made only if something actually needs it
 
-        for offset, (column, allowed) in enumerate(sorted(dropdowns.items())):
-            if column not in frame.columns or not allowed:
-                continue
-            letter = get_column_letter(start + offset)
-            lists.cell(row=1, column=start + offset, value=column)
-            for line, value in enumerate(allowed, start=2):
-                lists.cell(row=line, column=start + offset, value=value)
+    def offer(name: str, allowed, target: str) -> None:
+        """
+        Constrain `target` -- any A1 range on this sheet -- to `allowed`.
 
-            rule = DataValidation(
-                type='list',
-                formula1=f"={LISTS_SHEET}!${letter}$2:${letter}${len(allowed) + 1}",
-                allow_blank=True, showDropDown=False)
-            # showDropDown=False is Excel's spelling for "do show the arrow";
-            # setting it True hides the control while still enforcing the list.
-            rule.error = 'Not one of the values this case declares.'
-            rule.errorTitle = 'Unknown value'
-            sheet.add_data_validation(rule)
+        The values are written to a column of a hidden sheet and referred to by
+        range, not listed inline in the rule: Excel truncates an inline list at
+        255 characters without saying so, and the TC key lists go well past it.
+        """
+        if held[0] is None:
+            held[0] = book[LISTS_SHEET] if LISTS_SHEET in book.sheetnames \
+                else book.create_sheet(LISTS_SHEET)
+            held[0].sheet_state = 'hidden'
+        lists = held[0]
 
-            target = get_column_letter(list(frame.columns).index(column) + 1)
-            rule.add(f'{target}2:{target}{max(len(frame) + 1, 2)}')
+        # Reuse the column this name already has. Writing a sheet twice used to
+        # append a fresh copy of every list, so _lists grew by seven columns per
+        # write and the abandoned copies stayed behind, still holding whatever
+        # the keys were at the time.
+        headers = {}
+        for index in range(1, lists.max_column + 1):
+            header = lists.cell(row=1, column=index).value
+            if header is not None:
+                headers[header] = index
+        column = headers.get(name) or (max(headers.values()) + 1 if headers else 1)
+
+        # Clear first: a list that got shorter would otherwise keep its tail.
+        for line in range(2, lists.max_row + 1):
+            lists.cell(row=line, column=column, value=None)
+        lists.cell(row=1, column=column, value=name)
+        for line, value in enumerate(allowed, start=2):
+            lists.cell(row=line, column=column, value=value)
+
+        letter = get_column_letter(column)
+        rule = DataValidation(
+            type='list',
+            formula1=f"={LISTS_SHEET}!${letter}$2:${letter}${len(allowed) + 1}",
+            allow_blank=True, showDropDown=False)
+        # showDropDown=False is Excel's spelling for "do show the arrow";
+        # setting it True hides the control while still enforcing the list.
+        rule.error = 'Not one of the values this case declares.'
+        rule.errorTitle = 'Unknown value'
+        sheet.add_data_validation(rule)
+        rule.add(target)
+
+    for column, allowed in sorted((dropdowns or {}).items()):
+        if column not in frame.columns or not allowed:
+            continue
+        letter = get_column_letter(list(frame.columns).index(column) + 1)
+        offer(column, allowed, f'{letter}2:{letter}{max(len(frame) + 1, 2)}')
+
+    # `source` is a key/value sheet, so a fixed vocabulary constrains ONE cell
+    # rather than a column: the value beside `child_layer` is element or
+    # material, while the value beside `product` is anything at all.
+    #
+    # Applied here rather than passed in by the caller because nothing writes
+    # this sheet today -- a parameter nobody passes is a parameter nobody
+    # remembers, and the dropdown has to come back on a sheet rewritten later
+    # by someone who never read this file.
+    if table == 'source' and {'key', 'value'} <= set(frame.columns):
+        from src.source import VOCABULARY
+
+        keys = [str(key).strip() for key in frame['key']]
+        value_column = get_column_letter(list(frame.columns).index('value') + 1)
+        for key, allowed in sorted(VOCABULARY.items()):
+            if key in keys:
+                line = keys.index(key) + 2  # +1 for the header, +1 to 1-based
+                offer(key, allowed, f'{value_column}{line}')
 
     handle = tempfile.NamedTemporaryFile(
         dir=os.path.dirname(path), prefix='.case-', suffix='.tmp', delete=False)

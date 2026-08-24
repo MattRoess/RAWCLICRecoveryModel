@@ -94,6 +94,13 @@ PRODUCT_SLOT = '{product}'
 # 'material' puts it at Layer 3 and leaves Layer 4 empty.
 CHILD_LAYERS = ('element', 'material')
 
+# Keys whose value is one of a fixed set, rather than free text. The case
+# workbook turns these into dropdowns. The load-time check below already
+# refuses a bad `child_layer`, so this buys no safety -- what it buys is that
+# the sheet SAYS what the two choices are. A rejection message only says that
+# after a run has already failed.
+VOCABULARY = {'child_layer': CHILD_LAYERS}
+
 # Every key a case may set, and which `data.*` setting it falls back to.
 FALLBACK = {
     'upstream_dir': 'inflow_draws_dir',
