@@ -233,6 +233,12 @@ existing figure and saved table there is keyed on it.
    **overwrites** — but it now refuses to, once any row's `source` says
    something it did not write. `--overwrite` forces a deliberate rebuild.
 
+   **Start with `tools/filling_sheet.py`**, which ranks the rows still waiting
+   for a number by how much each one actually moves total recovered mass —
+   Spearman, one Monte Carlo run, the same measure the sensitivity figure uses.
+   On the electronics case **4 of the 24 carry 80% of the influence**, so the
+   first afternoon of literature work is four rows rather than twenty-four.
+
    Fill in `value`, `value_min`, `value_max` and — this is the part that is
    easy to get wrong — **leave `is_residual` alone unless you have a second,
    independent measurement for that group.** One measurement per group is
