@@ -18,7 +18,7 @@ F_dismantled,Layer 3,Motors_mixed,F_refined,Layer 4,Nd,0.1,0,0.6,,refining,pyro,
 F_dismantled,Layer 3,Motors_mixed,F_refined,Layer 4,Pr,0.1,0,0.6,,refining,pyro,"PLACEHOLDER (Claude, not data) -- replace: follows Nd"
 F_dismantled,Layer 3,Motors_mixed,F_refined,Layer 4,Tb,0.1,0,0.6,,refining,pyro,"PLACEHOLDER (Claude, not data) -- replace: follows Nd"
 F_dismantled,Layer 3,Motors_mixed,F_refined,Layer 4,rest,0.0,0,0,,refining,pyro,decision: unspecified material is not recovered
-F_dismantled,Layer 3,Motors_mixed,F_loss_refining,Layer 4,Al,0.9,,,1,refining,pyro,derived: what is not recovered is lost
+F_dismantled,Layer 3,Motors_mixed,F_loss_refining,Layer 4,Al,0.9,0.7,0.98,,refining,pyro,"PLACEHOLDER (Claude, not data) -- replace: a stand-in range so conditioning can be tried. NOT a refining measurement."
 F_dismantled,Layer 3,Motors_mixed,F_loss_refining,Layer 4,Co,0.15,,,1,refining,pyro,derived: what is not recovered is lost
 F_dismantled,Layer 3,Motors_mixed,F_loss_refining,Layer 4,Cu,0.1,,,1,refining,pyro,derived: what is not recovered is lost
 F_dismantled,Layer 3,Wiring_mixed,F_loss_refining,Layer 4,Cu,0.05,,,1,refining,pyro,derived: what is not recovered is lost
