@@ -1,8 +1,13 @@
 # Handover
 
-Current as of **2026-08-21**, commit `a4879c2`. Rewritten from the ground up on
-that date; the previous version described the state before the Monte Carlo was
-fed real data and is superseded. Git has it if you want the old text.
+Current as of **2026-08-26**, commit `71653e2`. Rewritten from the ground up on
+2026-08-21 and updated since; git has the older text.
+
+**What changed on 2026-08-26.** The case workbooks gained dropdowns and a
+marked header row, `is_loss` was dropped in favour of `role`, and the sum-to-1
+machinery was finished: a third rule, a check that says where the constraint
+pulls, a guard, and two tools. §2 has the rules, §5 the two traps. No
+coefficient changed.
 
 **Read [RUNNING.md](RUNNING.md) first if you just want to run something.** This
 document is for picking the work back up.
@@ -25,7 +30,13 @@ document is for picking the work back up.
 | result rows | 600 | 4,117 |
 
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
-suites on fixed fixtures, then the pipeline and a mass balance.
+suites on fixed fixtures (95 checks), then the pipeline and a mass balance.
+
+Both case tables are **structurally finished**. `tools/tc_worklist.py` reports
+22 of 24 groups in the electronics case and 278 of 278 in the car composition
+one as *correct as they stand*, with no warnings on either. Nothing in the
+tables needs converting, rearranging or repairing. What they need is numbers —
+see §4.
 
 ### The one thing that matters most
 
@@ -113,6 +124,48 @@ place deliberately — it is what lets a hand-written case folder be solved
 without any upstream at all, which is how `tests/test_generality.py` builds its
 photovoltaic case.
 
+### How a group is made to sum to 1
+
+Everything one resource turns into must total exactly 1. Independent draws do
+not, so something has to give, and which thing is the modelling choice.
+
+| the group | what happens | set by |
+|---|---|---|
+| names an `is_residual` row | that row becomes `1 − the rest` on every draw | the table |
+| does not, and every row has a range | **conditioned** — see below | `monte_carlo.sum_to_one` |
+| does not, and you asked for `normalise` | the group is divided by its own sum | `monte_carlo.sum_to_one` |
+
+**Conditioning** is the default. It keeps every row's own measurement: draw
+them all, take the widest as determined by the rest so the group sums to 1
+exactly, weight each draw by that row's own density at the value it was forced
+to, and resample so the draws come out equally weighted. It was checked against
+brute-force rejection — draw everything and keep only what sums to 1 — and
+agrees to four decimals, at about 1% of a run's cost rather than 20×.
+
+**Normalising** is kept for two things and no others: reproducing a result from
+before conditioning existed, and getting a number out of a group whose ranges
+contradict each other. It hides the contradiction rather than resolving it.
+
+`tools/compare_sum_rules.py` solves a case under both and prints which elements
+the choice actually moves. If a case has nothing that can differ, it says so
+and stops after one solve rather than drawing two identical curves.
+
+Two consequences worth knowing before you touch a table:
+
+- **`chunk` and `memory_budget_gb` cannot change a result.** The coefficients
+  are drawn at full width, once, before anything is evaluated in blocks —
+  precisely so conditioning never sees a block boundary. Two machines with
+  different memory settings agree exactly. What conditioning *does* give up is
+  composing separately invoked runs of different widths; nothing in the
+  pipeline does that.
+- **`01_check_inputs.py` has a `SUM TO 1` section.** A group's modes sum to 1
+  by construction, but its *means* need not — a triangular's mean is
+  `(min + mode + max)/3`. Where they disagree the constraint has to move the
+  answer away from what is written. It reports that per group as an offset in
+  standard deviations. The electronics case sits at a median of 0.73, driven by
+  the rare-earth rows, and that is the source of the "running at the modes is
+  not the mean" line every Monte Carlo run prints.
+
 ---
 
 ## 3. What changed upstream, and what did not
@@ -171,13 +224,22 @@ existing figure and saved table there is keyed on it.
 
 ## 4. What to do next, in order
 
-1. **Replace the coefficients.** This is the only thing standing between the
-   model and a result. Everything else works. For electronics,
+1. **Replace the coefficients. This is the whole of what is left.** The user
+   asked on 2026-08-26 to have the case ready for real use; the model side is
+   finished and nothing else is in the way. For electronics,
    `tools/make_skeleton.py` writes the rows and **merges**, so you can do it a
    domain at a time without losing what you filled in. For car composition,
    `tools/make_carcomposition_tcs.py` generated the current invented table and
    **overwrites** — but it now refuses to, once any row's `source` says
    something it did not write. `--overwrite` forces a deliberate rebuild.
+
+   Fill in `value`, `value_min`, `value_max` and — this is the part that is
+   easy to get wrong — **leave `is_residual` alone unless you have a second,
+   independent measurement for that group.** One measurement per group is
+   already handled exactly by the residual rule. §5 has the two ways of
+   pretending otherwise, both of which look like progress and are not.
+   `tools/tc_worklist.py` says which group is which and has blank columns for
+   an independent number and its source.
 2. **Decide the segment question for 04_01.** Twelve segments are currently
    summed, on the assumption that recovery does not depend on car size. If it
    does, the alternative is a run per segment, not a new layer.
@@ -210,6 +272,23 @@ existing figure and saved table there is keyed on it.
   first 04_01 table, surfacing as a negative 2.5th percentile on `ELV_loss_ASR`.
   `make_carcomposition_tcs.py` caps them; a hand-edited table can reintroduce it,
   and the Monte Carlo will report it as `NEGATIVE RESIDUALS`.
+- **Do not manufacture a second measurement.** Conditioning is worth having
+  only where the extra range was measured *without going through* the rest of
+  the group. Both shortcuts were tried and measured:
+  - clearing `is_residual` and leaving the bounds blank leaves the group one
+    degree of freedom and no slack — every draw comes out identical, recovery
+    pinned at a single value across 100,000 draws. `src/sampling.py` **refuses
+    this** now, but it silently destroyed the spread before it did.
+  - filling in `1 − the rest of the group` counts one measurement twice: the
+    target becomes `f(x)·f(x)` instead of `f(x)`, narrowing the answer by about
+    a fifth for no reason. Not refused — it cannot be told from a real second
+    opinion by arithmetic alone — but `tools/tc_worklist.py` flags it, and
+    `reference/template`'s loss rows are exactly this, so any demonstration of
+    conditioning on that fixture measures squaring.
+- **A high effective sample size does not mean a second range was worth
+  having.** Two ranges that restate each other agree perfectly and keep nearly
+  all of it. Effective sample size says whether ranges are *consistent*, never
+  whether they are *independent*. Only the `source` column says that.
 - **Memory is `result rows × draws × 8 bytes`**, checked before allocating.
   Chunking bounds the working memory but not the result, so the levers are
   `run.years` and the case's `draws`.
@@ -243,8 +322,15 @@ Read this before doing anything. Every item cost time to learn.
    `tests/test_generality.py` builds a PV panel case sharing no name with a
    vehicle, and runs it through both `child_layer` shapes.
 8. **Be exact about provenance.** Never imply a placeholder is data.
-9. **Keep [RUNNING.md](RUNNING.md) and [CASES.md](CASES.md) current in the same
-   commit** as any change to what a file does or what a run produces.
+9. **Do not invent data to make a feature demonstrable.** On 2026-08-26 a
+   placeholder range was written for one row so conditioning would have
+   something to do. It happened to be the exact reflection of the row beside
+   it, so the demonstration measured one measurement squared and reported a
+   21% improvement that did not exist — shown to the user in a figure and a
+   table before anyone noticed. If a feature has nothing to act on, say that;
+   it is a finding, not a gap to be filled.
+10. **Keep [RUNNING.md](RUNNING.md) and [CASES.md](CASES.md) current in the
+    same commit** as any change to what a file does or what a run produces.
 
 Settled conventions: **95% interval** on every distribution figure. Plain
 figure titles.
@@ -278,6 +364,13 @@ Setup on a fresh machine: [SETUP.md](SETUP.md).
 
 If `~/Documents` starts returning permission errors after a Claude update, the
 app needs restarting. It is not a code problem.
+
+The same thing happens to the **iCloud Drive path** and it looks worse than it
+is. On 2026-08-26 the whole project tree stopped being listable mid-session:
+`ls`, `git` and even `python` failed with *Operation not permitted* — `getcwd`
+and directory enumeration denied while individual files still opened by path,
+and it persisted outside the sandbox, so it was macOS rather than any tool.
+Restarting the app cleared it. Nothing was lost and nothing needed repairing.
 
 ---
 
