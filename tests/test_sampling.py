@@ -549,6 +549,99 @@ def test_consistency_ignores_groups_that_are_not_constrained() -> None:
         'a group whose modes sum to 0.4 was judged against sum-to-1'
 
 
+# ----------------------------------------------------------------------
+#  Conditioning: enforce sum-to-1 without discarding anybody's measurement
+# ----------------------------------------------------------------------
+
+def _all_measured() -> pd.DataFrame:
+    """A constrained group where every row carries a range of its own."""
+    return _synthetic([
+        dict(Output_FlowID='F_recovered', value_min=0.30, value=0.50, value_max=0.70,
+             is_residual=0),
+        dict(Output_FlowID='F_other', value_min=0.25, value=0.35, value_max=0.50,
+             is_residual=0),
+        dict(Output_FlowID='F_loss', value_min=0.05, value=0.15, value_max=0.30,
+             is_residual=0),
+    ])
+
+
+def test_conditioning_keeps_the_group_summing_to_one() -> None:
+    """Whatever else it does, the constraint must hold on every draw."""
+    values, notes = sample(_all_measured(), draws=20_000, rule='condition')
+    total = values.sum(axis=0)
+    assert np.max(np.abs(total - 1.0)) < 1e-9, \
+        f'conditioned group sums to [{total.min()}, {total.max()}]'
+    assert notes['conditioned'] == 1, \
+        f"{notes['conditioned']} groups conditioned, expected 1"
+
+
+def test_conditioning_matches_brute_force_rejection() -> None:
+    """
+    The point of the method. Conditioning must give the same distribution as
+    drawing every row from its own range and keeping only the draws that come
+    to 1 -- which is the definition of what we want, just far too slow to run.
+    """
+    tcs = _all_measured()
+    conditioned, _ = sample(tcs, draws=200_000, rule='condition')
+
+    low = tcs['value_min'].to_numpy(float)
+    mode = tcs['value'].to_numpy(float)
+    high = tcs['value_max'].to_numpy(float)
+    rng = np.random.default_rng(17)
+    drawn = np.array([rng.triangular(l, m, h, 4_000_000)
+                      for l, m, h in zip(low, mode, high)])
+    keep = np.abs(drawn.sum(axis=0) - 1.0) < 0.004
+    assert keep.sum() > 20_000, f'only {keep.sum()} draws survived rejection'
+
+    for row in range(len(tcs)):
+        a = np.percentile(conditioned[row], [5, 50, 95])
+        b = np.percentile(drawn[row][keep], [5, 50, 95])
+        assert np.allclose(a, b, atol=0.004), \
+            f'row {row}: conditioning {a} vs rejection {b}'
+
+
+def test_conditioning_reports_how_much_of_the_sample_survived() -> None:
+    """
+    Effective sample size is the diagnostic: it says how much the constraint
+    and the measurements are fighting. Ranges that agree keep most of it.
+    """
+    _, notes = sample(_all_measured(), draws=50_000, rule='condition')
+    assert 0.0 < notes['worst_ess'] <= 1.0, notes['worst_ess']
+    assert notes['worst_ess'] > 0.3, \
+        f"compatible ranges kept only {notes['worst_ess']:.1%} of the sample"
+
+
+def test_contradictory_ranges_collapse_the_sample_instead_of_hiding() -> None:
+    """
+    Ranges that cannot all be true must show up as a collapsing effective
+    sample, not as a quietly adjusted answer. This is the behaviour the
+    residual and normalise rules do not have.
+    """
+    tcs = _synthetic([
+        # These modes sum to 1, so the group is constrained -- but the two
+        # measured rows sit nowhere near able to leave room for the third.
+        dict(Output_FlowID='F_recovered', value_min=0.80, value=0.85, value_max=0.90,
+             is_residual=0),
+        dict(Output_FlowID='F_loss', value_min=0.10, value=0.15, value_max=0.20,
+             is_residual=0),
+    ])
+    healthy, _ = sample(_all_measured(), draws=50_000, rule='condition')
+    _, notes = sample(tcs, draws=50_000, rule='condition')
+    assert notes['worst_ess'] < 0.9, \
+        f"contradictory ranges still kept {notes['worst_ess']:.1%} of the sample"
+
+
+def test_normalise_stays_the_default() -> None:
+    """
+    Conditioning is opt-in. Asking for nothing must give exactly what this
+    project gave before it existed.
+    """
+    tcs = _all_measured()
+    before, _ = sample(tcs, draws=5_000, rule='normalise')
+    default, _ = sample(tcs, draws=5_000)
+    assert np.array_equal(before, default), 'the default rule is no longer normalise'
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

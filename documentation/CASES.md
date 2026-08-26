@@ -326,12 +326,49 @@ difference between the derived row and `1 − the measured row` was `0.0`.
 
 Twenty-two of the electronics case's twenty-four groups are of this kind.
 
-### When there is no residual
+### When there is no residual: two rules, and you choose
 
-A group with no row marked is **normalised** instead — every row is drawn from
-its own range and the group is divided by its own sum. That always works and
-needs nothing added to the table, at the cost of shifting every marginal off
-the triangular it was drawn from.
+A group with no row marked is settled by `monte_carlo.sum_to_one`:
+
+| setting | what it does | what it costs |
+|---|---|---|
+| `normalise` *(default)* | divide the group by its own sum | every marginal shifts off the triangular it was drawn from, by an amount nothing reports |
+| `condition` | keep every row's own measurement | draws become slightly correlated — which the constraint makes unavoidable |
+
+**`condition` is the one to use once every row carries a range.** It is what
+sum-to-1 means probabilistically: the product of the measured densities,
+restricted to the draws that do sum to 1. In practice — draw every row from
+its own range; take the widest as determined by the rest, so the group sums to
+1 exactly; weight each draw by that row's own density at the value it was
+forced to take; resample so the draws come out equally weighted again.
+
+Which row is taken as determined does not change the answer — the target is
+the same product either way — so there is none of the arbitrariness that
+choosing an `is_residual` row involves.
+
+It was checked against brute force: drawing every row from its own range and
+keeping only the draws that sum to 1 gives the same distribution, and that
+test is in `tests/test_sampling.py`. Rejection is simply far slower — it
+throws away 95% of the draws to get there.
+
+On the electronics case, giving the loss row of one group its own measurement:
+
+| | p5 | p50 | p95 |
+|---|---|---|---|
+| `F_refined`, residual rule (loss measurement unused) | 0.0537 | 0.1326 | 0.2470 |
+| `F_refined`, **conditioned** | 0.0647 | 0.1223 | 0.2177 |
+
+The conditioned answer is **narrower**, because two measurements constrain the
+value more than one does. That is the point, and it is also the warning: your
+reported spreads will be tighter than the ranges you typed, and correctly so.
+
+### The effective sample size
+
+Conditioning reports how much of the sample survived the weighting. Ranges
+that agree keep most of it — 89% in the example above. Ranges that cannot all
+be true collapse it, and stage 03 says so rather than absorbing the
+contradiction quietly. That is the property neither `normalise` nor the
+residual rule has.
 
 ### The `SUM TO 1` section of `01_check_inputs.py`
 

@@ -326,6 +326,31 @@ class MonteCarloParams:
     # SAFE TO CHANGE: yes. A number above zero.
     memory_budget_gb: float = 4.0
 
+    # HOW A GROUP WITH NO `is_residual` ROW IS MADE TO SUM TO 1.
+    #
+    #     'normalise'   divide the group by its own sum. Always works, needs
+    #                   nothing added to the table, and shifts every marginal
+    #                   off the triangular it was drawn from.
+    #     'condition'   keep every row's own measurement: draw them all, take
+    #                   the widest as determined by the rest, weight each draw
+    #                   by that row's own density at the value it was forced to,
+    #                   and resample. This is what "sum to 1" means
+    #                   probabilistically -- the product of the measured
+    #                   densities, restricted to the draws that do sum to 1.
+    #
+    # Use 'condition' when every row carries a measured range and you want all
+    # of them used. It also makes a contradiction visible: ranges that cannot
+    # all be true collapse the effective sample size, which stage 03 reports,
+    # instead of being silently absorbed.
+    #
+    # Groups that DO name a residual row are unaffected. That row has no
+    # measurement of its own -- its bounds must be blank -- so there is nothing
+    # to condition on, and for a two-row group the residual rule is exact.
+    #
+    # SAFE TO CHANGE: yes, but it changes the numbers for any group where every
+    # row has a range. It is not a tuning knob; it is a modelling choice.
+    sum_to_one: str = 'normalise' 
+
 
 @dataclass
 class FigureParams:
@@ -399,6 +424,11 @@ class Params:
         if self.run.engine not in ENGINES:
             issues.append(f"engine is {self.run.engine!r}, but must be one of "
                           f"{', '.join(repr(e) for e in ENGINES)}")
+
+        from src.sampling import SUM_RULES
+        if self.monte_carlo.sum_to_one not in SUM_RULES:
+            issues.append(f"sum_to_one is {self.monte_carlo.sum_to_one!r}, but must "
+                          f"be one of {', '.join(repr(r) for r in SUM_RULES)}")
 
         if not self.figures.enabled():
             issues.append('png, svg and pdf are all False, so no figure would be '

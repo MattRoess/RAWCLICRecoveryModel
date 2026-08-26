@@ -394,6 +394,121 @@ def group_consistency(tcs: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def triangular_density(low, mode, high, x):
+    """
+    The triangular pdf, vectorised, and zero outside [low, high].
+
+    A degenerate row -- low == high -- has no density to speak of, so it
+    returns zero everywhere and the caller must not use it as the derived row.
+    """
+    low = np.asarray(low, dtype=np.float64)
+    mode = np.asarray(mode, dtype=np.float64)
+    high = np.asarray(high, dtype=np.float64)
+    x = np.asarray(x, dtype=np.float64)
+
+    width = high - low
+    out = np.zeros_like(x)
+    if np.all(width <= 0):
+        return out
+
+    rising = (x >= low) & (x <= mode) & (mode > low)
+    falling = (x > mode) & (x <= high) & (high > mode)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        out = np.where(rising, 2 * (x - low) / (width * (mode - low)), out)
+        out = np.where(falling, 2 * (high - x) / (width * (high - mode)), out)
+    return np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
+
+
+def _systematic(weights: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    """
+    Indices drawn in proportion to `weights`, as many as there are weights.
+
+    Systematic rather than multinomial: one uniform for the whole sweep, so the
+    resampling adds the least extra noise of any scheme with these weights.
+    """
+    total = np.cumsum(weights)
+    if total[-1] <= 0:
+        raise SamplingError(
+            'A constrained group has no draw with any weight at all: no '
+            'combination of\nthe measured ranges can sum to 1. The ranges in '
+            'that group contradict\neach other -- see the SUM TO 1 section of '
+            '01_check_inputs.py.')
+    positions = (rng.random() + np.arange(len(weights))) / len(weights)
+    return np.searchsorted(total / total[-1], positions)
+
+
+def condition_on_sum(values: np.ndarray, groups: dict[tuple, np.ndarray],
+                     low: np.ndarray, mode: np.ndarray, high: np.ndarray,
+                     seed: int = 0) -> tuple[np.ndarray, dict]:
+    """
+    Enforce sum-to-1 by conditioning, keeping every row's own measurement.
+
+    The residual rule overwrites one row and throws its measurement away.
+    Normalising divides the whole group and shifts every marginal off the
+    triangular it was drawn from. Neither uses what the sheet says about the
+    row it adjusts.
+
+    Conditioning is the third answer, and it is what "sum to 1" actually means
+    probabilistically: the target is the product of every row's own density,
+    restricted to the draws that do sum to 1. Sampling it directly:
+
+      * draw every row from its own range, as already happened;
+      * take one row -- the widest, purely for efficiency -- as determined by
+        the others, so the group sums to 1 exactly;
+      * weight each draw by that row's OWN density at the value it was forced
+        to take, which is how its measurement re-enters;
+      * resample in proportion to those weights, so the draws come out equally
+        weighted again and nothing downstream has to know about any of this.
+
+    Which row is taken as determined does not change the answer -- the target
+    is the same product either way -- so there is no arbitrary choice here of
+    the kind `is_residual` makes.
+
+    A draw forced outside its own range gets density zero and is dropped by the
+    resampling. If that happens to nearly all of them, the ranges in the group
+    cannot all be true, and the effective sample size collapses instead of the
+    contradiction being quietly absorbed.
+
+    Returns:
+        The corrected values, and notes carrying the effective sample size of
+        the worst group as a fraction of the draws.
+    """
+    values = values.copy()
+    draws = values.shape[1]
+    rng = np.random.default_rng(np.uint64(seed) ^ np.uint64(0x5EED_C0FFEE))
+    survival = []
+
+    for members in groups.values():
+        spread = high[members] - low[members]
+        if not np.any(spread > 0):
+            continue          # every row is a point mass; nothing to condition
+
+        # The widest row carries the flattest density, which makes the weights
+        # flattest and keeps the most of the sample.
+        derived = int(np.argmax(spread))
+        others = np.setdiff1d(np.arange(len(members)), derived)
+
+        block = values[members]
+        forced = 1.0 - block[others].sum(axis=0)
+        weights = triangular_density(low[members][derived], mode[members][derived],
+                                     high[members][derived], forced)
+
+        block[derived] = forced
+        keep = _systematic(weights, rng)
+        values[members] = block[:, keep]
+
+        # Kish's effective sample size: how many independent draws this
+        # weighted set is worth.
+        squared = float(np.sum(weights ** 2))
+        survival.append(float(weights.sum()) ** 2 / squared / draws
+                        if squared > 0 else 0.0)
+
+    return values, {
+        'conditioned': len(survival),
+        'worst_ess': min(survival) if survival else 1.0,
+    }
+
+
 def enforce_sum_to_one(values: np.ndarray, groups: dict[tuple, np.ndarray],
                        residual: np.ndarray | None = None) -> tuple[np.ndarray, int]:
     """
@@ -454,8 +569,15 @@ def enforce_sum_to_one(values: np.ndarray, groups: dict[tuple, np.ndarray],
     return values, negatives
 
 
-def sample(tcs: pd.DataFrame, draws: int, start: int = 0, seed: int = 0
-           ) -> tuple[np.ndarray, dict]:
+# How a constrained group with no `is_residual` row is made to sum to 1.
+# 'normalise' divides the group by its own sum, which is what this project has
+# always done. 'condition' keeps every row's own measurement instead -- see
+# `condition_on_sum`. Groups that DO name a residual are unaffected either way.
+SUM_RULES = ('normalise', 'condition')
+
+
+def sample(tcs: pd.DataFrame, draws: int, start: int = 0, seed: int = 0,
+           rule: str = 'normalise') -> tuple[np.ndarray, dict]:
     """
     Draw every transfer coefficient, respecting the sum-to-1 groups.
 
@@ -493,7 +615,28 @@ def sample(tcs: pd.DataFrame, draws: int, start: int = 0, seed: int = 0
     groups = constrained_groups(tcs)
     residual = (tcs[RESIDUAL_COLUMN].astype(bool).to_numpy()
                 if RESIDUAL_COLUMN in tcs.columns else None)
-    values, negatives = enforce_sum_to_one(values, groups, residual)
+
+    # A group naming a residual row is settled by that row and stays on the
+    # residual rule: the residual carries no measurement of its own -- blank
+    # bounds, enforced by `check_residual_bounds` -- so there is nothing there
+    # to condition on, and for a two-row group the rule is exact anyway.
+    conditioning: dict = {'conditioned': 0, 'worst_ess': 1.0}
+    if rule == 'condition':
+        named = {key: members for key, members in groups.items()
+                 if residual is not None and residual[members].any()}
+        free = {key: members for key, members in groups.items() if key not in named}
+        values, negatives = enforce_sum_to_one(values, named, residual)
+        values, conditioning = condition_on_sum(
+            values, free,
+            tcs[MIN_COLUMN].to_numpy(dtype=np.float64),
+            tcs[MODE_COLUMN].to_numpy(dtype=np.float64),
+            tcs[MAX_COLUMN].to_numpy(dtype=np.float64),
+            seed=seed)
+    elif rule == 'normalise':
+        values, negatives = enforce_sum_to_one(values, groups, residual)
+    else:
+        raise SamplingError(
+            f'rule={rule!r} is not one of {", ".join(SUM_RULES)}.')
 
     return values, {
         'uncertain': True,
@@ -501,4 +644,5 @@ def sample(tcs: pd.DataFrame, draws: int, start: int = 0, seed: int = 0
         'groups': len(groups),
         'unconstrained': len(tcs.groupby(RESOURCE, sort=False)) - len(groups),
         'negative_residuals': negatives,
+        **conditioning,
     }

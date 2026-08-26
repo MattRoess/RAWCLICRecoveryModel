@@ -141,6 +141,7 @@ def main(argv=None) -> int:
                           seed=params.monte_carlo.seed, tables=tables,
                           chunk=params.monte_carlo.chunk,
                           budget_gb=params.monte_carlo.memory_budget_gb,
+                          rule=params.monte_carlo.sum_to_one,
                           quiet=False)
     except MemoryBudgetExceeded as error:
         print(error, file=sys.stderr)
@@ -159,6 +160,17 @@ def main(argv=None) -> int:
         print(f'Bounds clamped into [0, 1] : {len(report["clamped"])}')
         for note in report['clamped'][:10]:
             print(f'    {note}')
+    if report.get('conditioned'):
+        survived = report['worst_ess']
+        print(f'Conditioned groups : {report["conditioned"]} -- every row\'s own '
+              f'range used, none discarded')
+        print(f'    worst effective sample: {survived:.1%} of {draws:,} draws')
+        if survived < 0.2:
+            print('    THAT IS LOW. It means the measured ranges in that group '
+                  'barely admit\n    a combination summing to 1, so they are close '
+                  'to contradicting each\n    other. Check the SUM TO 1 section of '
+                  '01_check_inputs.py.')
+
     if report['negative_residuals']:
         print(f'NEGATIVE RESIDUALS : {report["negative_residuals"]} (draw, group) pairs where '
               f'the sampled recovery fractions summed past 1.\n'

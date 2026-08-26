@@ -340,7 +340,7 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
                 start: int = 0, seed: int = 0, scenario: str | None = None,
                 years: str | None = None, tables: dict | None = None,
                 chunk: int | None = None, budget_gb: float = 1e9,
-                quiet: bool = True) -> MonteCarloRun:
+                quiet: bool = True, rule: str = 'normalise') -> MonteCarloRun:
     """
     Run the model over `draws` draws, for every year in the selection.
 
@@ -352,6 +352,12 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
     Chunking cannot change the answer: draw i is fixed by its own stream and its
     index, not by what was drawn before it, so a chunked run reproduces an
     unchunked one value for value (test_monte_carlo.py checks exactly that).
+
+    That is why the coefficients are drawn at full width here, once per year,
+    rather than a block at a time. Under `rule='condition'` the group is
+    resampled within whatever set it is handed, so drawing per block would make
+    the answer depend on the block size -- and the block size comes from
+    `memory_budget_gb`, a setting whose whole point is that it does not.
     """
     from src.sampling import sample
 
@@ -379,27 +385,26 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
     block, how = plan(total_rows, draws, budget_gb, chunk or 0)
     n_coefficients = len(structures[0][0]['tcs_df']) if structures else 0
     all_tc_values = np.zeros((n_coefficients, draws), dtype=np.float64)
-    for offset in range(0, draws, block):
-        width = min(block, draws - offset)
-        written = 0
-        for entry, structure in structures:
-            rows = len(structure.result_keys)
+    written = 0
+    for entry, structure in structures:
+        rows = len(structure.result_keys)
+        tc_values, report = sample(entry['tcs_df'], draws=draws,
+                                   start=start, seed=seed, rule=rule)
+        inflow = entry['inflows_df']['Value'].to_numpy(dtype=float)[:, None]
+
+        for offset in range(0, draws, block):
+            width = min(block, draws - offset)
             target = values[written:written + rows, offset:offset + width]
+            structure.evaluate(
+                np.broadcast_to(inflow, (len(entry['inflows_df']), width)),
+                tc_values[:, offset:offset + width], out=target)
 
-            tc_values, report = sample(entry['tcs_df'], draws=width,
-                                       start=start + offset, seed=seed)
-            inflow_values = np.broadcast_to(
-                entry['inflows_df']['Value'].to_numpy(dtype=float)[:, None],
-                (len(entry['inflows_df']), width))
-
-            structure.evaluate(inflow_values, tc_values, out=target)
-            written += rows
-
-            # The coefficients are kept at full width: the sensitivity figure
-            # correlates them against the results, so they have to line up draw
-            # for draw with what is stored above.
-            all_tc_values[:, offset:offset + width] = tc_values
-            sampled_tcs = entry['tcs_df']
+        written += rows
+        # The coefficients are kept at full width: the sensitivity figure
+        # correlates them against the results, so they have to line up draw
+        # for draw with what is stored above.
+        all_tc_values[:] = tc_values
+        sampled_tcs = entry['tcs_df']
 
     for entry, structure in structures:
         keys = structure.result_keys.copy()
