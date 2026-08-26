@@ -48,9 +48,9 @@ import numpy as np
 import pandas as pd
 
 
-from src.sampling import (SamplingError, clamp_bounds, check_ordering,
-                          constrained_groups, numeric_bounds, sample,
-                          triangular_quantile, uniforms)
+from src.sampling import (RESIDUAL_COLUMN, SamplingError, clamp_bounds,
+                          check_ordering, constrained_groups, numeric_bounds,
+                          sample, triangular_quantile, uniforms)
 
 TOLERANCE = 1e-12
 
@@ -647,6 +647,76 @@ def test_conditioning_is_the_default() -> None:
     other, _ = sample(tcs, draws=5_000, rule='normalise')
     assert not np.array_equal(other, default), \
         'normalise and condition agree here, so this proves nothing'
+
+
+# ----------------------------------------------------------------------
+#  A group with only one row free -- refused, not silently pinned
+# ----------------------------------------------------------------------
+
+def _one_free_row(residual_on_fixed: str = '') -> pd.DataFrame:
+    """A group where only the recovery row has a range; the loss row is fixed."""
+    common = dict(Input_FlowID='F_in', Input_layer='Layer 3',
+                  Input_layer_key='Motors_mixed', TC_target_layer='Layer 4',
+                  TC_target_key='Al')
+    return pd.DataFrame([
+        dict(**common, Output_FlowID='F_recovered',
+             value='0.10', value_min='0.02', value_max='0.30', is_residual=''),
+        dict(**common, Output_FlowID='F_loss',
+             value='0.90', value_min='0.90', value_max='0.90',
+             is_residual=residual_on_fixed),
+    ])
+
+
+def test_a_group_with_one_free_row_is_refused() -> None:
+    """
+    Clearing `is_residual` without giving the other row a range leaves the
+    group one degree of freedom and no slack: the constraint fixes the free row
+    exactly, every draw comes out the same number, and the range that was
+    written for it is discarded. The run used to report a healthy 100%
+    effective sample while doing this, which is the worst way to be wrong.
+    """
+    try:
+        sample(_one_free_row(), draws=256, rule='condition')
+    except SamplingError as error:
+        assert 'F_recovered' in str(error) or 'F_loss' in str(error), \
+            f'the group is not identified: {error}'
+        assert RESIDUAL_COLUMN in str(error), f'the way out is not given: {error}'
+    else:
+        raise AssertionError('a group with only one free row was accepted')
+
+
+def test_marking_the_fixed_row_residual_is_the_way_out() -> None:
+    """
+    The same table with the fixed row marked is the ordinary residual case, and
+    the free row keeps the spread it was given.
+    """
+    values, _ = sample(_one_free_row(residual_on_fixed='1'), draws=20_000,
+                       rule='condition')
+    spread = values[0].max() - values[0].min()
+    assert spread > 0.2, f'the recovery row kept only {spread:.4f} of its range'
+    assert np.allclose(values.sum(axis=0), 1.0, atol=TOLERANCE)
+
+
+def test_a_fixed_row_beside_two_free_ones_is_fine() -> None:
+    """
+    The guard is about having ONE free row, not about fixed rows as such. With
+    two free rows a fixed third takes no freedom away that matters.
+    """
+    common = dict(Input_FlowID='F_in', Input_layer='Layer 3',
+                  Input_layer_key='M', TC_target_layer='Layer 4', TC_target_key='E')
+    tcs = pd.DataFrame([
+        dict(**common, Output_FlowID='F_a', value='0.50',
+             value_min='0.30', value_max='0.70', is_residual=''),
+        dict(**common, Output_FlowID='F_b', value='0.35',
+             value_min='0.25', value_max='0.50', is_residual=''),
+        dict(**common, Output_FlowID='F_fixed', value='0.15',
+             value_min='0.15', value_max='0.15', is_residual=''),
+    ])
+    values, notes = sample(tcs, draws=20_000, rule='condition')
+    assert notes['conditioned'] == 1
+    assert np.allclose(values.sum(axis=0), 1.0, atol=TOLERANCE)
+    assert values[0].max() - values[0].min() > 0.1, 'the free rows lost their spread'
+    assert np.allclose(values[2], 0.15), 'the fixed row did not stay fixed'
 
 
 def main() -> int:

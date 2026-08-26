@@ -439,7 +439,8 @@ def _systematic(weights: np.ndarray, rng: np.random.Generator) -> np.ndarray:
 
 def condition_on_sum(values: np.ndarray, groups: dict[tuple, np.ndarray],
                      low: np.ndarray, mode: np.ndarray, high: np.ndarray,
-                     seed: int = 0) -> tuple[np.ndarray, dict]:
+                     seed: int = 0,
+                     labels: list[str] | None = None) -> tuple[np.ndarray, dict]:
     """
     Enforce sum-to-1 by conditioning, keeping every row's own measurement.
 
@@ -480,8 +481,29 @@ def condition_on_sum(values: np.ndarray, groups: dict[tuple, np.ndarray],
 
     for members in groups.values():
         spread = high[members] - low[members]
-        if not np.any(spread > 0):
+        free = int(np.count_nonzero(spread > 0))
+        if free == 0:
             continue          # every row is a point mass; nothing to condition
+
+        if free == 1:
+            # One row with a range and the rest fixed leaves the group a single
+            # degree of freedom and no slack: the constraint pins that row to
+            # 1 - the others, the same value on every draw, and the range
+            # written for it is discarded. It used to do exactly that and
+            # report a full effective sample while doing it, because uniform
+            # weights are what a resample cannot distinguish from healthy.
+            named = ('\n'.join(f'    {labels[position]}' for position in members)
+                     if labels else '')
+            raise SamplingError(
+                'A constrained group has only one row with a range of its '
+                'own:\n' + named
+                + f'\n\nThe others are single numbers, so summing to 1 fixes '
+                f'that row exactly and\nevery draw would come out the same, '
+                f'discarding the range written for it.\n\n'
+                f'Either mark the fixed row {RESIDUAL_COLUMN}, which says '
+                f'plainly that it is\nderived -- the answer is then the one '
+                f'this group can support -- or give the\nother rows ranges of '
+                f'their own.')
 
         # The widest row carries the flattest density, which makes the weights
         # flattest and keeps the most of the sample.
@@ -635,12 +657,17 @@ def sample(tcs: pd.DataFrame, draws: int, start: int = 0, seed: int = 0,
                  if residual is not None and residual[members].any()}
         free = {key: members for key, members in groups.items() if key not in named}
         values, negatives = enforce_sum_to_one(values, named, residual)
+        labels = [f"{row['Input_FlowID']} {row['Input_layer_key']} -> "
+                  f"{row['Output_FlowID']} {row['TC_target_key']}: "
+                  f"min {row[MIN_COLUMN]:g}, mode {row[MODE_COLUMN]:g}, "
+                  f"max {row[MAX_COLUMN]:g}"
+                  for _, row in tcs.iterrows()]
         values, conditioning = condition_on_sum(
             values, free,
             tcs[MIN_COLUMN].to_numpy(dtype=np.float64),
             tcs[MODE_COLUMN].to_numpy(dtype=np.float64),
             tcs[MAX_COLUMN].to_numpy(dtype=np.float64),
-            seed=seed)
+            seed=seed, labels=labels)
     elif rule == 'normalise':
         values, negatives = enforce_sum_to_one(values, groups, residual)
     else:

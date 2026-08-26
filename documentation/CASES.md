@@ -357,16 +357,17 @@ keeping only the draws that sum to 1 gives the same distribution, and that
 test is in `tests/test_sampling.py`. Rejection is simply far slower — it
 throws away 95% of the draws to get there.
 
-On the electronics case, giving the loss row of one group its own measurement:
+Two genuine measurements do constrain a value more tightly than one, so a
+conditioned answer is usually narrower than a derived one — which is the point,
+and also the warning: reported spreads come out tighter than the ranges typed
+in, and correctly so.
 
-| | p5 | p50 | p95 |
-|---|---|---|---|
-| `F_refined`, residual rule (loss measurement unused) | 0.0537 | 0.1326 | 0.2470 |
-| `F_refined`, **conditioned** | 0.0647 | 0.1223 | 0.2177 |
-
-The conditioned answer is **narrower**, because two measurements constrain the
-value more than one does. That is the point, and it is also the warning: your
-reported spreads will be tighter than the ranges you typed, and correctly so.
+**Be careful reading any demonstration of this**, including the one that used
+to sit here. It showed a 21% narrowing on `F_refined Al`, from a placeholder
+range of `0.70-0.90-0.98` written against a recovery row of `0.02-0.10-0.30`.
+Those are reflections of each other, so the narrowing was one measurement
+squared, not two measurements agreeing. The next section is the general form of
+that mistake. `tools/tc_worklist.py` now detects it.
 
 ### There is no way to manufacture the second measurement
 
@@ -409,10 +410,14 @@ two identical curves and letting you conclude the rule does not matter.
 ### The effective sample size
 
 Conditioning reports how much of the sample survived the weighting. Ranges
-that agree keep most of it — 89% in the example above. Ranges that cannot all
-be true collapse it, and stage 03 says so rather than absorbing the
-contradiction quietly. That is the property neither `normalise` nor the
-residual rule has.
+that agree keep most of it. Ranges that cannot all be true collapse it, and
+stage 03 says so rather than absorbing the contradiction quietly. That is the
+property neither `normalise` nor the residual rule has.
+
+A high effective sample is **not** evidence that a second range was worth
+having: two ranges that restate each other agree perfectly, so they keep nearly
+all of it. Effective sample size tells you whether the ranges are consistent,
+never whether they are independent. Only the `source` column says that.
 
 ### One thing conditioning gives up
 

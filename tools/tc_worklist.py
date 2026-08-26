@@ -17,8 +17,8 @@ INDEPENDENT measurement. There is no way to manufacture one from the table:
 
   * Clearing `is_residual` and leaving the bounds blank makes the row a point
     mass, and the group then has one degree of freedom and no slack. Every
-    draw comes out identical -- the whole spread disappears, while the run
-    still reports a healthy effective sample.
+    draw would come out identical, the whole spread gone. src/sampling.py
+    refuses this outright now; this lists it before a run rather than during.
 
   * Filling in the range the constraint already implies -- `1 - the rest of
     the group` -- counts one measurement twice. The target becomes f(x)*f(x)
@@ -67,7 +67,7 @@ SAME = 5e-3
 NEEDS_A_SECOND = 'one measurement, derived partner -- correct as it stands'
 FULLY_MEASURED = 'measured on every row -- conditioning is doing something'
 REFLECTED = 'WARNING: the extra range is what the others already imply'
-COLLAPSED = 'WARNING: spreadless row, no is_residual -- spread is destroyed'
+COLLAPSED = 'REFUSED at run time: spreadless row and no is_residual'
 
 
 def implied(low, mode, high, others) -> tuple[float, float, float]:
@@ -168,7 +168,7 @@ def report(folder: str) -> int:
         if status in counts:
             print(f'    {counts[status]:4d}  {status}')
 
-    for status, heading in ((COLLAPSED, 'These destroy their own spread'),
+    for status, heading in ((COLLAPSED, 'These are refused when the case is run'),
                             (REFLECTED, 'These count one measurement twice')):
         bad = table[table['status'] == status]
         if not len(bad):
