@@ -332,10 +332,16 @@ A group with no row marked is settled by `monte_carlo.sum_to_one`:
 
 | setting | what it does | what it costs |
 |---|---|---|
-| `normalise` *(default)* | divide the group by its own sum | every marginal shifts off the triangular it was drawn from, by an amount nothing reports |
-| `condition` | keep every row's own measurement | draws become slightly correlated — which the constraint makes unavoidable |
+| `condition` *(default)* | keep every row's own measurement | draws become slightly correlated — which the constraint makes unavoidable |
+| `normalise` | divide the group by its own sum | every marginal shifts off the triangular it was drawn from, by an amount nothing reports |
 
-**`condition` is the one to use once every row carries a range.** It is what
+**`normalise` is kept for two reasons and no others:** reproducing a result
+computed before conditioning existed, and getting a number out of a group whose
+ranges contradict each other, which conditioning refuses. Note what the second
+one means — normalising a contradictory group does not resolve the
+contradiction, it hides it. There is no case where it is the better model.
+
+**`condition` is what you want once every row carries a range.** It is what
 sum-to-1 means probabilistically: the product of the measured densities,
 restricted to the draws that do sum to 1. In practice — draw every row from
 its own range; take the widest as determined by the rest, so the group sums to
@@ -369,6 +375,23 @@ that agree keep most of it — 89% in the example above. Ranges that cannot all
 be true collapse it, and stage 03 says so rather than absorbing the
 contradiction quietly. That is the property neither `normalise` nor the
 residual rule has.
+
+### One thing conditioning gives up
+
+Resampling happens within whatever set of draws it is handed, so **two
+separately invoked runs do not compose**: a 100-draw run and a 200-draw run are
+each a valid sample, but they are not the two halves of a 300-draw run.
+
+What this does *not* affect, both checked in `tests/test_monte_carlo.py`:
+
+- **`chunk` and `memory_budget_gb` cannot change the answer.** The coefficients
+  are drawn at full width, once, before anything is evaluated in blocks. Two
+  machines with different memory settings get identical results.
+- **The same width and seed repeat exactly**, so comparing two scenarios still
+  shows the scenario rather than the noise.
+
+Only `start`, used to resume a run in pieces, loses its meaning under
+conditioning. Nothing in the pipeline uses it.
 
 ### The `SUM TO 1` section of `01_check_inputs.py`
 

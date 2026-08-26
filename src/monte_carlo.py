@@ -340,7 +340,7 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
                 start: int = 0, seed: int = 0, scenario: str | None = None,
                 years: str | None = None, tables: dict | None = None,
                 chunk: int | None = None, budget_gb: float = 1e9,
-                quiet: bool = True, rule: str = 'normalise') -> MonteCarloRun:
+                quiet: bool = True, rule: str = 'condition') -> MonteCarloRun:
     """
     Run the model over `draws` draws, for every year in the selection.
 
@@ -349,15 +349,22 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
     bounded by the chunk rather than by the full draw count. Only the result
     itself is held at full width.
 
-    Chunking cannot change the answer: draw i is fixed by its own stream and its
-    index, not by what was drawn before it, so a chunked run reproduces an
-    unchunked one value for value (test_monte_carlo.py checks exactly that).
-
-    That is why the coefficients are drawn at full width here, once per year,
-    rather than a block at a time. Under `rule='condition'` the group is
-    resampled within whatever set it is handed, so drawing per block would make
-    the answer depend on the block size -- and the block size comes from
+    Chunking cannot change the answer, under either rule. That is why the
+    coefficients are drawn at FULL WIDTH here, once per year, rather than a
+    block at a time: under `rule='condition'` the group is resampled within
+    whatever set it is handed, so drawing per block would make the answer
+    depend on the block size -- and the block size comes from
     `memory_budget_gb`, a setting whose whole point is that it does not.
+    test_monte_carlo.py checks both rules against both extremes of `chunk`.
+
+    What `condition` does cost is composing SEPARATE calls. Under 'normalise'
+    draw i is fixed by its own stream and its index, so a run split into two
+    calls reproduces an unsplit one value for value. Resampling cannot do that:
+    a 100-draw call and a 200-draw call are each a valid sample, but they are
+    not the two halves of a 300-draw one. Nothing here splits a run that way,
+    and what the stable index is actually for still holds -- the same width and
+    seed repeat exactly, so two scenarios differ by the scenario and not by
+    noise.
     """
     from src.sampling import sample
 

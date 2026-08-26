@@ -349,7 +349,13 @@ class MonteCarloParams:
     #
     # SAFE TO CHANGE: yes, but it changes the numbers for any group where every
     # row has a range. It is not a tuning knob; it is a modelling choice.
-    sum_to_one: str = 'normalise' 
+    #
+    # 'normalise' is kept for two reasons and no others: reproducing a result
+    # computed before conditioning existed, and getting a number out of a group
+    # whose ranges contradict each other, which conditioning refuses. Note what
+    # the second one means -- normalising a contradictory group does not
+    # resolve the contradiction, it hides it.
+    sum_to_one: str = 'condition' 
 
 
 @dataclass

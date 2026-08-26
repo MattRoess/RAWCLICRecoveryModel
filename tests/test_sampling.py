@@ -631,15 +631,22 @@ def test_contradictory_ranges_collapse_the_sample_instead_of_hiding() -> None:
         f"contradictory ranges still kept {notes['worst_ess']:.1%} of the sample"
 
 
-def test_normalise_stays_the_default() -> None:
+def test_conditioning_is_the_default() -> None:
     """
-    Conditioning is opt-in. Asking for nothing must give exactly what this
-    project gave before it existed.
+    Normalising shifts every marginal off the range it was drawn from and
+    reports nothing about it, so it is not what anyone should get by not
+    choosing. It stays reachable for reproducing a result computed before
+    conditioning existed, and for prising a number out of a group whose ranges
+    contradict each other -- both of which have to be asked for.
     """
     tcs = _all_measured()
-    before, _ = sample(tcs, draws=5_000, rule='normalise')
+    chosen, _ = sample(tcs, draws=5_000, rule='condition')
     default, _ = sample(tcs, draws=5_000)
-    assert np.array_equal(before, default), 'the default rule is no longer normalise'
+    assert np.array_equal(chosen, default), 'the default rule is not conditioning'
+
+    other, _ = sample(tcs, draws=5_000, rule='normalise')
+    assert not np.array_equal(other, default), \
+        'normalise and condition agree here, so this proves nothing'
 
 
 def main() -> int:

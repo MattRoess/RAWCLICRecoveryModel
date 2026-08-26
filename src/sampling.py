@@ -570,14 +570,23 @@ def enforce_sum_to_one(values: np.ndarray, groups: dict[tuple, np.ndarray],
 
 
 # How a constrained group with no `is_residual` row is made to sum to 1.
-# 'normalise' divides the group by its own sum, which is what this project has
-# always done. 'condition' keeps every row's own measurement instead -- see
-# `condition_on_sum`. Groups that DO name a residual are unaffected either way.
+#
+# 'condition' is the default and the one to use: it keeps every row's own
+# measurement, which is what sum-to-1 means probabilistically. See
+# `condition_on_sum`.
+#
+# 'normalise' divides the group by its own sum. It is kept for two reasons and
+# no others: reproducing a result computed before conditioning existed, and
+# getting a number out of a group whose ranges CONTRADICT each other, which
+# conditioning refuses. Note what the second one means -- normalising a
+# contradictory group does not resolve it, it hides it.
+#
+# Groups that name a residual row are unaffected either way.
 SUM_RULES = ('normalise', 'condition')
 
 
 def sample(tcs: pd.DataFrame, draws: int, start: int = 0, seed: int = 0,
-           rule: str = 'normalise') -> tuple[np.ndarray, dict]:
+           rule: str = 'condition') -> tuple[np.ndarray, dict]:
     """
     Draw every transfer coefficient, respecting the sum-to-1 groups.
 

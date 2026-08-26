@@ -116,14 +116,57 @@ def test_template_with_ranges_collapsed_matches_deterministic() -> None:
     assert worst < 1e-10, f'collapsed Monte Carlo differs by {worst:.3e}'
 
 
-def test_chunked_run_matches_an_unchunked_one() -> None:
-    """Draw i must be the same whichever chunk it arrives in."""
-    _, whole, _ = _monte_carlo('template', draws=300)
-    _, first, _ = _monte_carlo('template', draws=100, start=0)
-    _, second, _ = _monte_carlo('template', draws=200, start=100)
-    chunked = np.hstack([first, second])
-    worst = np.max(np.abs(whole - chunked))
-    assert worst == 0.0, f'chunked run differs from an unchunked one by {worst:.3e}'
+def test_the_chunk_setting_cannot_change_the_answer() -> None:
+    """
+    `chunk` is memory tuning and must not touch the result, under either rule.
+
+    That is why the coefficients are drawn at full width, once, before anything
+    is evaluated in blocks: conditioning resamples within whatever set it is
+    handed, so drawing per block would have made the answer depend on a number
+    chosen from `memory_budget_gb`.
+    """
+    for rule in ('normalise', 'condition'):
+        _, whole, _ = _monte_carlo('template', draws=300, chunk=300, rule=rule)
+        _, blocked, _ = _monte_carlo('template', draws=300, chunk=7, rule=rule)
+        worst = np.max(np.abs(whole - blocked))
+        assert worst == 0.0, \
+            f'{rule}: the chunk size moved the answer by {worst:.3e}'
+
+
+def test_a_run_repeats_exactly_at_the_same_width_and_seed() -> None:
+    """
+    What the stable draw index is actually for: two runs at the same width and
+    seed must agree value for value, so a comparison between two scenarios
+    shows the scenario rather than the noise.
+    """
+    for rule in ('normalise', 'condition'):
+        _, once, _ = _monte_carlo('template', draws=300, seed=0, rule=rule)
+        _, twice, _ = _monte_carlo('template', draws=300, seed=0, rule=rule)
+        assert np.max(np.abs(once - twice)) == 0.0, f'{rule} did not repeat'
+
+
+def test_splitting_a_run_composes_only_when_normalising() -> None:
+    """
+    Under 'normalise', draw i is fixed by its own stream, so a run split into
+    two calls reproduces an unsplit one value for value.
+
+    Under 'condition' it cannot, and this pins that down rather than leaving it
+    to be discovered. The group is resampled within whatever set it is given,
+    so a 100-draw call and a 200-draw call are not the two halves of a 300-draw
+    one. Each is a valid sample of the same distribution; they are not the SAME
+    sample. Nothing in the pipeline splits a run this way -- `chunk` does not,
+    as the test above shows -- but anyone reaching for `start` should know.
+    """
+    def split(rule: str) -> float:
+        _, whole, _ = _monte_carlo('template', draws=300, start=0, rule=rule)
+        _, first, _ = _monte_carlo('template', draws=100, start=0, rule=rule)
+        _, second, _ = _monte_carlo('template', draws=200, start=100, rule=rule)
+        return float(np.max(np.abs(whole - np.hstack([first, second]))))
+
+    assert split('normalise') == 0.0, 'normalise no longer composes across calls'
+    assert split('condition') > 0.0, \
+        'conditioning composed exactly, which resampling cannot do -- has the ' \
+        'resampling stopped happening?'
 
 
 def test_mass_is_conserved_on_every_draw() -> None:
