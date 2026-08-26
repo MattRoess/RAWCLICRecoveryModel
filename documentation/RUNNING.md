@@ -38,6 +38,7 @@ One more you can press when you want it:
 | file | what it does |
 |---|---|
 | `tools/plot_structure.py` | the structure diagram on its own, without solving anything |
+| `tools/compare_sum_rules.py` | solves the case twice, conditioning and normalising, and shows which elements the choice actually moves |
 
 ---
 

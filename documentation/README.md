@@ -26,7 +26,8 @@ MODEL_MECHANICS.md covers.
 
 Nothing in this project needs a terminal, and nothing takes an argument.
 `00_parameters.py`, `01_check_inputs.py`, `02_run_model.py`,
-`03_run_monte_carlo.py`, `99_check_all.py` and `tools/plot_structure.py` each do
+`03_run_monte_carlo.py`, `99_check_all.py`, `tools/plot_structure.py` and
+`tools/compare_sum_rules.py` each do
 one step, and each reads `run.data_folder` from `src/params_schema.py` -- which
 is where you choose the pipeline. Step by step, in that order. See
 [RUNNING.md](RUNNING.md).

@@ -368,6 +368,18 @@ The conditioned answer is **narrower**, because two measurements constrain the
 value more than one does. That is the point, and it is also the warning: your
 reported spreads will be tighter than the ranges you typed, and correctly so.
 
+### Seeing the difference on your own case
+
+    ./.venv/bin/python tools/compare_sum_rules.py
+
+Solves the case twice, once under each rule, and prints which elements the
+choice actually moves and by how much — then draws it to
+`figures/<case>/compare_sum_rules.png`. It costs about two Monte Carlo runs.
+
+If nothing in the case can differ — every constrained group either names an
+`is_residual` row or has no spread — it says so and stops, rather than drawing
+two identical curves and letting you conclude the rule does not matter.
+
 ### The effective sample size
 
 Conditioning reports how much of the sample survived the weighting. Ranges
