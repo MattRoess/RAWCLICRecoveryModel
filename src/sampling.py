@@ -193,6 +193,49 @@ def check_ordering(tcs: pd.DataFrame) -> None:
             + '\n\nCorrect the three numbers in TCs.csv. They cannot all be right.')
 
 
+def check_residual_bounds(tcs: pd.DataFrame) -> None:
+    """
+    Refuse a range written on a row that is derived rather than measured.
+
+    A row marked `is_residual` is overwritten with 1 - the rest of its group on
+    every draw, so a spread typed on it has no effect at all. The run used to
+    read those two numbers and discard them without a word, which is worse than
+    refusing them: nothing told you a measurement had been dropped.
+
+    A bound EQUAL to the mode is not a range -- that is what a blank becomes
+    once `numeric_bounds` has run -- so only a genuine spread is refused, and a
+    table that has already been through that step reads the same as a raw one.
+    """
+    if RESIDUAL_COLUMN not in tcs.columns:
+        return
+    if MIN_COLUMN not in tcs.columns or MAX_COLUMN not in tcs.columns:
+        return
+
+    tcs = numeric_bounds(tcs)
+    residual = tcs[RESIDUAL_COLUMN].astype(bool).to_numpy()
+    mode = tcs[MODE_COLUMN].to_numpy(dtype=np.float64)
+    spread = ((tcs[MIN_COLUMN].to_numpy(dtype=np.float64) < mode)
+              | (tcs[MAX_COLUMN].to_numpy(dtype=np.float64) > mode))
+
+    offending = tcs[residual & spread]
+    if not len(offending):
+        return
+
+    lines = [f"  {row['Input_FlowID']} {row['Input_layer_key']} -> "
+             f"{row['Output_FlowID']} {row['TC_target_key']}: "
+             f"min {row[MIN_COLUMN]:g}, mode {row[MODE_COLUMN]:g}, "
+             f"max {row[MAX_COLUMN]:g}"
+             for _, row in offending.iterrows()]
+    raise SamplingError(
+        f'{len(offending)} row(s) marked {RESIDUAL_COLUMN} carry a range of '
+        f'their own:\n' + '\n'.join(lines)
+        + f'\n\nA {RESIDUAL_COLUMN} row is computed as 1 - the rest of its '
+        f'group on every\ndraw, so this range would be discarded rather than '
+        f'used. Either clear\n{MIN_COLUMN} and {MAX_COLUMN} and let the row be '
+        f'derived, or clear\n{RESIDUAL_COLUMN} and let it be sampled from its '
+        f'own measurement like any\nother row. See documentation/CASES.md.')
+
+
 def triangular_quantile(low, mode, high, u):
     """
     The inverse distribution function of the triangular distribution.
@@ -295,6 +338,62 @@ def constrained_groups(tcs: pd.DataFrame) -> dict[tuple, np.ndarray]:
     return groups
 
 
+def group_consistency(tcs: pd.DataFrame) -> pd.DataFrame:
+    """
+    Whether each constrained group's measured ranges agree with summing to 1.
+
+    The modes of a constrained group sum to 1 by definition -- that is what
+    makes it constrained. The MEANS need not. A triangular's mean is
+    (min + mode + max) / 3, so a range whose mode sits off centre has a mean
+    away from its mode, and a group of such rows lands somewhere other than 1
+    when its rows are drawn independently.
+
+    That gap is what forces the constraint to move the answer away from the
+    numbers that were typed in, and it is reported here as `offset`: how many
+    standard deviations of the independent sum separate 1 from where that sum
+    actually lands. Near zero means the ranges already agree with the
+    constraint and enforcing it changes almost nothing. Large means the
+    measured distributions and sum-to-1 are pulling in different directions,
+    and whichever rule is applied will have to override something.
+
+    Rows with no range of their own -- the residuals -- are point masses, so
+    they add their mode and no spread. The offset therefore measures exactly
+    the skew of the rows that DO carry a measurement.
+
+    Returns:
+        One row per constrained group: its members, the sums, and the offset.
+        Empty when nothing is constrained.
+    """
+    if MIN_COLUMN not in tcs.columns or MAX_COLUMN not in tcs.columns:
+        return pd.DataFrame()
+
+    tcs = numeric_bounds(tcs)
+    low = tcs[MIN_COLUMN].to_numpy(dtype=np.float64)
+    mode = tcs[MODE_COLUMN].to_numpy(dtype=np.float64)
+    high = tcs[MAX_COLUMN].to_numpy(dtype=np.float64)
+
+    # Closed form, so this costs nothing next to sampling the table.
+    mean = (low + mode + high) / 3.0
+    variance = (low ** 2 + mode ** 2 + high ** 2
+                - low * mode - low * high - mode * high) / 18.0
+
+    rows = []
+    for key, members in constrained_groups(tcs).items():
+        spread = float(np.sqrt(variance[members].sum()))
+        sum_mean = float(mean[members].sum())
+        rows.append({
+            **dict(zip(RESOURCE, key)),
+            'rows': len(members),
+            'sum_mode': float(mode[members].sum()),
+            'sum_mean': sum_mean,
+            'sd': spread,
+            # A group with no spread at all sits exactly where its modes put
+            # it, so there is nothing for the constraint to move.
+            'offset': 0.0 if spread == 0 else (sum_mean - 1.0) / spread,
+        })
+    return pd.DataFrame(rows)
+
+
 def enforce_sum_to_one(values: np.ndarray, groups: dict[tuple, np.ndarray],
                        residual: np.ndarray | None = None) -> tuple[np.ndarray, int]:
     """
@@ -380,6 +479,7 @@ def sample(tcs: pd.DataFrame, draws: int, start: int = 0, seed: int = 0
         return np.repeat(modes[:, None], draws, axis=1), {
             'uncertain': False, 'clamped': [], 'groups': 0, 'negative_residuals': 0}
 
+    check_residual_bounds(tcs)
     tcs, clamped = clamp_bounds(tcs)
     check_ordering(tcs)
 

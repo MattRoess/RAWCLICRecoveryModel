@@ -196,5 +196,58 @@ def report(folder: str, tables: dict | None = None) -> bool:
         print(f"  skew   : {int((skew.abs() > TOLERANCE).sum())} of {len(tcs)} asymmetric "
               f"(mode off-centre), mean signed skew {skew.mean():+.3f}")
 
+    report_sum_to_one(tcs)
     return True
+
+
+# How far a group may sit from 1, in standard deviations of its own independent
+# sum, before it is worth naming. Below this the constraint barely moves it.
+OFFSET_TO_REPORT = 0.5
+
+
+def report_sum_to_one(tcs: pd.DataFrame) -> None:
+    """
+    Say whether the measured ranges are compatible with summing to 1.
+
+    A constrained group's modes sum to 1 by construction. Its means need not,
+    because a triangular's mean is (min + mode + max) / 3 and an off-centre
+    mode pulls the two apart. Where they disagree, enforcing the constraint
+    has to move the answer away from the numbers in the sheet -- and that is
+    the difference the Monte Carlo already reports as a gap between running at
+    the modes and running the full distributions. This says which groups it
+    comes from, before a run rather than after.
+    """
+    from src.sampling import group_consistency
+
+    consistency = group_consistency(tcs)
+    print("\nSUM TO 1 -- do the measured ranges agree with the constraint?")
+    if not len(consistency):
+        print("  No constrained groups: no group's modes sum to 1, so nothing "
+              "is corrected.")
+        return
+
+    offset = consistency['offset'].abs()
+    print(f"  {len(consistency)} constrained groups")
+    print(f"  offset from 1, in standard deviations of the group's own sum: "
+          f"median {offset.median():.2f}, max {offset.max():.2f}")
+
+    worth_naming = consistency[offset > OFFSET_TO_REPORT]
+    if not len(worth_naming):
+        print("  All groups sit within half a standard deviation of 1. The "
+              "ranges already\n  agree with the constraint, so enforcing it "
+              "changes little.")
+        return
+
+    print(f"  {len(worth_naming)} group(s) beyond {OFFSET_TO_REPORT} sd -- "
+          f"drawn independently these do NOT\n  average to 1, so the "
+          f"constraint moves them away from the values written:")
+    for _, row in worth_naming.reindex(offset.sort_values(ascending=False).index
+                                       ).head(8).iterrows():
+        print(f"    {row['Input_layer_key']} {row['TC_target_key']} -> "
+              f"{row['Input_FlowID']}: independent sum averages "
+              f"{row['sum_mean']:.4f}, {row['offset']:+.2f} sd from 1")
+    if len(worth_naming) > 8:
+        print(f"    ... and {len(worth_naming) - 8} more")
+    print("  This is not an error. It is the reason a run at the modes and a "
+          "run of the\n  full distributions give different answers.")
 

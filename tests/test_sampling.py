@@ -49,7 +49,8 @@ import pandas as pd
 
 
 from src.sampling import (SamplingError, clamp_bounds, check_ordering,
-                          constrained_groups, sample, triangular_quantile, uniforms)
+                          constrained_groups, numeric_bounds, sample,
+                          triangular_quantile, uniforms)
 
 TOLERANCE = 1e-12
 
@@ -338,17 +339,29 @@ def test_residual_row_absorbs_the_remainder() -> None:
     the residual takes 1 - their sum.
     """
     tcs = _tcs('template').copy()
-    # Mark every loss destination as the residual of its group.
+    # Mark every loss destination as the residual of its group. A residual row
+    # carries no range of its own -- it is computed from the others -- so its
+    # bounds are cleared, which is what sample() now requires.
     tcs['is_residual'] = tcs['Output_FlowID'].str.contains('loss').astype(int)
+    marked = tcs['is_residual'].astype(bool)
+    for column in ('value_min', 'value_max'):
+        tcs[column] = tcs[column].astype(object)
+        tcs.loc[marked, column] = ''
 
-    plain, _ = sample(tcs.drop(columns=['is_residual']), draws=200)
+    # The normalise comparison needs the fixture as written, ranges and all.
+    plain, _ = sample(_tcs('template'), draws=200)
     with_residual, _ = sample(tcs, draws=200)
 
     recovery = ~tcs['Output_FlowID'].str.contains('loss').to_numpy()
     # Recovery rows must be untouched by the residual scheme, unlike normalising.
+    # The residual rows now hold blanks, so fill them the way sample() does
+    # before reading them as numbers. Only the recovery rows are compared, and
+    # their bounds are untouched by that. The random streams are keyed on the
+    # identity columns, so they are the same either way.
+    filled = numeric_bounds(tcs)
     drawn = triangular_quantile(
-        tcs['value_min'].to_numpy(float), tcs['value'].to_numpy(float),
-        tcs['value_max'].to_numpy(float), uniforms(tcs, 200).T).T
+        filled['value_min'].to_numpy(float), filled['value'].to_numpy(float),
+        filled['value_max'].to_numpy(float), uniforms(tcs, 200).T).T
     assert np.allclose(with_residual[recovery], drawn[recovery]), \
         'the residual scheme altered rows that have their own data'
     assert not np.allclose(plain[recovery], drawn[recovery]), \
@@ -388,7 +401,8 @@ def test_negative_residuals_are_counted_not_hidden() -> None:
         dict(Output_FlowID='F_other', value_min=0.25, value=0.45, value_max=0.65,
              is_residual=0),
         # ... and the loss row absorbs the remainder.
-        dict(Output_FlowID='F_loss', value_min=0.00, value=0.05, value_max=0.20,
+        # ... with no range of its own: it IS 1 - the other two.
+        dict(Output_FlowID='F_loss', value_min='', value=0.05, value_max='',
              is_residual=1),
     ])
     # 0.70 + 0.65 = 1.35, so some draws must overshoot.
@@ -411,13 +425,128 @@ def test_residual_stays_exact_when_the_data_is_consistent() -> None:
              is_residual=0),
         dict(Output_FlowID='F_other', value_min=0.30, value=0.43, value_max=0.44,
              is_residual=0),
-        dict(Output_FlowID='F_loss', value_min=0.00, value=0.07, value_max=0.30,
+        dict(Output_FlowID='F_loss', value_min='', value=0.07, value_max='',
              is_residual=1),
     ])
     assert len(constrained_groups(tcs)) == 1, 'the synthetic group is not constrained'
     _, report = sample(tcs, draws=2000)
     assert report['negative_residuals'] == 0, \
         f"consistent ranges still reported {report['negative_residuals']} negative residuals"
+
+
+# ----------------------------------------------------------------------
+#  A range typed on a residual row -- refused, not discarded
+# ----------------------------------------------------------------------
+
+def _two_row_group(residual_min='', residual_max='') -> pd.DataFrame:
+    """One constrained group: a recovery row with a range, and its residual."""
+    common = dict(Input_FlowID='F_in', Input_layer='Layer 3',
+                  Input_layer_key='Motors_mixed', TC_target_layer='Layer 4',
+                  TC_target_key='Cu')
+    return pd.DataFrame([
+        dict(**common, Output_FlowID='F_recovered',
+             value='0.10', value_min='0.02', value_max='0.30', is_residual=''),
+        dict(**common, Output_FlowID='F_loss',
+             value='0.90', value_min=residual_min, value_max=residual_max,
+             is_residual='1'),
+    ])
+
+
+def test_a_range_on_a_residual_row_is_refused() -> None:
+    """
+    Bounds on a residual row used to be read, then thrown away: the row is
+    overwritten with 1 - the others, so whatever was typed had no effect at
+    all. Silently ignoring a number somebody measured is worse than refusing
+    it, because nothing says the measurement was dropped.
+    """
+    for low, high in (('0.85', '0.95'), ('0.85', ''), ('', '0.95')):
+        try:
+            sample(_two_row_group(low, high), draws=64)
+        except SamplingError as error:
+            assert 'F_loss' in str(error), f'the offending row is not named: {error}'
+            assert 'is_residual' in str(error), f'the reason is not given: {error}'
+        else:
+            raise AssertionError(
+                f'a residual row with bounds ({low!r}, {high!r}) was accepted')
+
+
+def test_a_residual_row_with_blank_bounds_still_samples() -> None:
+    """The ordinary case must be untouched: blank bounds mean 'derive me'."""
+    values, notes = sample(_two_row_group(), draws=4096)
+    assert values.shape == (2, 4096)
+    total = values.sum(axis=0)
+    assert np.allclose(total, 1.0, atol=TOLERANCE), \
+        f'the group does not sum to 1: [{total.min()}, {total.max()}]'
+    # The derived row is exactly the reflection of the measured one.
+    assert np.abs(values[1] - (1.0 - values[0])).max() == 0.0
+
+
+# ----------------------------------------------------------------------
+#  Are the measured distributions compatible with summing to 1?
+# ----------------------------------------------------------------------
+
+def test_symmetric_ranges_sit_centred_on_one() -> None:
+    """
+    When every measured range is symmetric, independent draws already average
+    to 1, so the constraint has nothing to correct and the offset is zero.
+    """
+    from src.sampling import group_consistency
+
+    tcs = _synthetic([
+        dict(Output_FlowID='F_recovered', value_min=0.30, value=0.50, value_max=0.70,
+             is_residual=0),
+        dict(Output_FlowID='F_other', value_min=0.30, value=0.45, value_max=0.60,
+             is_residual=0),
+        dict(Output_FlowID='F_loss', value_min='', value=0.05, value_max='',
+             is_residual=1),
+    ])
+    report = group_consistency(tcs)
+    assert len(report) == 1, f'{len(report)} groups reported, expected 1'
+    row = report.iloc[0]
+    assert abs(row['sum_mode'] - 1.0) < 1e-12
+    assert abs(row['sum_mean'] - 1.0) < 1e-12, \
+        f"symmetric ranges gave a mean sum of {row['sum_mean']}"
+    assert abs(row['offset']) < 1e-9, f"offset {row['offset']} should be zero"
+
+
+def test_a_skewed_range_shows_up_as_an_offset() -> None:
+    """
+    A range whose mode is off-centre means the independent draws do NOT average
+    to 1, even though the modes do. The constraint then has to move the result
+    away from the numbers that were typed in, and `offset` says by how many
+    standard deviations -- which is what makes a silent shift visible.
+    """
+    from src.sampling import group_consistency
+
+    tcs = _synthetic([
+        # mode 0.50 but the range runs to 0.95: mean 0.6167, far above the mode.
+        dict(Output_FlowID='F_recovered', value_min=0.40, value=0.50, value_max=0.95,
+             is_residual=0),
+        dict(Output_FlowID='F_loss', value_min='', value=0.50, value_max='',
+             is_residual=1),
+    ])
+    row = group_consistency(tcs).iloc[0]
+    assert abs(row['sum_mode'] - 1.0) < 1e-12, 'the group should be constrained'
+    assert row['sum_mean'] > 1.05, \
+        f"a strongly right-skewed range gave a mean sum of {row['sum_mean']}"
+    # Order one standard deviation. The exact figure depends on the range, so
+    # the claim under test is that the offset is material, not that it is 0.98.
+    assert abs(row['offset']) > 0.5, \
+        f"offset {row['offset']} does not flag a group this far off centre"
+
+
+def test_consistency_ignores_groups_that_are_not_constrained() -> None:
+    """Only groups whose modes sum to 1 are corrected, so only they are judged."""
+    from src.sampling import group_consistency
+
+    tcs = _synthetic([
+        dict(Output_FlowID='F_recovered', value_min=0.10, value=0.20, value_max=0.30,
+             is_residual=0),
+        dict(Output_FlowID='F_other', value_min=0.10, value=0.20, value_max=0.30,
+             is_residual=0),
+    ])
+    assert len(group_consistency(tcs)) == 0, \
+        'a group whose modes sum to 0.4 was judged against sum-to-1'
 
 
 def main() -> int:

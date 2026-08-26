@@ -288,6 +288,81 @@ One thing that count gets right for free: a `handoff` is **not** a loss.
 Material going to another model has left this system without being lost by it,
 so it does not become somewhere the unspecified remainder can be sent.
 
+## The `TCs` table — `value`, `value_min`, `value_max`, `is_residual`
+
+`value` is the coefficient; `value_min` and `value_max` make it a triangular
+distribution for the Monte Carlo. `is_residual` marks the one row per group
+that is **derived rather than measured**.
+
+### What a group is, and why one row is derived
+
+A group is everything one resource turns into: aluminium as found in motors,
+leaving `F_dismantled`, across every destination it reaches. It must sum to
+**exactly 1** — the aluminium goes somewhere, all of it.
+
+Independent draws do not sum to 1. Something has to give, and `is_residual`
+says which row. On every draw that row is computed as `1 − (the rest of its
+group)`.
+
+**A residual row's `value_min` and `value_max` must be blank**, and a range
+written there is now refused rather than ignored. It used to be read and
+discarded silently, which is worse: nothing said your measurement had been
+dropped.
+
+### The derived row is still a distribution
+
+This is the part that surprises people. The residual is not a fixed number —
+it inherits its spread from the rows it is derived against:
+
+| row | written | sampled p5 | p95 |
+|---|---|---|---|
+| `Motors_mixed Al → F_loss_refining` | 0.90 | 0.7533 | 0.9455 |
+| `BEV Wiring → F_shredded` | 0.65 | 0.4995 | 0.7427 |
+
+For a group with exactly **two** destinations there is no freedom at all:
+`x₂ = 1 − x₁` identically, so the derived distribution is the measured one
+reflected, and nothing is lost. Checked over 200,000 draws, the largest
+difference between the derived row and `1 − the measured row` was `0.0`.
+
+Twenty-two of the electronics case's twenty-four groups are of this kind.
+
+### When there is no residual
+
+A group with no row marked is **normalised** instead — every row is drawn from
+its own range and the group is divided by its own sum. That always works and
+needs nothing added to the table, at the cost of shifting every marginal off
+the triangular it was drawn from.
+
+### The `SUM TO 1` section of `01_check_inputs.py`
+
+A constrained group's modes sum to 1 by construction. Its **means need not**: a
+triangular's mean is `(min + mode + max) / 3`, so a range whose mode sits
+off-centre has a mean away from its mode. Where the two disagree, enforcing the
+constraint has to move the answer away from what is written in the sheet.
+
+`01_check_inputs.py` reports that gap per group, as `offset` — how many
+standard deviations of the group's own independent sum separate 1 from where
+that sum actually lands:
+
+```
+SUM TO 1 -- do the measured ranges agree with the constraint?
+  24 constrained groups
+  offset from 1, in standard deviations of the group's own sum: median 0.73, max 1.02
+  14 group(s) beyond 0.5 sd -- drawn independently these do NOT
+  average to 1, so the constraint moves them away from the values written:
+    Motors_mixed Nd -> F_dismantled: independent sum averages 1.1333, +1.02 sd from 1
+```
+
+**This is not an error.** It is the reason a run at the modes and a run of the
+full distributions give different answers — the same difference
+`03_run_monte_carlo.py` reports at the end of every run. Near zero means the
+ranges already agree with the constraint and enforcing it changes little.
+Large means the measured distributions and sum-to-1 pull in different
+directions, and whatever rule is applied has to override something.
+
+The electronics case sits at a median of 0.73 sd, driven by the rare-earth
+rows, whose ranges run far above their modes.
+
 ## Several products in one case
 
 04_01 covers five drivetrains, and they are **one study**: the same shredder,
