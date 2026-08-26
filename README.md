@@ -106,7 +106,8 @@ groups = ()                       # all of them
 src/            the model
 tests/          six suites, 92 checks
 tools/          make_skeleton.py, make_carcomposition_tcs.py (the TC tables),
-                compare_engines.py, plot_structure.py, compare_sum_rules.py
+                compare_engines.py, plot_structure.py, compare_sum_rules.py,
+                tc_worklist.py
 data_folder/    bev_electronics (the real case), reference/ (test fixtures)
 documentation/  start at documentation/README.md
 ```

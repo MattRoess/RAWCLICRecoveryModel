@@ -39,6 +39,7 @@ One more you can press when you want it:
 |---|---|
 | `tools/plot_structure.py` | the structure diagram on its own, without solving anything |
 | `tools/compare_sum_rules.py` | solves the case twice, conditioning and normalising, and shows which elements the choice actually moves |
+| `tools/tc_worklist.py` | per sum-to-1 group, whether a second measurement would buy anything -- and flags the two ways of faking one |
 
 ---
 

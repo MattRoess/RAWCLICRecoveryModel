@@ -368,6 +368,32 @@ The conditioned answer is **narrower**, because two measurements constrain the
 value more than one does. That is the point, and it is also the warning: your
 reported spreads will be tighter than the ranges you typed, and correctly so.
 
+### There is no way to manufacture the second measurement
+
+Conditioning is worth having only where the extra range is an **independent**
+measurement — someone measured the loss without going through the recovery
+figure. Nothing in the table can supply one, and both ways of pretending
+otherwise have been measured:
+
+| what you might do | what actually happens |
+|---|---|
+| clear `is_residual`, leave the bounds blank | the row becomes a point mass, the group has no slack left, and **every draw comes out identical** — the whole spread disappears while the run still reports a healthy effective sample |
+| clear `is_residual`, fill in `1 − the rest of the group` | one measurement counted twice: the target becomes `f(x)·f(x)` instead of `f(x)`, which narrows the answer by about a fifth and means nothing |
+
+    f(x)   -- one measurement: p5 0.0535  p50 0.1327  p95 0.2471   width 0.1936
+    f(x)^2 -- counted twice  : p5 0.0647  p50 0.1224  p95 0.2175   width 0.1528
+
+**A group with one measurement is already right as a residual.** That is most
+of both cases here — 21 of 24 groups in the electronics case and all 278 in the
+car composition one — and it is not a defect waiting to be fixed.
+
+    ./.venv/bin/python tools/tc_worklist.py
+
+lists every group with its status, flags both failures above where they have
+crept in, and writes `output_data/tc_worklist.csv` with blank columns for a
+measurement and its source. It reads the TC table only — no upstream draws, no
+solving — so it runs in a moment on any case.
+
 ### Seeing the difference on your own case
 
     ./.venv/bin/python tools/compare_sum_rules.py
