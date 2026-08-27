@@ -106,19 +106,67 @@ and the branch that inserts the placeholder becoming conditional. Perhaps
 twenty lines. `tests/test_generality.py` already covers the existing path; it
 would gain a case for the other one.
 
-### 3. Segment — a decision, not code
+### 3. Segment — SETTLED 2026-08-26: keep summing
 
-04_01 carries 12 segments, and this model has no layer for them. Three options:
+04_01 carries 12 segments and this model has no layer for them. The question
+was posed here as a trade-off between accuracy and twelve times the runs. It is
+not one, and the reason is worth stating because it disposes of the question
+rather than deferring it again.
 
-- **Sum over segments.** Simplest, and right if recovery does not depend on car
-  size. One line in the export.
-- **Run per segment**, using `run.scenario` or `additionalSpecification`. Right
-  if it does depend on size, at twelve times the runs.
-- **Segment as Layer 1**, with drivetrain folded into the flow. Only if segment
-  matters more than drivetrain, which seems unlikely.
+**The model is exactly linear in the inflow.** Solving the whole inflow, against
+solving 30% and 70% separately and adding, agrees to **4.7e-17** across every
+row of the solution. So
 
-Recommended: sum over segments, and revisit if a segment-specific coefficient
-ever turns up. **This is your call, not mine.**
+    solve(sum over segments)  ==  sum over segments of solve(segment)
+
+identically, provided the coefficients are the same for every segment. Running
+per segment cannot make the total more accurate. It would cost twelve runs and
+an upstream re-export — the current export sums segments before writing — to
+arrive back at a number already in hand.
+
+So the real question was never accuracy. It is two other questions:
+
+1. **Do you want per-segment RESULTS** — "what share of recovery comes from
+   large cars?" Running per segment is the only way to get that, and it is a
+   reporting decision.
+2. **Is the coefficient right for the actual mix?** This is the real exposure,
+   and running per segment does not fix it unless per-segment coefficients
+   exist to go with it.
+
+#### The mix, and what it exposes
+
+From `03_01_flowdriven.py:164`, matching what the draws themselves give:
+
+| family | share of collected BEVs |
+|---|---|
+| A–F | 49.3% |
+| JA–JF | 50.7% |
+
+`JC` alone is 25.1%, the largest single segment. Because the split is nearly
+even, a single coefficient measured on one family inherits about half of any
+real difference between them:
+
+| if the families differ by | bias on that coefficient |
+|---|---|
+| 5 points | 2.5% |
+| 10 points | 5.1% |
+| 20 points | 10.1% |
+
+#### One thing nobody has written down
+
+**What the `J` prefix means is not recorded anywhere upstream.** `SEGMENT_ORDER`
+lists `A`–`F` then `JA`–`JF`; `segment_map` is described only as "Vehicle-segment
+letter code -> composition dataset code"; and `00_parameters.py`,
+`03_01_flowdriven.py` and `04_01_carcomposition.py` define it nowhere. The
+standard EU scheme would make `J` sport-utility, but that is a guess and it is
+half the fleet, so it decides which literature half the coefficients should come
+from. Worth asking whoever built 03_01.
+
+**Decision: sum over segments.** Revisit only if per-segment reporting is wanted,
+or a segment-specific coefficient turns up. The third option in the original
+list — segment as Layer 1, drivetrain folded into the flow — is not revisited:
+it was only ever right if segment mattered more than drivetrain, and nothing
+here suggests it does.
 
 ### 4. The TC table
 

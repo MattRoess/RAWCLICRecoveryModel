@@ -246,19 +246,38 @@ existing figure and saved table there is keyed on it.
    pretending otherwise, both of which look like progress and are not.
    `tools/tc_worklist.py` says which group is which and has blank columns for
    an independent number and its source.
-2. **Decide the segment question for 04_01.** Twelve segments are currently
-   summed, on the assumption that recovery does not depend on car size. If it
-   does, the alternative is a run per segment, not a new layer.
-3. **Widen 03_02's per-year export** to all five drivetrains, next time it runs
-   anyway. Removes the approximation in §3.
-4. **More years for 04_01**, if wanted — but check the memory arithmetic first:
+2. **More years for 04_01**, if wanted — but check the memory arithmetic first:
    five drivetrains over five years is roughly 20,000 result rows, which at
    200,000 draws exceeds the 4 GB budget and would be refused.
-5. **04_03 and 04_04.** Each needs its own year-sliced export upstream, then a
-   case folder here. No code change unless its children sit at a layer that is
-   neither element nor material — in which case `src/source.py` gains a third
-   value, `src/upstream.py` a third branch, and `tests/test_generality.py` a
-   third case *before* either.
+
+### Not in this repository
+
+**The upstream project is parked as of 2026-08-26** — the user's words: stock
+and flow is done for the moment. These need it and should not be started
+without saying so first.
+
+- **Widen 03_02's per-year export** to all five drivetrains, next time it runs
+  anyway. Removes the approximation in §3.
+- **04_03 and 04_04.** Each needs its own year-sliced export upstream, then a
+  case folder here. No code change unless its children sit at a layer that is
+  neither element nor material — in which case `src/source.py` gains a third
+  value, `src/upstream.py` a third branch, and `tests/test_generality.py` a
+  third case *before* either.
+- **Consolidating the draw files.** 04_01 reads 765 separate `.npy` files per
+  run, each paying iCloud open overhead. Consolidating them into one array per
+  product would cut minutes off a run, and touches a layout both repositories
+  read.
+
+### Settled, so that it is not reopened
+
+- **The segment question for 04_01 — settled 2026-08-26: keep summing.** Not a
+  trade-off: the model is exactly linear in the inflow, verified to 4.7e-17, so
+  solving the summed inflow and summing per-segment solutions give the same
+  number. Running per segment buys per-segment *reporting*, not accuracy. What
+  it did surface is that A–F and JA–JF are a near-even 49.3 / 50.7 split, so a
+  coefficient measured on one family carries about half of any real difference
+  into the total — and that what `J` means is written down nowhere upstream.
+  DESIGN_04_01_carcomposition.md §3 has the working.
 
 ---
 
