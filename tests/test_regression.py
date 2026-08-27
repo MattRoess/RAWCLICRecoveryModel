@@ -625,6 +625,52 @@ def test_a_composition_row_with_a_gap_contributes_nothing() -> None:
     assert abs(total - 1000.0) < 1e-9, f'mass changed to {total}'
 
 
+# ----------------------------------------------------------------------
+#  An unknown key must be named, not hit as a TypeError deep in numpy
+# ----------------------------------------------------------------------
+
+def test_the_LA_engine_names_an_unknown_key() -> None:
+    """
+    The LA engine encoded every key with `.replace(mapping)`, which leaves an
+    unmapped value as the original STRING. That string then reached
+    `ravel_multi_index`'s arithmetic and failed as
+
+        TypeError: unsupported operand type(s) for +: 'int' and 'str'
+
+    naming neither the column, the value, nor the file. `.map()` yields NaN for
+    a miss, which can be reported properly.
+
+    `src/validate_inputs.py` has refused an unknown key since 2026-08-17, so
+    this calls the encoder directly: the guard runs in the constructor and the
+    encoder is what was wrong. It is worth fixing behind the guard because a
+    guard that is bypassed -- by a caller handing tables over in memory, or by
+    a key that becomes unknown only after wildcard expansion -- lands back on
+    this message.
+    """
+    model = RecoveryModelLA(data_folder=CASE, layer_names=LAYER_NAMES,
+                            working_unit=REFERENCE_UNIT, years=REFERENCE_YEARS)
+    inflows = pd.read_csv(f'{CASE}/input_data/inputs.csv',
+                          keep_default_na=False, na_values=[])
+    poisoned = inflows.copy()
+    poisoned.loc[0, 'Substance_main_parent'] = 'NOT_A_PRODUCT'
+
+    try:
+        model.create_inflows_vector(
+            poisoned, year=str(inflows['Year'].iloc[0]), scenario=None,
+            location=None, additional_specification=None)
+    except TypeError as error:
+        raise AssertionError(
+            f'still failing inside numpy with an unreadable message: {error}')
+    except Exception as error:
+        message = str(error)
+        assert 'NOT_A_PRODUCT' in message, \
+            f'the offending value is not named:\n{message}'
+        assert 'product' in message, \
+            f'the column is not named:\n{message}'
+    else:
+        raise AssertionError('an unknown key was encoded without complaint')
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

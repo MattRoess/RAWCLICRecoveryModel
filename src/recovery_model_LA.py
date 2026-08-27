@@ -16,7 +16,7 @@ from itertools import product
 from src.rest import REST, add_rest
 from src.selection import chosen_scenario, chosen_years, is_year_match, select
 from src.tc_precedence import apply_precedence
-from src.validate_inputs import validate
+from src.validate_inputs import InputDataError, validate
 
 
 # Definition of file/folder names within the overarching data directory
@@ -230,6 +230,38 @@ class RecoveryModelLA:
                     })
         return input_matrices
                     
+    def encode(self, frame: pd.DataFrame, column: str, mapping: dict,
+               table: str) -> pd.Series:
+        """
+        Replace a key column with its integer code, naming anything unmapped.
+
+        `.map()` rather than `.replace()`. `.replace()` leaves an unmapped
+        value as the original STRING, which then reached ravel_multi_index's
+        arithmetic and failed as `TypeError: unsupported operand type(s) for
+        +: 'int' and 'str'` -- naming neither the column, the value nor the
+        file (DEFECTS.md 2.7). `.map()` yields NaN for a miss, which can be
+        said out loud.
+
+        src/validate_inputs.py refuses an unknown key before any of this runs.
+        This is the second line, for a caller that hands tables over in memory
+        and skips the file checks, and for anything that becomes unknown only
+        after the table has been rewritten.
+        """
+        encoded = frame[column].map(mapping)
+        missing = encoded.isna()
+        if missing.any():
+            unknown = sorted({str(value) for value in frame.loc[missing, column]})
+            shown = ', '.join(repr(value) for value in unknown[:8])
+            more = f' and {len(unknown) - 8} more' if len(unknown) > 8 else ''
+            raise InputDataError(
+                f"{self.data_folder}: {table} has {len(unknown)} value(s) in "
+                f"column '{column}' that appear nowhere the model can place "
+                f"them:\n    {shown}{more}\n\n"
+                f"A key has to exist in the composition (for a resource) or in "
+                f"the transfer\ncoefficients (for a flow) before it can be "
+                f"encoded. Check the spelling\nagainst those tables.")
+        return encoded
+
     def create_inflows_vector(self, inflows_df: pd.DataFrame, year:str, scenario: str, location:str, additional_specification: str) -> csr_array:
         """
         Create the 1XN composition input vector for a specific year, scenario, location and additionalSpecification
@@ -260,7 +292,8 @@ class RecoveryModelLA:
         encoding_df = pd.DataFrame(encoding_rows, columns=encoding_columns)
 
         for column, mapping in self.encoding_dict.items():
-            encoding_df[column] = encoding_df[column].replace(mapping)
+            encoding_df[column] = self.encode(encoding_df, column, mapping,
+                                             'the inflow table')
 
         inflows_values = inflows_df['Value'].values
         inflows_rows = encoding_df.values
@@ -291,7 +324,8 @@ class RecoveryModelLA:
 
         # Encode all columns that have an encoding. 
         for column, mapping in self.encoding_dict.items():
-            composition_df[column] = composition_df[column].replace(mapping)
+            composition_df[column] = self.encode(composition_df, column, mapping,
+                                                'the composition table')
 
         composition_values = composition_df["Value"].values
 
@@ -366,12 +400,15 @@ class RecoveryModelLA:
         # Only keep the highest priority entry for each combination of layers, remove the rest.
         new_tcs_df = new_tcs_df.groupby([col for col in new_tcs_df.columns if col != 'value'], as_index=False).last()
 
-        new_tcs_df['Input_FlowID'] = new_tcs_df['Input_FlowID'].replace(self.encoding_dict['Stock/Flow ID'])
-        new_tcs_df['Output_FlowID'] = new_tcs_df['Output_FlowID'].replace(self.encoding_dict['Stock/Flow ID'])
+        flows = self.encoding_dict['Stock/Flow ID']
+        for side in ('Input_FlowID', 'Output_FlowID'):
+            new_tcs_df[side] = self.encode(new_tcs_df, side, flows,
+                                          'the transfer coefficients')
         for layer in self.layer_names:
             encoding = self.encoding_dict[layer]
-            new_tcs_df['Input_'+layer] = new_tcs_df['Input_'+layer].replace(encoding)
-            new_tcs_df['Output_'+layer] = new_tcs_df['Output_'+layer].replace(encoding)
+            for side in ('Input_' + layer, 'Output_' + layer):
+                new_tcs_df[side] = self.encode(new_tcs_df, side, encoding,
+                                              'the transfer coefficients')
 
         tcs_values = new_tcs_df["value"].values
         tcs_cols = new_tcs_df[['Input_FlowID']+['Input_'+layer for layer in self.layer_names]].values

@@ -424,10 +424,34 @@ composition tree, and goes nowhere. No warning from either engine.
 uses and the one that fails silently; medium for LA, where the failure is loud
 but the message is useless.
 
-**Caught since 2026-08-17.** Both engines now refuse the input before reading
-it, naming the file, the column and the value. The `.replace()` encoding in the
-LA engine is unchanged — it is simply no longer reachable with an unknown key.
-Using `.map()` there is still the better fix and is not done.
+**Caught since 2026-08-17.** Both engines refuse the input before reading it,
+naming the file, the column and the value.
+
+**LA HALF FIXED 2026-08-26.** All three encodings — the inflow vector, the
+composition matrix and the transfer coefficients — use `.map()` and report
+what did not map, through one `encode()` helper:
+
+    InputDataError: data_folder/reference/basic_test: the inflow table has
+    1 value(s) in column 'product' that appear nowhere the model can place them:
+        'NOT_A_PRODUCT'
+
+    A key has to exist in the composition (for a resource) or in the transfer
+    coefficients (for a flow) before it can be encoded. Check the spelling
+    against those tables.
+
+against the `TypeError: unsupported operand type(s) for +: 'int' and 'str'`
+it used to raise. Worth fixing behind the guard because a guard can be
+bypassed — by a caller handing tables over in memory rather than through the
+file checks, or by a key that becomes unknown only after the table has been
+rewritten — and the landing place should say something.
+
+**The optimized half is still only guarded, not fixed.** Its merges drop or
+keep unmatched rows silently; nothing in the engine itself objects. The
+mitigation is `src/validate_inputs.py` refusing the input, plus the unaccounted
+fraction reported by `01_check_inputs.py`, which is where an orphan flow's mass
+shows up. Making the engine refuse as well would duplicate the validator, so it
+is left — recorded here rather than fixed, so the asymmetry is deliberate and
+visible.
 
 ---
 
