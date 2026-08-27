@@ -3,11 +3,22 @@
 Current as of **2026-08-26**, commit `71653e2`. Rewritten from the ground up on
 2026-08-21 and updated since; git has the older text.
 
-**What changed on 2026-08-26.** The case workbooks gained dropdowns and a
-marked header row, `is_loss` was dropped in favour of `role`, and the sum-to-1
-machinery was finished: a third rule, a check that says where the constraint
-pulls, a guard, and two tools. §2 has the rules, §5 the two traps. No
-coefficient changed.
+**What changed on 2026-08-26.** In the morning: the case workbooks gained
+dropdowns and a marked header row, `is_loss` was dropped in favour of `role`,
+and the sum-to-1 machinery was finished — a third rule, a check that says where
+the constraint pulls, a guard, and three tools. §2 has the rules, §5 the two
+traps.
+
+In the afternoon, **DEFECTS.md was closed**. A sweep found six documents
+claiming things the code had stopped doing, including a setting commented "off
+by default" whose value was `True`; then 2.6, 2.7, 3.5, 3.7 and 3.8 were fixed,
+and 3.9 was found and fixed on the way — every Sankey this project had drawn
+was labelled `kt` while the numbers were `kg`. Every item in DEFECTS.md
+sections 2 and 3 is now fixed, built, or recorded as deliberately guarded
+rather than fixed, which is true of exactly one: the optimized half of 2.7.
+
+**No coefficient changed on either day.** What the model does with numbers is
+finished; the numbers are not.
 
 **Read [RUNNING.md](RUNNING.md) first if you just want to run something.** This
 document is for picking the work back up.
@@ -30,7 +41,7 @@ document is for picking the work back up.
 | result rows | 600 | 4,117 |
 
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
-suites on fixed fixtures (95 checks), then the pipeline and a mass balance.
+suites on fixed fixtures (102 checks), then the pipeline and a mass balance.
 
 Both case tables are **structurally finished**. `tools/tc_worklist.py` reports
 22 of 24 groups in the electronics case and 278 of 278 in the car composition
