@@ -394,6 +394,71 @@ def group_consistency(tcs: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+# How many bins the variance share is estimated over. Enough that the shape of
+# E[Y|X] is followed, few enough that each bin holds a stable mean: at 50,000
+# draws this is a thousand per bin.
+CONDITIONAL_BINS = 50
+
+
+def _varies(values: np.ndarray) -> bool:
+    """
+    Whether a column has any spread worth dividing by.
+
+    Not `var() > 0`. A thousand copies of 0.4 come back with a variance of
+    3e-33 rather than zero -- the mean is accumulated in floating point -- so a
+    test against zero passes a constant through and the share it produces is
+    whatever that dust divides into. Judged against the values' own scale
+    instead.
+    """
+    scale = max(abs(float(values.mean())), 1.0)
+    return float(values.std()) > 1e-12 * scale
+
+
+def variance_share(coefficient: np.ndarray, result: np.ndarray,
+                   bins: int = CONDITIONAL_BINS) -> float:
+    """
+    The fraction of the result's variance this one coefficient accounts for.
+
+    The first-order Sobol index, `Var(E[Y|X]) / Var(Y)`, which is exactly the
+    share of the spread that would disappear if this coefficient were known
+    exactly. That is the question a measurement answers, and it is not the same
+    question as `|Spearman|`: a coefficient can track the answer closely and
+    still be worth nothing to pin down, because its own range is already narrow.
+
+    Estimated from ONE sample rather than by re-running: sort the draws by the
+    coefficient, cut them into equal bins, and take the variance of the bin
+    means. No extra solving, so it costs nothing beside the run that produced
+    the draws.
+
+    THE NOISE CORRECTION IS NOT OPTIONAL. Each bin mean carries sampling noise
+    of `within-bin variance / bin size`, and the variance of the means picks
+    that up whether or not the coefficient does anything. Left in, an input the
+    result does not depend on scores a small positive number and looks worth
+    measuring. Subtracted, it scores zero -- which `test_an_input_that_does
+    _nothing_scores_zero` is there to hold.
+
+    Returns 0.0 rather than a fraction when either side has no spread: a fixed
+    coefficient explains nothing, and a fixed result has nothing to explain.
+    """
+    coefficient = np.asarray(coefficient, dtype=np.float64)
+    result = np.asarray(result, dtype=np.float64)
+    total = float(result.var())
+    if not (_varies(coefficient) and _varies(result)) or len(result) < bins * 2:
+        return 0.0
+
+    order = np.argsort(coefficient, kind='stable')
+    grouped = result[order]
+    # Trim to a whole number of bins so every bin is the same size, which is
+    # what lets the noise term be a single number rather than one per bin.
+    per_bin = len(grouped) // bins
+    grouped = grouped[:per_bin * bins].reshape(bins, per_bin)
+
+    means = grouped.mean(axis=1)
+    within = float(grouped.var(axis=1).mean())
+    explained = float(means.var()) - within / per_bin
+    return max(0.0, explained / total)
+
+
 def triangular_density(low, mode, high, x):
     """
     The triangular pdf, vectorised, and zero outside [low, high].

@@ -719,6 +719,63 @@ def test_a_fixed_row_beside_two_free_ones_is_fine() -> None:
     assert np.allclose(values[2], 0.15), 'the fixed row did not stay fixed'
 
 
+# ----------------------------------------------------------------------
+#  How much of the answer's spread one coefficient accounts for
+# ----------------------------------------------------------------------
+
+def test_variance_share_matches_a_known_answer() -> None:
+    """
+    For Y = 3*X1 + X2 with X1 and X2 independent, the share of Var(Y) that X1
+    accounts for is 9 / (9 + 1) = 0.9, and X2's is 0.1. That is the whole
+    claim: the estimator has to recover a number that can be worked out on
+    paper, not merely produce a plausible ranking.
+
+    Estimated from one sample by binning on the input and taking the variance
+    of the bin means, with the sampling noise of each mean subtracted -- the
+    correction matters, because without it a bin of 4,000 draws still carries
+    enough noise to make an irrelevant input look worth measuring.
+    """
+    from src.sampling import variance_share
+
+    rng = np.random.default_rng(11)
+    n = 200_000
+    x1 = rng.uniform(0.0, 1.0, n)
+    x2 = rng.uniform(0.0, 1.0, n)
+    y = 3.0 * x1 + x2
+
+    first = variance_share(x1, y)
+    second = variance_share(x2, y)
+    assert abs(first - 0.9) < 0.02, f'X1 share {first:.4f}, expected 0.90'
+    assert abs(second - 0.1) < 0.02, f'X2 share {second:.4f}, expected 0.10'
+
+
+def test_an_input_that_does_nothing_scores_zero() -> None:
+    """
+    An input the output does not depend on must come out at zero, not at the
+    small positive number that binning noise alone produces. This is the test
+    the noise correction exists for.
+    """
+    from src.sampling import variance_share
+
+    rng = np.random.default_rng(5)
+    n = 200_000
+    irrelevant = rng.uniform(0.0, 1.0, n)
+    y = rng.uniform(0.0, 1.0, n)
+
+    share = variance_share(irrelevant, y)
+    assert abs(share) < 0.01, f'an irrelevant input scored {share:.4f}'
+
+
+def test_variance_share_is_defined_when_nothing_varies() -> None:
+    """A fixed coefficient explains nothing, and must not divide by zero."""
+    from src.sampling import variance_share
+
+    flat = np.full(1000, 0.4)
+    varying = np.random.default_rng(1).uniform(size=1000)
+    assert variance_share(flat, varying) == 0.0
+    assert variance_share(varying, flat) == 0.0
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

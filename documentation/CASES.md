@@ -395,6 +395,29 @@ crept in, and writes `output_data/tc_worklist.csv` with blank columns for a
 measurement and its source. It reads the TC table only — no upstream draws, no
 solving — so it runs in a moment on any case.
 
+### Which coefficient is worth measuring
+
+    ./.venv/bin/python tools/filling_sheet.py
+
+Ranks the rows still holding a guess by **`spread_share`** — the fraction of
+the answer's variance that one coefficient accounts for, and so the fraction
+that would disappear if it were measured exactly. That is what a measurement
+buys, and it is not the same as how closely the coefficient tracks the answer,
+which is reported beside it as `influence`.
+
+The difference is large enough to change what you do first:
+
+| case | rows to reach 80%, by influence | by spread share |
+|---|---|---|
+| `bev_electronics` | 4 of 24 | **2** |
+| `carcomposition_mockup` | 88 of 354 | **12** |
+
+In the electronics case one row — copper recovered from the shredder's
+non-ferrous fraction — is **72.5%** of the spread on its own. Two rows that
+rank high on influence drop out entirely: they track the answer closely, but
+their ranges are already tight enough that pinning them down buys almost
+nothing.
+
 ### Seeing the difference on your own case
 
     ./.venv/bin/python tools/compare_sum_rules.py

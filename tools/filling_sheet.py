@@ -14,16 +14,19 @@ spent on the rows that matter.
 
 HOW THE RANKING IS MADE
 -----------------------
-One Monte Carlo run, then the Spearman rank correlation between each
-coefficient's draws and the total recovered mass -- the same measure the
-`sensitivity` figure uses, and rank rather than linear because the model is
-multiplicative, so the relationship is monotone but not straight.
+One Monte Carlo run, then two numbers per coefficient.
 
-A high absolute correlation means narrowing that input would narrow the answer.
-Near zero means it would not, however uncertain the coefficient is in itself.
-The `cumulative` column says what share of the total influence the rows above
-account for, so it is easy to see where the list stops being worth working
-down.
+**`spread_share`** is what the ranking uses: the fraction of the answer's
+variance that this one coefficient accounts for, and so the fraction that would
+disappear if it were measured exactly. That is the question a measurement
+answers. `cumulative` says what the rows above it come to, so it is easy to see
+where the list stops being worth working down.
+
+**`influence`** is the Spearman rank correlation with the total -- the measure
+the `sensitivity` figure uses. It says how closely the coefficient TRACKS the
+answer, which is a different question. A row can score high on influence and
+low on share: it matters, but its range is already tight enough that pinning it
+down buys little. Seeing both is the point of keeping the second column.
 
 WHAT IT DOES NOT DO
 -------------------
@@ -158,6 +161,27 @@ def sources_for(folder: str, resolved: pd.DataFrame) -> list[str]:
             for _, row in resolved.iterrows()]
 
 
+def spread_shares(run, target: np.ndarray) -> np.ndarray:
+    """
+    Per coefficient, the share of the result's spread it accounts for.
+
+    `influence` says how closely a coefficient tracks the answer. This says
+    what pinning it down would BUY -- the fraction of the variance that
+    disappears if it were known exactly. They are different questions, and the
+    second is the one a measurement answers: a coefficient can track the answer
+    almost perfectly and still be worth nothing to measure, because its range
+    is already narrow enough not to matter.
+    """
+    from src.sampling import variance_share
+
+    out = np.zeros(len(run.tcs))
+    if run.tc_values is None:
+        return out
+    for position in range(len(run.tcs)):
+        out[position] = variance_share(run.tc_values[position], target)
+    return out
+
+
 def sheet(folder: str, params) -> pd.DataFrame:
     """The rows still waiting for a number, ranked by how much they matter."""
     from src.model_run import LAYER_NAMES
@@ -178,22 +202,32 @@ def sheet(folder: str, params) -> pd.DataFrame:
     # The resolved table does not carry a 0-based index -- it has been through
     # wildcard expansion and rest derivation -- so everything here is done by
     # position, and the mask is taken out to numpy before it indexes anything.
+    target = total_recovered(run, folder)
     tcs = run.tcs.reset_index(drop=True).copy()
-    tcs['influence'] = influence(run, total_recovered(run, folder))
+    tcs['influence'] = influence(run, target)
+    tcs['spread_share'] = spread_shares(run, target)
     tcs['source'] = sources_for(folder, tcs)
 
     source = tcs['source'].astype(str).str.strip()
     waiting = tcs[source.str.startswith(INVENTED).to_numpy()].copy()
-    waiting = waiting.sort_values('influence', ascending=False).reset_index(drop=True)
+    # Ranked by what a measurement BUYS, not by how closely the coefficient
+    # tracks the answer. See spread_shares for why those differ.
+    waiting = waiting.sort_values('spread_share', ascending=False).reset_index(drop=True)
 
-    total = waiting['influence'].sum()
-    waiting['cumulative'] = (waiting['influence'].cumsum() / total
+    total = waiting['spread_share'].sum()
+    waiting['cumulative'] = (waiting['spread_share'].cumsum() / total
                              if total > 0 else 0.0)
 
     out = pd.DataFrame({
         'rank': np.arange(1, len(waiting) + 1),
-        'influence': waiting['influence'].round(4),
+        # How much of the answer's spread this one coefficient accounts for --
+        # what would go away if it were measured exactly.
+        'spread_share': waiting['spread_share'].round(4),
         'cumulative': waiting['cumulative'].round(4),
+        # How closely it tracks the answer. Kept because a high influence with
+        # a low share means the coefficient matters but its range is already
+        # tight enough, which is worth seeing rather than inferring.
+        'influence': waiting['influence'].round(4),
         'Input_FlowID': waiting['Input_FlowID'],
         'Input_layer_key': waiting['Input_layer_key'],
         'Output_FlowID': waiting['Output_FlowID'],
@@ -229,18 +263,22 @@ def report(folder: str, params) -> int:
     enough = int((table['cumulative'] <= WORTH_IT).sum()) + 1
     enough = min(enough, len(table))
     print(f'  {len(table)} coefficients still waiting for a real number')
-    print(f'  the first {enough} carry {WORTH_IT:.0%} of the influence on total '
+    print(f'  the first {enough} carry {WORTH_IT:.0%} of the spread in total '
           f'recovered mass')
+    print(f'  measuring all {len(table)} exactly would remove '
+          f'{table["spread_share"].sum():.0%} of that spread')
 
     shown = min(enough, PRINTED)
-    print(f"\n  {'#':>3} {'infl':>6} {'cum':>6}  {'coefficient':<56} guess")
+    print(f"\n  {'#':>3} {'share':>6} {'cum':>6} {'infl':>6}  "
+          f"{'coefficient':<52} guess")
     for _, row in table.head(shown).iterrows():
         name = (f"{row['Input_layer_key']}/{row['TC_target_key']} "
                 f"{row['Input_FlowID']} -> {row['Output_FlowID']}")
         guess = (f"{tidy(row['guessed_min'])}-{tidy(row['guessed_value'])}"
                  f"-{tidy(row['guessed_max'])}")
-        print(f"  {row['rank']:>3} {row['influence']:>6.3f} "
-              f"{row['cumulative']:>6.1%}  {name[:56]:<56} {guess}")
+        print(f"  {row['rank']:>3} {row['spread_share']:>6.1%} "
+              f"{row['cumulative']:>6.1%} {row['influence']:>6.3f}  "
+              f"{name[:52]:<52} {guess}")
     if enough > shown:
         print(f'  ... to row {enough} for the first {WORTH_IT:.0%}; '
               f'the file has all of them')
