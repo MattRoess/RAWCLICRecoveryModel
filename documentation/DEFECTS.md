@@ -363,9 +363,33 @@ LA engine is unaffected.
 which composition rows apply — and equally silent.
 
 **Caught since 2026-08-17** by `src/validate_inputs.py`: a composition row with
-a gap, or with only `Layer 1`, is now an error naming the file and the row. The
-underlying filter at `recovery_model_optimized.py:214` is still wrong; it can
-just no longer be reached.
+a gap, or with only `Layer 1`, is an error naming the file and the row.
+
+**FIXED 2026-08-26 — the filter itself.** The three filters tested only the
+TAIL of a row (`Layer 3` and `Layer 4` empty) and never that the layers before
+it were filled. They now select a row for depth *d* only if the first *d*
+layers are filled **and** the rest are empty — contiguous from the left, which
+is what "this resource sits inside that one" means.
+
+Reproduced against `create_initial_flows` directly rather than through a case
+folder, because the validator would stop the input long before the filter saw
+it and the filter is what was under test. Before:
+
+    Stock/Flow ID Layer 1 Layer 2 Layer 3 Layer 4  Value
+               F1      P1                         1000.0
+               F1      P1      C1                  600.0
+               F1      P1      C2                  400.0
+               F1      P1                         1000.0   <- from the empty row
+
+Two rows at the shallowest depth totalling 2000 against an inflow of 1000.
+
+**Counting filled layers is not enough, and the test for that caught a fix
+that was itself wrong.** `Layer 1` and `Layer 3` filled with `Layer 2` empty
+counts as two, so a depth-count filter read it as a product-to-component share
+and produced `P1 / '' / M1` at full mass — a worse outcome than the original
+defect, briefly introduced and caught by the second test before it was
+committed. All four malformed shapes now produce output identical to the clean
+table.
 
 ### 2.7 Unknown keys: LA crashes unreadably, optimized swallows them
 

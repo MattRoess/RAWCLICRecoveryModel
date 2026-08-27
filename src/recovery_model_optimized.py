@@ -387,20 +387,42 @@ class RecoveryModelOptimized:
                                          "Layer 4", "Value"]].rename(
             columns={"Stock/ID": "Stock/Flow ID"})
 
+        # WHICH ROWS DESCRIBE WHICH STEP.
+        #
+        # These three filters used to test only the TAIL of a row -- "Layer 3
+        # and Layer 4 are empty" -- and never that the layers before it were
+        # filled. A row carrying Layer 1 alone therefore passed the first one,
+        # merged on Layer 1, and duplicated the product row at component depth
+        # with an empty component key: 2000 at the shallowest depth against an
+        # inflow of 1000, invented by a row that says nothing (DEFECTS.md 2.6).
+        #
+        # Counting how many layers are filled is NOT enough either, and the
+        # test for it caught this: Layer 1 and Layer 3 filled with Layer 2
+        # empty counts as two, and would be read as a product-to-component
+        # share. A row belongs to depth d only if the first d layers are filled
+        # AND the rest are empty -- contiguous from the left, which is what
+        # "this resource sits inside that one" means.
+        layer_columns = ["Layer 1", "Layer 2", "Layer 3", "Layer 4"]
+        filled = composition_df[layer_columns] != ""
+
+        def rows_at_depth(depth: int) -> pd.Series:
+            reaches = filled.iloc[:, :depth].all(axis=1)
+            return reaches & ~filled.iloc[:, depth:].any(axis=1)
+
         # Apply composition p-c layer
-        layer_2_composition = composition_df[(composition_df['Layer 3']=="") & (composition_df['Layer 4']=='')].copy()
+        layer_2_composition = composition_df[rows_at_depth(2)].copy()
         df_merged = layer_2_composition.merge(product_flows, on=["Stock/Flow ID", "Layer 1"], suffixes=("", "_inflow"))
         df_merged["Value"] = df_merged["Value_inflow"]*df_merged["Value"]
         layer_2_flows = df_merged[["Stock/Flow ID","Layer 1","Layer 2", "Layer 3","Layer 4","Value"]]
 
         # Apply composition c-m layer
-        layer_3_composition = composition_df[(composition_df['Layer 3']!="") & (composition_df['Layer 4']=='')].copy()
+        layer_3_composition = composition_df[rows_at_depth(3)].copy()
         df_merged = layer_3_composition.merge(layer_2_flows, on=["Stock/Flow ID", "Layer 1", "Layer 2"], suffixes=("","_inflow"))
         df_merged["Value"] = df_merged["Value_inflow"]*df_merged["Value"]
         layer_3_flows = df_merged[["Stock/Flow ID","Layer 1","Layer 2", "Layer 3","Layer 4","Value"]]
 
         # Apply composition m-e layer
-        layer_4_composition = composition_df[(composition_df['Layer 3']!="") & (composition_df['Layer 4']!='')].copy()
+        layer_4_composition = composition_df[rows_at_depth(4)].copy()
         df_merged = layer_4_composition.merge(layer_3_flows, on=["Stock/Flow ID", "Layer 1", "Layer 2", "Layer 3"], suffixes=("","_inflow"))
         df_merged["Value"] = df_merged["Value_inflow"]*df_merged["Value"]
         layer_4_flows = df_merged[["Stock/Flow ID","Layer 1","Layer 2", "Layer 3","Layer 4","Value"]]

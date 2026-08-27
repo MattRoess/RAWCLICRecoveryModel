@@ -552,6 +552,79 @@ def test_LA_gives_the_same_answer_in_every_process() -> None:
         f'  seed 1: {first_hash}\n  seed 2: {second_hash}')
 
 
+# ----------------------------------------------------------------------
+#  A composition row that describes nothing must contribute nothing
+# ----------------------------------------------------------------------
+
+def _one_product_composition(extra: list[dict] | None = None) -> tuple:
+    """1000 of P1 in F1, split 60/40 between two components."""
+    inflows = pd.DataFrame([{'Stock/Flow ID': 'F1',
+                             'Substance_main_parent': 'P1', 'Value': 1000.0}])
+    rows = [
+        {'Stock/ID': 'F1', 'Layer 1': 'P1', 'Layer 2': 'C1',
+         'Layer 3': '', 'Layer 4': '', 'Value': 0.6},
+        {'Stock/ID': 'F1', 'Layer 1': 'P1', 'Layer 2': 'C2',
+         'Layer 3': '', 'Layer 4': '', 'Value': 0.4},
+    ]
+    return inflows, pd.DataFrame(rows + (extra or []))
+
+
+def _depths(frame: pd.DataFrame) -> pd.Series:
+    return (frame[['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']] != '').sum(axis=1)
+
+
+def test_a_layer_1_only_composition_row_invents_no_mass() -> None:
+    """
+    The product-to-component filter asked only that Layer 3 and Layer 4 be
+    empty, never that Layer 2 be filled. A row with Layer 1 alone therefore
+    passed it, merged on Layer 1, and duplicated the product row -- so the
+    shallowest depth, which is where a flow's own total is read
+    (MODEL_MECHANICS.md section 1), held 2000 against an inflow of 1000.
+
+    Exactly the mass of F1/P1, created by a row that says nothing. The LA
+    engine was never affected, which is what made it findable.
+
+    `src/validate_inputs.py` has refused such a row at the file since
+    2026-08-17, so this is tested against the function rather than a case
+    folder: the guard would stop the input long before the filter saw it, and
+    the filter is what is under test.
+    """
+    inflows, plain = _one_product_composition()
+    baseline = RecoveryModelOptimized.create_initial_flows(inflows, plain)
+    shallow = baseline[_depths(baseline) == 1]['Value'].sum()
+    assert abs(shallow - 1000.0) < 1e-9, f'baseline already wrong: {shallow}'
+
+    inflows, with_empty = _one_product_composition(
+        [{'Stock/ID': 'F1', 'Layer 1': 'P1', 'Layer 2': '',
+          'Layer 3': '', 'Layer 4': '', 'Value': 1.0}])
+    result = RecoveryModelOptimized.create_initial_flows(inflows, with_empty)
+
+    shallow = result[_depths(result) == 1]['Value'].sum()
+    assert abs(shallow - 1000.0) < 1e-9, (
+        f'a Layer-1-only composition row added mass: {shallow} against an '
+        f'inflow of 1000')
+    assert len(result) == len(baseline), (
+        f'{len(result)} rows with the empty row present, {len(baseline)} '
+        f'without -- it should contribute nothing')
+
+
+def test_a_composition_row_with_a_gap_contributes_nothing() -> None:
+    """
+    The same under-constraint one layer down: the filters checked the tail of
+    each row and never its prefix, so a row with Layer 3 filled and Layer 2
+    empty would be treated as a component-to-material share of nothing.
+    """
+    inflows, with_gap = _one_product_composition(
+        [{'Stock/ID': 'F1', 'Layer 1': 'P1', 'Layer 2': '',
+          'Layer 3': 'M1', 'Layer 4': '', 'Value': 1.0}])
+    result = RecoveryModelOptimized.create_initial_flows(inflows, with_gap)
+
+    assert not len(result[(result['Layer 2'] == '') & (result['Layer 3'] != '')]), \
+        'a row with a gap produced output at material depth'
+    total = result[_depths(result) == 1]['Value'].sum()
+    assert abs(total - 1000.0) < 1e-9, f'mass changed to {total}'
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]
