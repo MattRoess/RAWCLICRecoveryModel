@@ -260,6 +260,12 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light'):
 def draw(target: str | None = None, params: Params | None = None) -> None:
     params = params or current()
     folder = target or params.run.data_folder
+    # Say which case, first thing. Every other tool does, and this one not
+    # doing it made a redrawn diagram of the OLD case look like a broken
+    # drawing of the new one: pressing Run passes no argument, so the case
+    # comes from run.data_folder rather than from whatever was worked on last.
+    print(f'Case      : {folder}'
+          + ('' if target else '   (from run.data_folder in src/params_schema.py)'))
     tcs_path, case = resolve(folder)
     from src import case_tables
     tcs = (case_tables.read(folder, 'TCs') if case_tables.exists(folder, 'TCs')
