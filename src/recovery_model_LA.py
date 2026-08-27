@@ -8,7 +8,7 @@
 import numpy as np
 import pandas as pd
 import os
-from scipy.sparse import coo_array, coo_matrix, eye_array, linalg, csr_array
+from scipy.sparse import coo_array, csc_array, csr_array, eye_array, linalg
 from typing import Tuple, List
 from dataclasses import dataclass
 from itertools import product
@@ -262,7 +262,7 @@ class RecoveryModelLA:
                 f"encoded. Check the spelling\nagainst those tables.")
         return encoded
 
-    def create_inflows_vector(self, inflows_df: pd.DataFrame, year:str, scenario: str, location:str, additional_specification: str) -> csr_array:
+    def create_inflows_vector(self, inflows_df: pd.DataFrame, year:str, scenario: str, location:str, additional_specification: str) -> csc_array:
         """
         Create the 1XN composition input vector for a specific year, scenario, location and additionalSpecification
 
@@ -472,7 +472,7 @@ class RecoveryModelLA:
         return full_solution
 
 
-    def solve_model(self, inflows_vector: csr_array, composition_matrix: csr_array, tcs_matrix: csr_array) -> pd.DataFrame:
+    def solve_model(self, inflows_vector: csc_array, composition_matrix: csr_array, tcs_matrix: csr_array) -> pd.DataFrame:
         """
         - Solve the system of linear equations
         - Return the solution back to human-readable interpretation
@@ -587,10 +587,17 @@ class HelperFunctions:
         Returns: 
             CSR array created based on input values
         """
-        return coo_matrix((values, (rows, cols)), shape=(size, size)).tocsr()
+        # coo_array, not coo_matrix. The latter is the legacy `spmatrix`
+        # branch, and this result is combined with `eye_array` from the sparse
+        # ARRAY API in solve_model. The two differ in operator semantics --
+        # `*` is matrix multiplication for spmatrix and elementwise for
+        # sparray -- so mixing them is a trap for whoever edits this next
+        # (DEFECTS.md 3.8). The type hints already said csr_array; now they
+        # are true.
+        return coo_array((values, (rows, cols)), shape=(size, size)).tocsr()
     
     @staticmethod
-    def create_vector(values: np.ndarray, rows: np.ndarray, size: int) -> csr_array:
+    def create_vector(values: np.ndarray, rows: np.ndarray, size: int) -> csc_array:
         """
         Create an Nx1 sparse matrix based on the specified input values
 
@@ -600,7 +607,8 @@ class HelperFunctions:
             size: Desired size of the vector
 
         Returns:
-            CSR array created based on input values
+            CSC array created based on input values -- CSC, not CSR: it is a
+            single column, and the hint used to say otherwise.
         """
         cols = np.zeros_like(rows)
         coo_arr = coo_array((values, (rows, cols)), shape=(size, 1))

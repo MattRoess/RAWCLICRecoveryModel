@@ -104,7 +104,7 @@ groups = ()                       # all of them
 ```
 00..04, 99      the stages, in the order you run them
 src/            the model
-tests/          six suites, 101 checks
+tests/          six suites, 102 checks
 tools/          make_skeleton.py, make_carcomposition_tcs.py (the TC tables),
                 compare_engines.py, plot_structure.py, compare_sum_rules.py,
                 tc_worklist.py, filling_sheet.py

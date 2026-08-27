@@ -636,22 +636,29 @@ look like a plotting quirk rather than a selection.
 **Severity: low now.** Either loop over `input_data` and label each figure, or
 take the combination as an argument.
 
-### 3.8 The LA engine mixes the two scipy sparse APIs
+### 3.8 The LA engine mixes the two scipy sparse APIs — **FIXED 2026-08-26**
 
-Still true on 2026-08-26: `recovery_model_LA.py:546` builds with `coo_matrix`
-while the surrounding signatures are `csr_array`.
+`HelperFunctions.create_sparse_matrix` built a legacy `coo_matrix(...).tocsr()`
+— the `spmatrix` branch — while `solve_model` combined the result with
+`eye_array`, from the sparse *array* API. The type hints throughout claimed
+`csr_array`, which is not what came back:
 
-`HelperFunctions.create_sparse_matrix` builds a legacy `coo_matrix(...).tocsr()`
-— the `spmatrix` branch — while `solve_model` combines the result with
-`eye_array`, from the newer sparse *array* API. The type hints throughout claim
-`csr_array`, which is not what is returned.
+    create_sparse_matrix   -> csr_matrix     sparray=False
+    create_vector          -> csc_array      sparray=True
 
-It works on scipy 1.18. But `spmatrix` is the branch scipy is moving away from,
-and the two APIs differ in operator semantics (notably `*`), so the mix is a
-trap for anyone editing this code later.
+It worked on scipy 1.18. It mattered because the two APIs differ in operator
+semantics — `*` is matrix multiplication for `spmatrix` and elementwise for
+`sparray` — so the mix was a trap for anyone editing this later, and the hints
+pointed the wrong way for anyone checking.
 
-**Severity: low, but fix before the Monte Carlo work** rather than during it —
-that restructuring will touch exactly these lines.
+**FIXED:** `coo_array` throughout, so both builders return sparse arrays and
+`coo_matrix` is no longer imported. Two hints were also wrong in a second way
+and are corrected: `create_vector` and `create_inflows_vector` return a single
+column, which is **CSC**, and both said CSR.
+
+`tests/test_regression.py` asserts both builders return `scipy.sparse.sparray`,
+and checks their shapes and placed values, so a return to the `spmatrix` branch
+fails rather than merely working.
 
 ---
 

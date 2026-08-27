@@ -671,6 +671,43 @@ def test_the_LA_engine_names_an_unknown_key() -> None:
         raise AssertionError('an unknown key was encoded without complaint')
 
 
+# ----------------------------------------------------------------------
+#  One sparse API, not two
+# ----------------------------------------------------------------------
+
+def test_the_LA_engine_builds_only_sparse_arrays() -> None:
+    """
+    `create_sparse_matrix` built a legacy `coo_matrix(...).tocsr()` -- the
+    `spmatrix` branch -- while `solve_model` combined the result with
+    `eye_array` from the newer sparse ARRAY API, and every type hint claimed
+    `csr_array`, which is not what came back.
+
+    It worked. The reason to care is that the two APIs differ in operator
+    semantics -- `*` is matrix multiplication for `spmatrix` and elementwise
+    for `sparray` -- so a mix is a trap for whoever edits this next, and the
+    hints pointed the wrong way for anyone checking.
+    """
+    import numpy as np
+    from scipy import sparse
+
+    from src.recovery_model_LA import HelperFunctions
+
+    matrix = HelperFunctions.create_sparse_matrix(
+        np.array([1.0, 2.0]), np.array([0, 1]), np.array([1, 2]), 3)
+    vector = HelperFunctions.create_vector(np.array([3.0]), np.array([1]), 3)
+
+    for name, built in (('create_sparse_matrix', matrix),
+                        ('create_vector', vector)):
+        assert isinstance(built, sparse.sparray), (
+            f'{name} returned {type(built).__name__}, which is the spmatrix '
+            f'branch; the rest of this engine uses the sparse array API')
+
+    assert matrix.shape == (3, 3), matrix.shape
+    assert vector.shape == (3, 1), vector.shape
+    assert matrix.toarray()[0, 1] == 1.0 and matrix.toarray()[1, 2] == 2.0
+    assert vector.toarray()[1, 0] == 3.0
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]
