@@ -39,10 +39,17 @@ import sys
 
 
 from src.mass_balance import report
+from src.monte_carlo import MemoryBudgetExceeded
 from src.params_schema import ParameterError, current
+from src.sampling import SamplingError
 from src.upstream import UpstreamError, load as refresh
 from src.plot_structure import choose, find_cases
 from src.validate_inputs import InputDataError, validate
+
+# These four already say what is wrong and which file or setting to change.
+# This is run by pressing Run in an editor, so a traceback on top of that text
+# is noise in front of the answer, not a detail.
+CLEAR = (InputDataError, UpstreamError, MemoryBudgetExceeded, SamplingError)
 
 
 def main(argv=None) -> int:
@@ -67,22 +74,17 @@ def main(argv=None) -> int:
         return 1
 
     folder = args.folder or (choose() if args.pick else params.run.data_folder)
-    # Check the tables before totalling them. Without this a freshly generated
-    # skeleton -- rows present, values blank -- reaches the arithmetic and comes
-    # back as a TypeError from inside pandas, naming neither the file nor the row.
     try:
+        # Check the tables before totalling them. Without this a freshly
+        # generated skeleton -- rows present, values blank -- reaches the
+        # arithmetic and comes back as a TypeError from inside pandas, naming
+        # neither the file nor the row.
         tables = refresh(params, folder)
-    except UpstreamError as error:
-        print(error, file=sys.stderr)
-        return 1
-
-    try:
         validate(folder, tables)
-    except InputDataError as error:
+        return 0 if report(folder, tables) else 1
+    except CLEAR as error:
         print(error, file=sys.stderr)
         return 1
-
-    return 0 if report(folder, tables) else 1
 
 
 if __name__ == '__main__':

@@ -61,10 +61,17 @@ import pandas as pd
 
 from src.monte_carlo import MemoryBudgetExceeded, solve_draws
 from src.params_schema import ParameterError, current
+from src.sampling import SamplingError
 from src.upstream import UpstreamError, load as refresh
 from src.plot_monte_carlo import draw_all
 from src.report import write as write_workbook
 from src.recovery_model_optimized import RecoveryModelOptimized
+from src.validate_inputs import InputDataError
+
+# These four already say what is wrong and which file or setting to change.
+# This is run by pressing Run in an editor, so a traceback on top of that text
+# is noise in front of the answer, not a detail.
+CLEAR = (InputDataError, UpstreamError, MemoryBudgetExceeded, SamplingError)
 
 LAYER_NAMES = ['product', 'component', 'material', 'element']
 KEYS = ['Year', 'Stock/Flow ID', 'Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
@@ -101,51 +108,20 @@ def summarise(run) -> pd.DataFrame:
     return summary
 
 
-def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('folder', nargs='?', default=None,
-                        help='case folder to run; defaults to run.data_folder')
-    args = parser.parse_args(argv)
+def run_case(folder, params, draws: int) -> int:
+    """
+    The run itself: sample, solve, write the summary and draw the figures.
 
-    try:
-        params = current()
-    except ParameterError as error:
-        print(error, file=sys.stderr)
-        return 1
-
-    if not params.monte_carlo.enabled:
-        print('monte_carlo.enabled is False in src/params_schema.py. Nothing to do.')
-        return 0
-
-    folder = args.folder or params.run.data_folder
-    if not os.path.isdir(folder):
-        print(f"There is no case folder called '{folder}'.", file=sys.stderr)
-        return 1
-
-    # The case says how many draws it has (src/source.py); the setting is only
-    # the fallback for a case that does not.
-    from src import source as source_module
-    draws = source_module.read(folder, params)['draws'] \
-        if source_module.exists(folder) else params.data.draws
-    print(f'Case      : {folder}')
-    print(f'Draws     : {draws:,}  (seed {params.monte_carlo.seed})')
-
-    try:
-        tables = refresh(params, folder)
-    except UpstreamError as error:
-        print(error, file=sys.stderr)
-        return 1
-
-    try:
-        run = solve_draws(folder, LAYER_NAMES, draws=draws,
-                          seed=params.monte_carlo.seed, tables=tables,
-                          chunk=params.monte_carlo.chunk,
-                          budget_gb=params.monte_carlo.memory_budget_gb,
-                          rule=params.monte_carlo.sum_to_one,
-                          quiet=False)
-    except MemoryBudgetExceeded as error:
-        print(error, file=sys.stderr)
-        return 1
+    Every step here reads the case, so any of the four clear errors can come
+    out of it. `main` prints them as themselves.
+    """
+    tables = refresh(params, folder)
+    run = solve_draws(folder, LAYER_NAMES, draws=draws,
+                      seed=params.monte_carlo.seed, tables=tables,
+                      chunk=params.monte_carlo.chunk,
+                      budget_gb=params.monte_carlo.memory_budget_gb,
+                      rule=params.monte_carlo.sum_to_one,
+                      quiet=False)
 
     report = run.report
     if not report.get('uncertain'):
@@ -232,6 +208,42 @@ def main(argv=None) -> int:
               f'on {worst["Stock/Flow ID"]} {worst["Layer 4"] or worst["Layer 2"]}')
         print(f'  Running every coefficient at its mode is not the same as the mean.')
     return 0
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('folder', nargs='?', default=None,
+                        help='case folder to run; defaults to run.data_folder')
+    args = parser.parse_args(argv)
+
+    try:
+        params = current()
+    except ParameterError as error:
+        print(error, file=sys.stderr)
+        return 1
+
+    if not params.monte_carlo.enabled:
+        print('monte_carlo.enabled is False in src/params_schema.py. Nothing to do.')
+        return 0
+
+    folder = args.folder or params.run.data_folder
+    if not os.path.isdir(folder):
+        print(f"There is no case folder called '{folder}'.", file=sys.stderr)
+        return 1
+
+    # The case says how many draws it has (src/source.py); the setting is only
+    # the fallback for a case that does not.
+    from src import source as source_module
+    draws = source_module.read(folder, params)['draws'] \
+        if source_module.exists(folder) else params.data.draws
+    print(f'Case      : {folder}')
+    print(f'Draws     : {draws:,}  (seed {params.monte_carlo.seed})')
+
+    try:
+        return run_case(folder, params, draws)
+    except CLEAR as error:
+        print(error, file=sys.stderr)
+        return 1
 
 
 if __name__ == '__main__':
