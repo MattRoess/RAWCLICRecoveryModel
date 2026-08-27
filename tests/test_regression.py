@@ -491,6 +491,67 @@ def test_validation_rejects_percentages() -> None:
         raise AssertionError('a composition share of 25 was accepted')
 
 
+# ----------------------------------------------------------------------
+#  The LA engine must give the same answer in every process
+# ----------------------------------------------------------------------
+
+# Run in a subprocess because PYTHONHASHSEED is read once at interpreter start.
+# Inside one process the set iteration order is already fixed, so no test that
+# stays here can see the defect this guards.
+_REPRODUCIBILITY_PROBE = """
+import hashlib, os, sys
+sys.path.insert(0, os.getcwd())
+from src.recovery_model_LA import RecoveryModelLA
+model = RecoveryModelLA(data_folder='data_folder/reference/basic_test',
+                        layer_names=['product', 'component', 'material', 'element'],
+                        working_unit='Mg', years='')
+frame = model.solve_models_and_write_to_output()
+frame = frame.sort_values(list(frame.columns)).reset_index(drop=True)
+values = frame['Value'].astype(float).to_numpy()
+print(hashlib.sha256(values.tobytes()).hexdigest())
+print(','.join(model.decoding_dict['Stock/Flow ID'].values()))
+"""
+
+
+def _solve_under_hash_seed(seed: str) -> tuple[str, str]:
+    """(hash of the solution's values, the flow encoding order) in a fresh process."""
+    import subprocess
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    finished = subprocess.run(
+        [sys.executable, '-c', _REPRODUCIBILITY_PROBE], cwd=root, text=True,
+        capture_output=True, env=dict(os.environ, PYTHONHASHSEED=seed))
+    assert finished.returncode == 0, \
+        f'the probe failed under PYTHONHASHSEED={seed}:\n{finished.stderr[-800:]}'
+    lines = finished.stdout.strip().splitlines()
+    return lines[-2], lines[-1]
+
+
+def test_LA_gives_the_same_answer_in_every_process() -> None:
+    """
+    The LA engine encoded flows and resources with `list(set(...))`, whose order
+    depends on Python's per-process hash randomisation. That changed the
+    ordering of the sparse system, and with it the floating-point accumulation
+    order in `spsolve` -- so the same input gave different last bits in
+    different processes. Measured before the fix: three seeds gave three
+    different encodings and two different result hashes.
+
+    About 1.5 ULP, so it never mattered for an answer. It mattered because the
+    LA engine is the independent oracle the optimized engine is checked
+    against, and an oracle that will not repeat itself cannot settle an
+    argument about the last digit.
+    """
+    first_hash, first_order = _solve_under_hash_seed('1')
+    second_hash, second_order = _solve_under_hash_seed('2')
+
+    assert first_order == second_order, (
+        'the flow encoding depends on hash randomisation:\n'
+        f'  seed 1: {first_order}\n  seed 2: {second_order}')
+    assert first_hash == second_hash, (
+        'the LA engine produced different values in two processes:\n'
+        f'  seed 1: {first_hash}\n  seed 2: {second_hash}')
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

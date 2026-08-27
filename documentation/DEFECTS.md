@@ -516,11 +516,20 @@ array hashes pointer addresses, which differ every run.
 **Severity: low now, blocking later.** Trivial to fix (build from a list and
 concatenate once, declaring the dtype).
 
-### 3.5 The LA engine is not reproducible run to run
+### 3.5 The LA engine is not reproducible run to run — **FIXED 2026-08-26**
+
+**FIXED 2026-08-26.** Both encodings are `sorted(set(...))`. Verified across
+five hash seeds in separate processes: identical flow encoding
+`F1..F8` and an identical SHA-256 of the solution's values, where before the
+fix three seeds gave three orderings and two different hashes.
+`tests/test_regression.py` runs the engine under two hash seeds in
+subprocesses, because inside one process the set order is already fixed and no
+test living there could see this.
+
+The original text follows.
 
 `recovery_model_LA.py:195` and `:199` build the encoding with
-`list(set(...))` — still true on 2026-08-26; the line numbers have moved, the
-code has not. Set iteration order for strings depends on Python's
+`list(set(...))`. Set iteration order for strings depends on Python's
 per-process hash randomisation, so the integer encoding of flows and resources
 changes between runs. That changes the ordering of the sparse system and hence
 the floating-point accumulation order in `spsolve`.
@@ -550,11 +559,27 @@ Still true on 2026-08-26: `recovery_model_optimized.py:427`.
 recycling route must either use the LA engine or be modelled as a distinct
 downstream flow. Worth knowing before designing the flow network.
 
-### 3.7 `src/plot_flows.py` silently plots only the first case
+### 3.7 `src/plot_flows.py` silently plots only the first case — **FIXED 2026-08-26**
 
-`src/plot_flows.py:56` takes `model.input_data[0]` — still true on
-2026-08-26. With more than one year, scenario, location or
-additionalSpecification, the figures describe that first combination alone — and nothing in the title or subtitle says which.
+**FIXED 2026-08-26, and it had started biting.** The note below said it did
+not, because the fixtures had one combination each. The real electronics case
+grew to five years, so every Sankey described **2030** while every other output
+of the run was headlined 2050 — and nothing on the figure said so.
+
+`replay` now takes `input_data[-1]`, the last of the selection, matching what
+the rest of the output is headlined on, and `figure_for` prints which:
+
+    2050 — one of 5 in this run. Element-depth rows only. ...
+
+Narrow `run.years` to draw a different one. The fix is the figure naming its
+own subject, not a better default: a diagram that says which year it is cannot
+mislead whichever one it picks.
+
+The original text follows.
+
+`src/plot_flows.py:56` takes `model.input_data[0]`. With more than one year,
+scenario, location or additionalSpecification, the figures describe that first
+combination alone — and nothing in the title or subtitle says which.
 
 `basic_test` and `template` each have one combination, so it does not bite
 today. It will the moment real data arrives with several years, and it will
@@ -579,6 +604,35 @@ trap for anyone editing this code later.
 
 **Severity: low, but fix before the Monte Carlo work** rather than during it —
 that restructuring will touch exactly these lines.
+
+---
+
+### 3.9 Every Sankey was labelled with the wrong unit — **FIXED 2026-08-26**
+
+Found while fixing 3.7, and worse than it.
+
+`plot_flows.draw` took the unit from the inputs table's own `Unit` column —
+which is the unit the SOURCE declared, `kt` from upstream — while the engine
+converts every inflow into `run.working_unit`, `kg`, on the way in. So the
+numbers drawn were kilograms and the label said kilotonnes.
+
+Reproduction, before the fix: aluminium in the electronics case printed as
+
+    F_collected 887,760.1     subtitle: "mass in kt"
+
+against a measured `887,760.09` **kg**, or 0.89 t. A factor of 10^6, on every
+Sankey the project has ever drawn.
+
+**FIXED:** `unit_drawn(params)` returns `run.working_unit`, and the inputs
+table's `Unit` column is no longer consulted for labelling — it describes the
+file, not the figure. `tests/test_generality.py` asserts the label matches the
+working unit and, where they differ, is not the source unit.
+
+**Why this one is worth the space.** A wrong unit is invisible: the number
+looks reasonable and the reader supplies the meaning. It survived because the
+two units differ by exactly the factor that makes a plausible number out of an
+implausible one. Three units are in play in this project — data folders in Mg,
+upstream in kt, arithmetic in kg — and nothing but the label tells them apart.
 
 ---
 

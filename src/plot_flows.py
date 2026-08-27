@@ -44,16 +44,53 @@ def depth_of(frame: pd.DataFrame) -> pd.Series:
     return (frame[LAYERS] != '').sum(axis=1)
 
 
+def describe(entry: dict) -> str:
+    """A combination as a person would name it: '2050', or '2050 / HIGH'."""
+    parts = [str(entry[key]) for key in
+             ('Year', 'Scenario', 'Location', 'additionalSpecification')
+             if entry.get(key) not in (None, '')]
+    return ' / '.join(parts) if parts else 'the only combination'
+
+
+def chosen_entry(folder: str, tables: dict | None = None) -> tuple[str, int]:
+    """
+    Which combination the Sankeys describe, and how many there are.
+
+    A Sankey is one snapshot, and a case can hold several years. The LAST is
+    taken, not the first: every other output of a run is headlined on the last
+    year of the selection, and a diagram quietly showing the first was the
+    defect this replaced (DEFECTS.md section 3.7). Narrow `run.years` to draw a
+    different one.
+    """
+    model = RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES,
+                                   tables=tables)
+    return describe(model.input_data[-1]), len(model.input_data)
+
+
+def unit_drawn(params: Params) -> str:
+    """
+    The unit the numbers on the figure are actually in.
+
+    NOT the `Unit` column of the inputs table, which is the unit the source
+    file declared -- kt, from upstream. The engine converts every inflow into
+    `run.working_unit` on the way in, so a figure labelled from the source
+    column was out by a factor of a million: aluminium in the 2030 electronics
+    case printed as `887,760.1 kt` when it is 887,760 kg.
+    """
+    return params.run.working_unit
+
+
 def replay(folder: str, tables: dict | None = None):
     """
     Re-run the model's process loop, recording the mass on every edge.
 
     Returns (edges, flows) where edges maps (source, target) -> dataframe of
     the transferred rows, and flows maps flow id -> dataframe of its contents.
+    The combination replayed is the one `chosen_entry` names.
     """
     model = RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES,
                                    tables=tables)
-    entry = model.input_data[0]
+    entry = model.input_data[-1]
     inflows, composition, tcs = entry['inflows_df'], entry['composition_df'], entry['tcs_df']
 
     result = model.create_initial_flows(inflows_df=inflows, composition_df=composition)
@@ -179,7 +216,8 @@ def render(nodes, links, column, title, subtitle, theme: str):
     return figure
 
 
-def figure_for(case: str, edges, flows, element: str | None, unit: str, theme: str):
+def figure_for(case: str, edges, flows, element: str | None, unit: str, theme: str,
+               shows: str = '', of_many: int = 1):
     """Build one figure, for total mass or for a single element."""
     nodes = {flow: mass(frame, element) for flow, frame in flows.items()}
     nodes = {flow: value for flow, value in nodes.items() if value > 1e-12}
@@ -188,14 +226,21 @@ def figure_for(case: str, edges, flows, element: str | None, unit: str, theme: s
     if not links:
         return None
 
+    # A Sankey is one snapshot of a case that may hold several. Saying which,
+    # on the figure, is the fix for it having silently been the first one.
+    which = f'{shows}. ' if shows else ''
+    if of_many > 1:
+        which = f'{shows} — one of {of_many} in this run. '
+
     if element:
         title = f'{case} — {element} through the recovery system'
-        subtitle = (f'Element-depth rows only. Node and ribbon size are mass in {unit}. '
-                    f'{len(nodes)} flows, {len(links)} transfers.')
+        subtitle = (f'{which}Element-depth rows only. Node and ribbon size are mass '
+                    f'in {unit}. {len(nodes)} flows, {len(links)} transfers.')
     else:
         title = f'{case} — material flows'
-        subtitle = (f'Each flow totalled at its own shallowest depth, so nesting is not '
-                    f'double counted. Mass in {unit}. {len(nodes)} flows, {len(links)} transfers.')
+        subtitle = (f'{which}Each flow totalled at its own shallowest depth, so nesting '
+                    f'is not double counted. Mass in {unit}. '
+                    f'{len(nodes)} flows, {len(links)} transfers.')
     return render(nodes, links, assign_columns(list(nodes), links), title, subtitle, theme)
 
 
@@ -207,14 +252,11 @@ def draw(folder: str | None = None, params: Params | None = None,
     # The inflow may be handed over in memory rather than read from a CSV --
     # that is how the upstream draws reach the model, with nothing written in
     # between (src/upstream.py).
-    unit = 'Mg'
-    inputs = (tables or {}).get('inputs')
-    if inputs is None:
-        inputs = pd.read_csv(f'{folder}/input_data/inputs.csv',
-                             keep_default_na=False, na_values=[])
-    if 'Unit' in inputs.columns and inputs['Unit'].nunique() == 1:
-        unit = inputs['Unit'].iloc[0]
+    # The unit the values are in, not the one the source file declared.
+    # See unit_drawn: reading it from the inputs column was out by 1e6.
+    unit = unit_drawn(params)
 
+    shows, of_many = chosen_entry(folder, tables)
     edges, flows = replay(folder, tables)
     case = os.path.basename(folder.rstrip('/'))
 
@@ -222,9 +264,11 @@ def draw(folder: str | None = None, params: Params | None = None,
     if params.figures.element_figures:
         elements += sorted({e for f in flows.values() for e in f['Layer 4'].unique() if e})
 
-    print(f'{folder}: {len(flows)} flows, {len(edges)} transfers')
+    print(f'{folder}: {len(flows)} flows, {len(edges)} transfers, '
+          f'showing {shows}' + (f' of {of_many} combinations' if of_many > 1 else ''))
     for element in elements:
-        figure = figure_for(case, edges, flows, element, unit, params.figures.theme)
+        figure = figure_for(case, edges, flows, element, unit,
+                            params.figures.theme, shows=shows, of_many=of_many)
         if figure is None:
             continue
         stem = element or 'total'

@@ -192,11 +192,18 @@ class RecoveryModelLA:
         # - dims is the number of different options for each flow or layer
         # - size is the size of the complete vectors and matrices
         self.decoding_dict = {}
-        all_flows = list(set(tcs_df['Input_FlowID']).union(set(tcs_df['Output_FlowID'])))
+        # SORTED, not just set(). Set iteration order for strings depends on
+        # Python's per-process hash randomisation, so this encoding -- and with
+        # it the ordering of the sparse system and the accumulation order in
+        # spsolve -- used to change between runs. See DEFECTS.md section 3.5.
+        all_flows = sorted(set(tcs_df['Input_FlowID']).union(set(tcs_df['Output_FlowID'])))
         self.decoding_dict['Stock/Flow ID'] = dict(enumerate(all_flows))
         for layer_index in range(0,4):
             layer_name = self.layer_names[layer_index]
-            layer_unique_resources = ['empty'] + list(set(composition_df['Layer '+str(layer_index+1)].dropna()))
+            # Sorted for the same reason as all_flows above. 'empty' stays
+            # first: it is index 0 by construction, not by name.
+            layer_unique_resources = ['empty'] + sorted(
+                set(composition_df['Layer ' + str(layer_index + 1)].dropna()))
             self.decoding_dict[layer_name] = dict(enumerate(layer_unique_resources))
         self.encoding_dict = {col: {v: k for k, v in dct.items()} for col, dct in self.decoding_dict.items()}
         self.dims = self.get_dims() 

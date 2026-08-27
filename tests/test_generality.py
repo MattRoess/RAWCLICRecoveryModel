@@ -671,6 +671,64 @@ def test_the_keyed_at_vocabulary_has_one_definition() -> None:
             f'{child} reads from {parent}, which is not the layer above it'
 
 
+# ----------------------------------------------------------------------
+#  The Sankeys must say which year they show, and in the right unit
+# ----------------------------------------------------------------------
+
+def test_the_sankey_names_the_combination_it_shows() -> None:
+    """
+    `replay` took `input_data[0]` and said nothing. The electronics case has
+    five years, so every Sankey in figures/ described 2030 while every other
+    output was headlined 2050, and nothing on the figure said which it was.
+
+    DEFECTS.md called this low severity because the fixtures had one
+    combination each. The real case grew to five and it started biting
+    unnoticed, which is the argument for the figure naming its own subject
+    rather than for choosing a better default.
+    """
+    from src import plot_flows
+
+    params, case, root = build_everything()
+    try:
+        from src.upstream import load
+        tables = load(params, case, quiet=True)
+        coefficients(case, tables['composition'])
+        chosen, entries = plot_flows.chosen_entry(case, tables)
+        assert entries >= 1, 'no combinations at all'
+        assert chosen, 'the chosen combination has no label'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_the_sankey_labels_the_unit_it_actually_drew() -> None:
+    """
+    The unit came from the inputs table's own `Unit` column -- the SOURCE unit,
+    kt -- while the values had been converted to `run.working_unit`, kg. Every
+    Sankey was therefore labelled a factor of a million out: aluminium in the
+    2030 electronics case printed as `887,760.1 kt` when it is 887,760 kg.
+
+    A wrong unit is the one mistake this project treats as serious, because it
+    is invisible: the number looks fine and the reader supplies the meaning.
+    """
+    from src import plot_flows
+
+    params, case, root = build_everything()
+    try:
+        from src.upstream import load
+        tables = load(params, case, quiet=True)
+        source_unit = tables['inputs']['Unit'].iloc[0]
+        drawn = plot_flows.unit_drawn(params)
+        assert drawn == params.run.working_unit, \
+            f'labelled {drawn!r}, drew {params.run.working_unit!r}'
+        if source_unit != params.run.working_unit:
+            assert drawn != source_unit, \
+                f'still labelling with the source unit {source_unit!r}'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]
