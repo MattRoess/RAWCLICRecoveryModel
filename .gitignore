@@ -14,6 +14,13 @@ venv/
 # a case workbook was opened to look at.
 ~$*
 
+# Claude Code's own working directory. It holds git worktrees for background
+# tasks -- a live one is several megabytes of checked-out repository. It does
+# not show in `git status` while a worktree is registered, because git hides
+# those, so this is easy to miss until the task ends and the directory turns
+# up as untracked.
+.claude/
+
 # .vscode is NOT ignored wholesale: settings.json is committed so that
 # Positron picks up the right interpreter for everyone who clones this.
 .vscode/*
