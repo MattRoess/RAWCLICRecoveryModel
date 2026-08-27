@@ -377,6 +377,23 @@ def dropdowns_for(case: str, skeleton: pd.DataFrame,
 def main(case: str) -> int:
     from src import case_tables
 
+    # An unknown folder used to reach `open(..., 'w')` and come back as a
+    # FileNotFoundError naming a path nobody typed -- `--help/input_data/
+    # processes.csv` for anyone who asked this tool for help. Worse, a typo
+    # that happened to match an existing directory would have started writing
+    # a new case into it.
+    if not os.path.isdir(case):
+        print(f"There is no case folder called '{case}'.\n\n"
+              f"Cases available:", file=sys.stderr)
+        for folder in sorted(
+                os.path.join('data_folder', name)
+                for name in os.listdir('data_folder')
+                if os.path.isdir(os.path.join('data_folder', name, 'input_data'))):
+            print(f'  {folder}', file=sys.stderr)
+        print(f"\nUsage: ./.venv/bin/python tools/make_skeleton.py <case folder>",
+              file=sys.stderr)
+        return 1
+
     skeleton = build(case)
     where = case_tables.where(case, 'TCs')
     path = where[1] if where else case_tables.csv_path(case, 'TCs')

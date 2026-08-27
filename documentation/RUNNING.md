@@ -33,6 +33,8 @@ refuse a broken table, so nothing silently uses bad numbers if you skip them.
 itself. Run `02` when you want the diagrams; run `03` when you want the numbers
 and the uncertainty. Either can be run alone.
 
+**To put real coefficients into a case**, see [FILLING_IN.md](FILLING_IN.md).
+
 One more you can press when you want it:
 
 | file | what it does |
