@@ -729,6 +729,58 @@ def test_the_sankey_labels_the_unit_it_actually_drew() -> None:
         shutil.rmtree(case, ignore_errors=True)
 
 
+def test_the_worklist_agrees_with_what_the_run_refuses() -> None:
+    """
+    tc_worklist said "REFUSED at run time" for any group holding a fixed row,
+    while sampling refuses only a group with exactly ONE row free. A case with
+    a legitimate fixed row -- a route that does not apply, written as 0 -- was
+    reported as broken and then ran perfectly, which is the worst way for a
+    warning to be wrong: it teaches you to ignore it.
+
+    The two must say the same thing, so this asks both.
+    """
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    import numpy as np
+
+    from src.sampling import SamplingError, numeric_bounds, sample
+    from tools.tc_worklist import COLLAPSED, classify
+
+    def group(*bands) -> pd.DataFrame:
+        common = dict(Input_FlowID='F_in', Input_layer='Layer 3',
+                      Input_layer_key='M', TC_target_layer='Layer 4',
+                      TC_target_key='E')
+        return pd.DataFrame([
+            dict(**common, Output_FlowID=f'F_{n}', value=str(mode),
+                 value_min=str(lo), value_max=str(hi), is_residual='')
+            for n, (lo, mode, hi) in enumerate(bands)])
+
+    shapes = {
+        'one free row, one fixed': ((0.02, 0.10, 0.30), (0.90, 0.90, 0.90)),
+        'two free rows, one fixed': ((0.30, 0.50, 0.70), (0.20, 0.35, 0.50),
+                                     (0.15, 0.15, 0.15)),
+        'all free': ((0.30, 0.50, 0.70), (0.25, 0.35, 0.50), (0.05, 0.15, 0.30)),
+        'all fixed': ((0.6, 0.6, 0.6), (0.4, 0.4, 0.4)),
+    }
+
+    for name, bands in shapes.items():
+        tcs = numeric_bounds(group(*bands))
+        low = tcs['value_min'].to_numpy(float)
+        mode = tcs['value'].to_numpy(float)
+        high = tcs['value_max'].to_numpy(float)
+        members = np.arange(len(tcs))
+        status, _ = classify(low, mode, high, None, members)
+
+        try:
+            sample(group(*bands), draws=128, rule='condition')
+            refused = False
+        except SamplingError:
+            refused = True
+
+        assert (status == COLLAPSED) == refused, (
+            f'{name}: the worklist says {status!r} but the run '
+            f'{"refuses" if refused else "accepts"} it')
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

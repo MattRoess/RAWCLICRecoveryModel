@@ -92,21 +92,27 @@ def classify(low, mode, high, residual, members) -> tuple[str, tuple]:
         return NEEDS_A_SECOND, implied(low[members], mode[members],
                                        high[members], others) + (position,)
 
-    flat = np.flatnonzero(spread <= 0)
-    if len(flat) and len(flat) < len(members):
-        position = int(flat[0])
+    # What the RUN refuses, and nothing more. src/sampling.py stops a group
+    # with exactly one free row -- the constraint pins it and its range is
+    # discarded. A fixed row beside two or more free ones is fine, and saying
+    # otherwise reported a working case as broken, which teaches a reader to
+    # ignore the warning.
+    free = np.flatnonzero(spread > 0)
+    if len(free) == 1:
+        position = int(free[0])
         others = np.setdiff1d(np.arange(len(members)), position)
         return COLLAPSED, implied(low[members], mode[members],
                                   high[members], others) + (position,)
-    if len(flat):
+    if len(free) == 0:
         # Every row is a single number. Nothing to sample either way.
         return FULLY_MEASURED, (np.nan, np.nan, np.nan, 0)
 
-    # Every row has a range. Does any one of them merely restate the others?
-    for position in range(len(members)):
+    # Two or more free rows. Does any one of them merely restate the others?
+    for position in free:
         others = np.setdiff1d(np.arange(len(members)), position)
         want = implied(low[members], mode[members], high[members], others)
-        got = (low[members][position], mode[members][position], high[members][position])
+        got = (low[members][position], mode[members][position],
+               high[members][position])
         if all(abs(a - b) <= SAME for a, b in zip(want, got)):
             return REFLECTED, want + (position,)
     return FULLY_MEASURED, (np.nan, np.nan, np.nan, 0)
