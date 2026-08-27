@@ -33,7 +33,8 @@ The contrast, from `01_check_inputs.py`:
 ## 2. Schema
 
 Keep the three existing files and the columns the user guide already defines.
-Add three things to `TCs.csv`:
+Add three things to the case's `TCs` table — the `TCs` sheet of
+`case.xlsx`, or `TCs.csv` in a case that still uses one:
 
 | Column | Status | Purpose |
 |---|---|---|

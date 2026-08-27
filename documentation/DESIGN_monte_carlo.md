@@ -215,7 +215,7 @@ percentiles) so the distortion is visible and documented rather than hidden.
 Independent sampling of every TC is almost certainly wrong, and this needs an
 explicit decision.
 
-`TCs.csv` already carries **`process` and `technology` columns that the model
+The `TCs` table already carries **`process` and `technology` columns that the model
 reads and discards** — they are not in `InputDataFormat.TCs_columns`, so they
 are dropped on load. These are the natural grouping keys for correlated
 sampling: two TCs governed by the same shredding technology should move

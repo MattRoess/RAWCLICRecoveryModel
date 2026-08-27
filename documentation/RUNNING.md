@@ -21,7 +21,7 @@ No terminal, no arguments. Each one reads `run.data_folder` and does its part.
 | step | file | what it does | writes |
 |---|---|---|---|
 | 0 | `00_parameters.py` | checks the settings make sense; regenerates `params.xlsx` and `PARAMETER_REFERENCE.md` | those two files |
-| 1 | `01_check_inputs.py` | reports the totals, closure and coefficient coverage | nothing |
+| 1 | `01_check_inputs.py` | reports the totals, closure, coefficient coverage, and — since 2026-08-26 — a `SUM TO 1` section saying where the constraint pulls the answer away from what is written | nothing |
 | 2 | `02_run_model.py` | the deterministic answer, the Sankeys, the structure diagram | `output_data/solution_*.csv`, `figures/<case>/` |
 | 3 | `03_run_monte_carlo.py` | the Monte Carlo, the workbook, the distribution figures | `output_data/*.csv`, `recovery_results.xlsx`, `figures/<case>/` |
 | 9 | `99_check_all.py` | ten checks: six test suites, then the pipeline and mass balance | nothing |

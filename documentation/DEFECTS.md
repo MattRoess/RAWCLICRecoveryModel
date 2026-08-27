@@ -407,12 +407,25 @@ Using `.map()` there is still the better fix and is not done.
 
 ---
 
-## 3. Open — absent capability and latent issues
+## 3. Absent capability and latent issues
 
-Things the model was never built to do, plus two latent issues that affect both
-engines equally. Listed so they are not rediscovered.
+Things the model was never built to do, plus latent issues affecting both
+engines. Listed so they are not rediscovered.
 
-### 3.1 No mass balance check anywhere
+**3.1 to 3.4 have since been built or fixed** and are kept, struck through, so
+that a reader who remembers them can see what happened rather than wonder.
+**3.5 to 3.8 were re-checked against the code on 2026-08-26 and are still
+true**, with their line numbers corrected — they had drifted.
+
+### 3.1 No mass balance check anywhere — **BUILT**
+
+`src/mass_balance.py` reports it, `01_check_inputs.py` prints it, and
+`99_check_all.py` counts it as one of its ten checks. On `bev_electronics` the
+worst relative residual across five years is 2.8e-16. Both failures named below
+are checked: a total above 1 is reported as ERROR, and composition closure is
+reported per depth.
+
+The original text follows.
 
 Nothing verifies that the TCs for a resource total to anything sensible, and
 nothing records the shortfall.
@@ -431,13 +444,30 @@ Two things a checker should catch that nothing currently does:
 
 See DESIGN_monte_carlo.md §3 for how this bears on the sum-to-1 question.
 
-### 3.2 No uncertainty of any kind
+### 3.2 No uncertainty of any kind — **BUILT**
+
+`src/sampling.py` and `src/monte_carlo.py`, with 37 and 9 checks respectively.
+A coefficient carries `value_min` and `value_max` as a triangular, groups are
+made to sum to 1 by one of three rules (CASES.md, the TCs section), and
+`03_run_monte_carlo.py` produces percentiles, a sensitivity ranking and the
+distribution figures. `DQS` and `CV` were never used and are not the mechanism.
+
+The original text follows, including the line about this being the main body of
+work ahead — which it was, and no longer is.
 
 `DQS` and `CV` are declared in `InputDataFormat.dtypes` in both engines and are
 read by nothing. Every value is a deterministic scalar. This is the main body
 of work ahead.
 
-### 3.3 Units are declared and ignored
+### 3.3 Units are declared and ignored — **FIXED**
+
+`src/units.py` converts every inflow into `run.working_unit` on load, from
+whatever its own file declares, and `convert_inflows` is on the reading path
+rather than a manual step. Three units are in play — data folders in Mg,
+upstream in kt, arithmetic in kg — and a wrong one is a silent factor of 1000,
+which is why this became a conversion rather than a warning.
+
+The original text follows.
 
 `inputs.csv` has a `Unit` column. It is not in `InputDataFormat.input_columns`
 and is never read by either engine. The user guide states the model is
@@ -456,7 +486,13 @@ delivers inflows **in kt**, while every data folder here is written in **Mg**.
 That is the factor of 1000 this check exists to catch, and it will fire the
 first time real upstream data arrives.
 
-### 3.4 The solution's `Value` column is `object` dtype, in both engines
+### 3.4 The solution's `Value` column is `object` dtype — **FIXED**
+
+Checked in memory on 2026-08-26, not through the CSV, which re-infers and would
+have hidden it: the optimized engine returns `Value` as `float64`. The
+Monte Carlo work this was blocking has been built.
+
+The original text follows.
 
 `solve_models_and_write_to_output` seeds the result with
 `pd.DataFrame(columns=[...])`, which creates an all-`object` frame, then
@@ -482,8 +518,9 @@ concatenate once, declaring the dtype).
 
 ### 3.5 The LA engine is not reproducible run to run
 
-`recovery_model_LA.py:125` and `:129` build the encoding with
-`list(set(...))`. Set iteration order for strings depends on Python's
+`recovery_model_LA.py:195` and `:199` build the encoding with
+`list(set(...))` — still true on 2026-08-26; the line numbers have moved, the
+code has not. Set iteration order for strings depends on Python's
 per-process hash randomisation, so the integer encoding of flows and resources
 changes between runs. That changes the ordering of the sparse system and hence
 the floating-point accumulation order in `spsolve`.
@@ -507,15 +544,17 @@ sets (`sorted(set(...))`) makes it deterministic at no cost.
 
 ### 3.6 Feedback loops are unsupported in the default engine
 
+Still true on 2026-08-26: `recovery_model_optimized.py:427`.
+
 `get_process_sequence_from_tcs` raises `ValueError` on cycles. Any closed-loop
 recycling route must either use the LA engine or be modelled as a distinct
 downstream flow. Worth knowing before designing the flow network.
 
 ### 3.7 `src/plot_flows.py` silently plots only the first case
 
-`src/plot_flows.py:51` takes `model.input_data[0]`. With more than one year,
-scenario, location or additionalSpecification, the figures describe that first
-combination alone — and nothing in the title or subtitle says which.
+`src/plot_flows.py:56` takes `model.input_data[0]` — still true on
+2026-08-26. With more than one year, scenario, location or
+additionalSpecification, the figures describe that first combination alone — and nothing in the title or subtitle says which.
 
 `basic_test` and `template` each have one combination, so it does not bite
 today. It will the moment real data arrives with several years, and it will
@@ -525,6 +564,9 @@ look like a plotting quirk rather than a selection.
 take the combination as an argument.
 
 ### 3.8 The LA engine mixes the two scipy sparse APIs
+
+Still true on 2026-08-26: `recovery_model_LA.py:546` builds with `coo_matrix`
+while the surrounding signatures are `csr_array`.
 
 `HelperFunctions.create_sparse_matrix` builds a legacy `coo_matrix(...).tocsr()`
 — the `spmatrix` branch — while `solve_model` combines the result with

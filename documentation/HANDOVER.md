@@ -335,8 +335,15 @@ Read this before doing anything. Every item cost time to learn.
    21% improvement that did not exist — shown to the user in a figure and a
    table before anyone noticed. If a feature has nothing to act on, say that;
    it is a finding, not a gap to be filled.
-10. **Keep [RUNNING.md](RUNNING.md) and [CASES.md](CASES.md) current in the
-    same commit** as any change to what a file does or what a run produces.
+10. **Document in the same commit as the change, and mean every document.**
+    This used to name only RUNNING.md and CASES.md, and the two that drifted
+    were the ones it did not name. On 2026-08-26 a sweep found DEFECTS.md still
+    listing the mass balance, the Monte Carlo and unit conversion as absent
+    capabilities — three things built days earlier — the index still saying the
+    real TC table "does not exist yet", and `monte_carlo.enabled` documented as
+    "off by default" while its value was `True`. Nothing there was hard to fix;
+    it was simply never struck off. Building a thing and striking it off the
+    list of things not built are one task, not two.
 
 Settled conventions: **95% interval** on every distribution figure. Plain
 figure titles.

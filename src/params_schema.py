@@ -282,9 +282,14 @@ class MonteCarloParams:
     """How the Monte Carlo is run."""
 
     # RUN THE MONTE CARLO AT ALL.
-    # Off by default: a data folder whose TCs.csv has no value_min / value_max
-    # columns has nothing to sample, and every draw would return the same
-    # number. Stage 03 says so plainly rather than producing a flat histogram.
+    # On, because both cases carry value_min and value_max and the spread is
+    # the point of running them. A case whose TC table has neither column has
+    # nothing to sample -- every draw would return the same number -- and
+    # stage 03 says so plainly rather than producing a flat histogram, so
+    # leaving this on costs nothing even then.
+    #
+    # (This comment used to read "off by default" while the value was True.
+    # Found by the documentation sweep on 2026-08-26.)
     # SAFE TO CHANGE: yes.
     enabled: bool = True
 
