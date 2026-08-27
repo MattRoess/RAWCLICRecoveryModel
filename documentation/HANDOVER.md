@@ -1,6 +1,6 @@
 # Handover
 
-Current as of **2026-08-26**, commit `71653e2`. Rewritten from the ground up on
+Current as of **2026-08-27**, commit `907d208`. Rewritten from the ground up on
 2026-08-21 and updated since; git has the older text.
 
 **What changed on 2026-08-26.** In the morning: the case workbooks gained
@@ -17,7 +17,13 @@ was labelled `kt` while the numbers were `kg`. Every item in DEFECTS.md
 sections 2 and 3 is now fixed, built, or recorded as deliberately guarded
 rather than fixed, which is true of exactly one: the optimized half of 2.7.
 
-**No coefficient changed on either day.** What the model does with numbers is
+Later the same day the work moved to making the coefficients fillable: the
+`filling_sheet` ranking was replaced with one that says what a measurement
+BUYS, a third case was built with no residual rows, and
+[FILLING_IN.md](FILLING_IN.md) was written so the next person can start typing
+numbers without reading anything longer. §4 has what is open.
+
+**No coefficient changed on any of it.** What the model does with numbers is
 finished; the numbers are not.
 
 **Read [RUNNING.md](RUNNING.md) first if you just want to run something.** This
@@ -32,6 +38,7 @@ document is for picking the work back up.
 | | 04_02 electronics | 04_01 car composition |
 |---|---|---|
 | case folder | `data_folder/bev_electronics` | `data_folder/carcomposition_mockup` |
+| plus | `bev_electronics_all_measured` — see below | |
 | covers | wiring and motors in BEVs | whole cars, five drivetrains |
 | finest resolution | **element** — Cu, Nd, Dy | **material** — calAHSS, battery |
 | years | 2030–2050 | 2040 |
@@ -41,7 +48,14 @@ document is for picking the work back up.
 | result rows | 600 | 4,117 |
 
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
-suites on fixed fixtures (102 checks), then the pipeline and a mass balance.
+suites on fixed fixtures (106 checks), then the pipeline and a mass balance.
+
+**`run.data_folder` currently points at `bev_electronics_all_measured`**, not
+at the original. That case is `bev_electronics` with all 22 residual rows
+turned into measured ones, so every group is conditioned rather than derived —
+built to check the conditioning path against real numbers. Its 22 converted
+rows are placeholders and say so in capitals; the other case is untouched and
+switching back is one line.
 
 Both case tables are **structurally finished**. `tools/tc_worklist.py` reports
 22 of 24 groups in the electronics case and 278 of 278 in the car composition
@@ -244,11 +258,17 @@ existing figure and saved table there is keyed on it.
    **overwrites** — but it now refuses to, once any row's `source` says
    something it did not write. `--overwrite` forces a deliberate rebuild.
 
-   **Start with `tools/filling_sheet.py`**, which ranks the rows still waiting
-   for a number by how much each one actually moves total recovered mass —
-   Spearman, one Monte Carlo run, the same measure the sensitivity figure uses.
-   On the electronics case **4 of the 24 carry 80% of the influence**, so the
-   first afternoon of literature work is four rows rather than twenty-four.
+   **Start with [FILLING_IN.md](FILLING_IN.md)** — five steps, written for
+   doing rather than studying — and with `tools/filling_sheet.py`, which ranks
+   the rows still waiting for a number by **`spread_share`**: the fraction of
+   the answer's variance each one accounts for, and so the fraction that
+   disappears if it is measured exactly. That is what a measurement buys, and
+   it is not the same as how closely a coefficient tracks the answer, which is
+   reported beside it as `influence`.
+
+   The difference decides what to do first. On the electronics case **2 rows of
+   24** carry 80% of the spread, not the 4 the influence ranking suggested; on
+   car composition, **12 of 354** rather than 88.
 
    Fill in `value`, `value_min`, `value_max` and — this is the part that is
    easy to get wrong — **leave `is_residual` alone unless you have a second,
@@ -260,6 +280,52 @@ existing figure and saved table there is keyed on it.
 2. **More years for 04_01**, if wanted — but check the memory arithmetic first:
    five drivetrains over five years is roughly 20,000 result rows, which at
    200,000 draws exceeds the 4 GB budget and would be refused.
+
+### Open, and agreed in principle: F_loss_dismantling is not a loss
+
+**Raised by the user on 2026-08-27, argued through, not yet made.** Pick this
+up before anything else in the electronics case, because it changes the flow
+network and every coefficient leaving `F_collected`.
+
+Manual dismantling sorts material; it does not destroy it. A harness that is
+not pulled out is still in the hulk, and the hulk goes to the shredder. So a
+terminal `F_loss_dismantling` asserts a destruction that does not happen, and
+it writes the material off *and* denies it the chance to be recovered at
+shredding.
+
+There is also a redundancy: `F_collected -> F_shredded` and `F_collected ->
+F_loss_dismantling` name the same event — "not dismantled" IS "goes to the
+shredder". One of the two has to go.
+
+The shape agreed:
+
+    F_collected --> F_dismantled              (pulled out)
+                --> F_separated_electronics   (handed on)
+                --> F_not_dismantled          (left in the car)
+                            |
+                            +--> F_shredded  = 1.0   definitional
+                                      +--> F_recovered_shredder
+                                      +--> F_loss_shredding
+
+Four edits: rename `F_loss_dismantling` to `F_not_dismantled`; its `role`
+becomes `intermediate`; add `F_not_dismantled -> F_shredded` at 1.0 with no
+range, because it is definitional rather than measured; and **remove
+`F_collected -> F_shredded`**, or the redundancy comes straight back.
+
+The two coefficients on those removed edges become **one** —
+`F_collected -> F_not_dismantled`, the fraction of harnesses not removed. That
+is a question somebody can actually answer, where "how much is lost during
+dismantling" was not.
+
+**A caution for whoever writes this up.** The first version of this argument
+quoted 83 kt and "25% of what is recovered" from the model. Those figures come
+from placeholder coefficients, so they measure the guesses rather than
+anything about recycling, and the user said so. The argument is structural and
+needs no numbers: it holds whatever the real coefficient turns out to be.
+
+Still undecided: `F_separated_electronics` carries 0 for both groups. Whether
+it is a real route waiting for a number, or should go as well, was asked and
+not answered.
 
 ### Not in this repository
 
@@ -429,6 +495,20 @@ Restarting the app cleared it. Nothing was lost and nothing needed repairing.
 | [DESIGN_04_01_carcomposition.md](DESIGN_04_01_carcomposition.md) | the 04_01 design, plus what building it proved the estimate had wrong |
 | [DESIGN_monte_carlo.md](DESIGN_monte_carlo.md) | the Monte Carlo design; built, see `src/monte_carlo.py` |
 | [PARAMETER_REFERENCE.md](PARAMETER_REFERENCE.md) | every setting and what it does. Generated — edit `src/params_schema.py`, not this. |
+| [FILLING_IN.md](FILLING_IN.md) | **how to open the workbook and put real numbers in it.** Five steps. Written to be followed, not studied. |
+
+The tools, none of which is a numbered step and all of which read the case from
+`run.data_folder` unless given a folder:
+
+| tool | what it answers |
+|---|---|
+| `tools/filling_sheet.py` | which coefficients to measure first, by what measuring one would buy |
+| `tools/tc_worklist.py` | per sum-to-1 group, whether a second measurement would buy anything — and the two ways of faking one |
+| `tools/compare_sum_rules.py` | which elements the choice between conditioning and normalising actually moves |
+| `tools/plot_structure.py` | the flow network on its own, without solving |
+| `tools/make_skeleton.py` | the TC rows a case needs. Merges, so it is safe to re-run |
+| `tools/make_carcomposition_tcs.py` | the 04_01 table. Overwrites, and refuses once a row has been edited |
+| `tools/compare_engines.py` | the two engines against each other |
 
 The input file format is specified in `../doc/User guide.docx` (Harmjan de
 Vries, 21-11-2024), still accurate on the schema. It does not describe model
