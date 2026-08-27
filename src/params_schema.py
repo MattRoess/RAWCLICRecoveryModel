@@ -68,7 +68,7 @@ class RunParams:
     # A folder holding an `input_data/`, written from the project root.
     # `02_run_model.py --list` prints the folders that qualify.
     # SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
-    data_folder: str = 'data_folder/bev_electronics'
+    data_folder: str = 'data_folder/bev_electronics_all_measured'
 
     # WHICH SCENARIO TO RUN.  Blank when the data has no scenario dimension,
     # which is the case for every data folder in this repository today.
@@ -141,7 +141,7 @@ class RunParams:
     # display unit per panel (src/units.py, scale_for); this setting governs
     # the arithmetic and the output files.
     # SAFE TO CHANGE: yes. Any unit in MASS_UNITS in src/units.py.
-    working_unit: str = 'kg' 
+    working_unit: str = 'kg'
 
     # ALSO DRAW THE STRUCTURE DIAGRAM WHEN THE MODEL RUNS.
     # The structure diagram shows how the flows connect and the transfer
@@ -274,7 +274,7 @@ class DataParams:
     # it. What it is NOT is a recovery rate for vehicle electronics as a whole --
     # the domains left out are simply not in the answer.
     # SAFE TO CHANGE: yes. Names must match upstream: Wiring, Motors, PCB, Sensors.
-    groups: tuple[str, ...] = ('Wiring', 'Motors') 
+    groups: tuple[str, ...] = ('Wiring', 'Motors')
 
 
 @dataclass
@@ -360,7 +360,7 @@ class MonteCarloParams:
     # whose ranges contradict each other, which conditioning refuses. Note what
     # the second one means -- normalising a contradictory group does not
     # resolve the contradiction, it hides it.
-    sum_to_one: str = 'condition' 
+    sum_to_one: str = 'condition'
 
 
 @dataclass
