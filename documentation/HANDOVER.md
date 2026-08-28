@@ -38,7 +38,6 @@ document is for picking the work back up.
 | | 04_02 electronics | 04_01 car composition |
 |---|---|---|
 | case folder | `data_folder/bev_electronics` | `data_folder/carcomposition_mockup` |
-| plus | `bev_electronics_all_measured` — see below | |
 | covers | wiring and motors in BEVs | whole cars, five drivetrains |
 | finest resolution | **element** — Cu, Nd, Dy | **material** — calAHSS, battery |
 | years | 2030–2050 | 2040 |
@@ -50,12 +49,7 @@ document is for picking the work back up.
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
 suites on fixed fixtures (106 checks), then the pipeline and a mass balance.
 
-**`run.data_folder` currently points at `bev_electronics_all_measured`**, not
-at the original. That case is `bev_electronics` with all 22 residual rows
-turned into measured ones, so every group is conditioned rather than derived —
-built to check the conditioning path against real numbers. Its 22 converted
-rows are placeholders and say so in capitals; the other case is untouched and
-switching back is one line.
+**`run.data_folder` points at `bev_electronics`.** It has no residual rows: every coefficient is measured in its own right, which is what the user asked for on 2026-08-28. `bev_electronics_all_measured`, which existed to contrast a conditioned case against a residual one, was deleted the same day once that contrast no longer existed.
 
 Both case tables are **structurally finished**. `tools/tc_worklist.py` reports
 22 of 24 groups in the electronics case and 278 of 278 in the car composition
@@ -380,8 +374,9 @@ without saying so first.
   before a run rather than after — but only for groups that HAVE a residual row.
   Where every row is measured, conditioning enforces the constraint by
   weighting, so the same arithmetic is fine and refusing it would wrongly reject
-  a measured case. `bev_electronics_all_measured` sums to 1.34 out of
-  `F_collected` and is correct.
+  a measured case -- the deleted `bev_electronics_all_measured` summed to 1.34
+  out of `F_collected` and was correct, which is what the test now pins with a
+  fixture instead.
 - **Do not manufacture a second measurement.** Conditioning is worth having
   only where the extra range was measured *without going through* the rest of
   the group. Both shortcuts were tried and measured:
