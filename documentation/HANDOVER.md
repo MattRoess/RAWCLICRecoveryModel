@@ -1,30 +1,33 @@
 # Handover
 
-Current as of **2026-08-27**, commit `907d208`. Rewritten from the ground up on
+Current as of **2026-08-28**, commit `d8a1901`. Rewritten from the ground up on
 2026-08-21 and updated since; git has the older text.
 
-**What changed on 2026-08-26.** In the morning: the case workbooks gained
-dropdowns and a marked header row, `is_loss` was dropped in favour of `role`,
-and the sum-to-1 machinery was finished — a third rule, a check that says where
-the constraint pulls, a guard, and three tools. §2 has the rules, §5 the two
-traps.
+**What changed on 2026-08-28 — the flow itself.** The user's modification, which
+§4 had recorded as agreed in principle, is built. `F_loss_dismantling` was a
+terminal loss, so a fraction of every component was destroyed by someone with a
+screwdriver; dismantling sorts material, it does not destroy it. It was also
+redundant with `F_collected -> F_shredded` — "not dismantled" IS "goes to the
+shredder". Both edges are gone, replaced by one `F_not_dismantled` that flows on
+to the shredder at 1.0. One fewer coefficient per component, and the one left is
+answerable. §2 has the shape.
 
-In the afternoon, **DEFECTS.md was closed**. A sweep found six documents
-claiming things the code had stopped doing, including a setting commented "off
-by default" whose value was `True`; then 2.6, 2.7, 3.5, 3.7 and 3.8 were fixed,
-and 3.9 was found and fixed on the way — every Sankey this project had drawn
-was labelled `kt` while the numbers were `kg`. Every item in DEFECTS.md
-sections 2 and 3 is now fixed, built, or recorded as deliberately guarded
-rather than fixed, which is true of exactly one: the optimized half of 2.7.
+**No residual rows.** All 22 in `bev_electronics` are now measured in their own
+right, at the user's instruction: a derived coefficient is not a measurement and
+they did not want any. `bev_electronics_all_measured`, which existed only to
+contrast the two schemes, went the same day.
 
-Later the same day the work moved to making the coefficients fillable: the
-`filling_sheet` ranking was replaced with one that says what a measurement
-BUYS, a third case was built with no residual rows, and
-[FILLING_IN.md](FILLING_IN.md) was written so the next person can start typing
-numbers without reading anything longer. §4 has what is open.
+**§5 is guarded, not just written down.** Its three fixable traps — a
+`child_layer` that balances while being wrong, a residual that can be driven
+negative, a range that restates its own group — now fail or warn in an ordinary
+run. Six of the nine bullets there are conventions with nothing to fix.
 
-**No coefficient changed on any of it.** What the model does with numbers is
-finished; the numbers are not.
+**Dead code swept.** One unused function, nine unused imports, and four
+hand-typed copies of the resource key, now defined once. Four settings that
+looked unused are read through `getattr` and were left alone; §5 says which.
+
+**No coefficient became a measurement on any of it.** What the model does with
+numbers is finished; the numbers are not.
 
 **Read [RUNNING.md](RUNNING.md) first if you just want to run something.** This
 document is for picking the work back up.
@@ -47,27 +50,32 @@ document is for picking the work back up.
 | result rows | 600 | 4,117 |
 
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
-suites on fixed fixtures (106 checks), then the pipeline and a mass balance.
+suites on fixed fixtures (109 checks), then the pipeline and a mass balance.
 
-**`run.data_folder` points at `bev_electronics`.** It has no residual rows: every coefficient is measured in its own right, which is what the user asked for on 2026-08-28. `bev_electronics_all_measured`, which existed to contrast a conditioned case against a residual one, was deleted the same day once that contrast no longer existed.
+**`run.data_folder` points at `bev_electronics`.** It has **no residual rows**:
+every coefficient is measured in its own right. `bev_electronics_all_measured`,
+which existed to contrast a conditioned case against a residual one, was deleted
+on 2026-08-28 once that contrast no longer existed.
 
 Both case tables are **structurally finished**. `tools/tc_worklist.py` reports
-22 of 24 groups in the electronics case and 278 of 278 in the car composition
-one as *correct as they stand*, with no warnings on either. Nothing in the
-tables needs converting, rearranging or repairing. What they need is numbers —
-see §4.
+all 26 groups in the electronics case as *measured on every row*, and 278 of 278
+in the car composition one as correct as they stand, with no warnings on either.
+Nothing in the tables needs converting, rearranging or repairing. What they need
+is numbers — see §4.
 
 ### The one thing that matters most
 
 **Every transfer coefficient in this project is a placeholder I invented.**
 Not one is measured.
 
-| case | rows | invented outright | derived from those |
+| case | rows | invented outright | derived or definitional |
 |---|---|---|---|
-| `bev_electronics` | 52 | 24 `PLACEHOLDER (Claude, not data)` | 28 residuals and routing decisions |
+| `bev_electronics` | 52 | 44 `PLACEHOLDER (Claude, not data)` | 8 routing decisions and the hulk transfer |
 | `carcomposition_mockup` | 632 | 354 `MADE UP (Claude)` | 278 residuals |
 
-**The derived rows are not measurements either.** A residual is
+**The derived rows are not measurements either.** In the electronics case there
+are no residuals left, so its 44 placeholders are the whole table bar eight rows
+that route nothing or state a definition. A residual is
 `parent − Σ known children`, so it is arithmetic on the invented numbers beside
 it — which is why the headline above says every coefficient and means it. The
 split is worth stating only because the `source` column distinguishes them, and
@@ -260,66 +268,66 @@ existing figure and saved table there is keyed on it.
    it is not the same as how closely a coefficient tracks the answer, which is
    reported beside it as `influence`.
 
-   The difference decides what to do first. On the electronics case **2 rows of
-   24** carry 80% of the spread, not the 4 the influence ranking suggested; on
-   car composition, **12 of 354** rather than 88.
+   The difference decides what to do first. On the electronics case **3 rows of
+   44** carry 80% of the spread, and two of those three are the same
+   measurement — copper out of the shredder, seen from the recovered side and
+   the loss side. On car composition, **12 of 354** rather than the 88 the
+   influence ranking suggested.
 
-   Fill in `value`, `value_min`, `value_max` and — this is the part that is
-   easy to get wrong — **leave `is_residual` alone unless you have a second,
-   independent measurement for that group.** One measurement per group is
-   already handled exactly by the residual rule. §5 has the two ways of
-   pretending otherwise, both of which look like progress and are not.
-   `tools/tc_worklist.py` says which group is which and has blank columns for
-   an independent number and its source.
+   Fill in `value`, `value_min` and `value_max`.
+
+   **A caution that follows from having no residual rows.** 22 of the 26
+   electronics groups have exactly two members, and with no residual the
+   constraint leaves such a group ONE degree of freedom: both rows carry the
+   same information. Two consequences, one harmless and one not.
+
+   - Harmless: `filling_sheet.py` reports shares that sum past 100% — "measuring
+     all 44 would remove 200% of the spread" — because each row is credited with
+     the same variance. Read the ranking as an ordering, not as an accounting.
+   - Not harmless: **the second range in each of those pairs is not a
+     measurement.** It was written on 2026-08-28 by widening around the derived
+     value when the residual rows were converted, and it says so in `source`.
+     Until a real, independently measured range replaces it, the pair's width is
+     something nobody measured. §5 has why arithmetic cannot detect this and
+     only the `source` column can.
+
+   So: when you measure one side of a pair, measure the other side
+   independently or say plainly that you did not. `tools/tc_worklist.py` has
+   blank columns for an independent number and its source.
 2. **More years for 04_01**, if wanted — but check the memory arithmetic first:
    five drivetrains over five years is roughly 20,000 result rows, which at
    200,000 draws exceeds the 4 GB budget and would be refused.
 
-### Open, and agreed in principle: F_loss_dismantling is not a loss
+### Built 2026-08-28: F_loss_dismantling was not a loss
 
-**Raised by the user on 2026-08-27, argued through, not yet made.** Pick this
-up before anything else in the electronics case, because it changes the flow
-network and every coefficient leaving `F_collected`.
+Raised by the user on 2026-08-27, argued through, built the next day.
 
-Manual dismantling sorts material; it does not destroy it. A harness that is
-not pulled out is still in the hulk, and the hulk goes to the shredder. So a
-terminal `F_loss_dismantling` asserts a destruction that does not happen, and
-it writes the material off *and* denies it the chance to be recovered at
-shredding.
-
-There is also a redundancy: `F_collected -> F_shredded` and `F_collected ->
-F_loss_dismantling` name the same event — "not dismantled" IS "goes to the
-shredder". One of the two has to go.
-
-The shape agreed:
+Manual dismantling sorts material; it does not destroy it. A harness that is not
+pulled out is still in the hulk, and the hulk goes to the shredder. So a terminal
+`F_loss_dismantling` asserted a destruction that does not happen, and it wrote
+the material off **and** denied it the chance to be recovered at shredding —
+biasing recovery low. It was also redundant: `F_collected -> F_shredded` and
+`F_collected -> F_loss_dismantling` named one event twice.
 
     F_collected --> F_dismantled              (pulled out)
                 --> F_separated_electronics   (handed on)
                 --> F_not_dismantled          (left in the car)
                             |
                             +--> F_shredded  = 1.0   definitional
-                                      +--> F_recovered_shredder
-                                      +--> F_loss_shredding
 
-Four edits: rename `F_loss_dismantling` to `F_not_dismantled`; its `role`
-becomes `intermediate`; add `F_not_dismantled -> F_shredded` at 1.0 with no
-range, because it is definitional rather than measured; and **remove
-`F_collected -> F_shredded`**, or the redundancy comes straight back.
+Four edits: rename; `role` loss to intermediate; add the definitional transfer;
+remove `F_collected -> F_shredded`. The two coefficients on the removed edges
+became **one** — the fraction of harnesses not removed — which is a question
+somebody can answer, where "how much is lost during dismantling" was not.
 
-The two coefficients on those removed edges become **one** —
-`F_collected -> F_not_dismantled`, the fraction of harnesses not removed. That
-is a question somebody can actually answer, where "how much is lost during
-dismantling" was not.
+`tools/make_skeleton.py`'s `DEFAULT_PROCESSES` wrote the old network, so every
+new case would have resurrected it. It writes this one now, with the argument
+beside it.
 
-**A caution for whoever writes this up.** The first version of this argument
-quoted 83 kt and "25% of what is recovered" from the model. Those figures come
-from placeholder coefficients, so they measure the guesses rather than
-anything about recycling, and the user said so. The argument is structural and
-needs no numbers: it holds whatever the real coefficient turns out to be.
-
-Still undecided: `F_separated_electronics` carries 0 for both groups. Whether
-it is a real route waiting for a number, or should go as well, was asked and
-not answered.
+**`F_separated_electronics` stays**, at the user's decision on 2026-08-28: it is
+a real handoff to a separate recovery stream with its own coefficients, and it
+carries 0 here only because nobody has measured it yet. It is not a candidate
+for removal.
 
 ### Not in this repository
 
@@ -394,6 +402,12 @@ without saying so first.
   having.** Two ranges that restate each other agree perfectly and keep nearly
   all of it. Effective sample size says whether ranges are *consistent*, never
   whether they are *independent*. Only the `source` column says that.
+- **Four settings are read through `getattr` and look unused to any search.**
+  `data.product`, `data.inflow_flow_id`, `data.material_suffix` and
+  `data.group_marker` appear zero times at their point of use, because
+  `src/source.py` reaches them through its `FALLBACK` table. Deleting them in a
+  dead-code sweep would break every case without a `source` table, silently, and
+  a 2026-08-28 sweep came within one step of doing exactly that.
 - **Memory is `result rows × draws × 8 bytes`**, checked before allocating.
   Chunking bounds the working memory but not the result, so the levers are
   `run.years` and the case's `draws`.
