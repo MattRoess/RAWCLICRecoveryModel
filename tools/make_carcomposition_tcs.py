@@ -86,23 +86,49 @@ def yields(material: str) -> tuple[float, float]:
     return 0.60, 0.35
 
 
+def widened(value: float) -> tuple[float, float]:
+    """
+    A placeholder range around a value: a quarter of the way toward each bound.
+
+    Not a measurement, and it says so in `source`. It exists because this table
+    carries NO RESIDUAL ROWS -- every coefficient is stated in its own right --
+    so every row needs a range for conditioning to have anything to work with.
+    """
+    return round(0.75 * value, 6), round(value + 0.25 * (1.0 - value), 6)
+
+
 def component_rows(product: str, component: str) -> list[dict]:
-    """Dismantling: what is pulled, what is lost doing it, what stays in the hulk."""
+    """
+    Dismantling: what is pulled out, and what is left in the car.
+
+    THERE IS NO LOSS HERE. Dismantling SORTS material; it does not destroy it.
+    A component that is not pulled out is still in the hulk and the hulk goes to
+    the shredder, so a terminal `ELV_loss_dismantling` asserted a destruction
+    that does not happen -- and it wrote the material off AND denied it the
+    chance to be recovered at shredding. It was also redundant with
+    `ELV_collected -> ELV_shredded`: "not dismantled" IS "goes to the shredder".
+
+    The two coefficients on those edges are one: the fraction not pulled out.
+    """
     pulled = DISMANTLING.get(component, DISMANTLING_DEFAULT)
-    lost = 0.03
+    left = round(1.0 - pulled, 6)
     base = dict(Input_FlowID='ELV_collected', Input_layer='product',
                 Input_layer_key=product, TC_target_layer='component',
                 TC_target_key=component, process='dismantling', technology='manual')
+    low, high = widened(left)
     return [
         {**base, 'Output_FlowID': 'ELV_dismantled', 'value': pulled,
          'value_min': max(0.0, pulled - 0.15), 'value_max': min(1.0, pulled + 0.15),
          'is_residual': '', 'source': f'{MADE_UP}: {component} out of a {product}'},
-        {**base, 'Output_FlowID': 'ELV_loss_dismantling', 'value': lost,
-         'value_min': 0.0, 'value_max': 0.15, 'is_residual': '',
-         'source': f'{MADE_UP}: {component} lost while dismantling a {product}'},
-        {**base, 'Output_FlowID': 'ELV_shredded', 'value': round(1 - pulled - lost, 6),
-         'value_min': '', 'value_max': '', 'is_residual': '1',
-         'source': 'derived: what is neither pulled nor lost stays in the hulk'},
+        {**base, 'Output_FlowID': 'ELV_not_dismantled', 'value': left,
+         'value_min': low, 'value_max': high, 'is_residual': '',
+         'source': f'{MADE_UP}: {component} left in a {product} and shredded with it'},
+        {**base, 'Output_FlowID': 'ELV_shredded', 'value': 1.0,
+         'value_min': '', 'value_max': '', 'is_residual': '',
+         'process': 'hulk_transfer', 'technology': 'definitional',
+         'Input_FlowID': 'ELV_not_dismantled',
+         'source': ('definitional: a hulk that was not dismantled goes to the '
+                    'shredder. Not measured -- there is nowhere else for it to go.')},
     ]
 
 
@@ -123,39 +149,15 @@ def material_rows(component: str, material: str) -> list[dict]:
              'value_min': max(0.0, keep - 0.20), 'value_max': min(1.0, keep + 0.10),
              'is_residual': '', 'source': f'{MADE_UP}: {material} in {process}'},
             {**base, 'Output_FlowID': loss_flow, 'value': round(1 - keep, 6),
-             'value_min': '', 'value_max': '', 'is_residual': '1',
-             'source': 'derived: what is not recovered is lost'},
+             'value_min': widened(round(1 - keep, 6))[0],
+             'value_max': widened(round(1 - keep, 6))[1], 'is_residual': '',
+             'source': f'{MADE_UP}: {material} lost in {process}'},
         ]
     return rows
 
 
 from src.mass_balance import RESOURCE
 
-
-def cap_maxima(tcs: pd.DataFrame) -> int:
-    """
-    Stop a resource's sampled maxima summing past 1.
-
-    Every non-residual coefficient of one resource can be drawn high at once, and
-    then the residual is 1 minus something greater than 1 -- negative mass, which
-    balances perfectly and is nonsense. Modes and relative widths are preserved;
-    only the headroom above the modes is shared out.
-    """
-    residual = tcs['is_residual'].astype(str).str.strip() == '1'
-    changed = 0
-    for _, index in tcs.groupby(RESOURCE).groups.items():
-        free = index[~residual.loc[index] & (tcs.loc[index, 'value_max'] != '')]
-        if not len(free):
-            continue
-        v = pd.to_numeric(tcs.loc[free, 'value'])
-        m = pd.to_numeric(tcs.loc[free, 'value_max'])
-        if m.sum() <= 1.0 + 1e-12:
-            continue
-        headroom, spread = 1.0 - v.sum(), m.sum() - v.sum()
-        factor = 0.0 if spread <= 0 else max(0.0, min(1.0, headroom / spread))
-        tcs.loc[free, 'value_max'] = (v + (m - v) * factor).round(6)
-        changed += len(free)
-    return changed
 
 
 def build(composition: pd.DataFrame) -> pd.DataFrame:
@@ -176,10 +178,13 @@ def build(composition: pd.DataFrame) -> pd.DataFrame:
     for component, material in sorted(set(map(tuple, pairs.to_numpy()))):
         rows += material_rows(component, material)
 
+    # The definitional hulk transfer is written per (product, component), the
+    # same keying every other component row uses, so nothing here is a
+    # duplicate. The guard stays because a future edit to component_rows that
+    # emitted the same row twice would otherwise double a coefficient silently.
     tcs = pd.DataFrame(rows, columns=COLUMNS)
-    capped = cap_maxima(tcs)
-    print(f'  capped value_max on {capped} row(s) so no resource can sum past 1')
-    return tcs
+    return tcs.drop_duplicates(subset=[c for c in COLUMNS if c != 'source'],
+                               ignore_index=True)
 
 
 def hand_written(existing) -> "pd.DataFrame":

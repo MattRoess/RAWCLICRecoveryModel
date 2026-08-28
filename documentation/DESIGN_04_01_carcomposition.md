@@ -196,8 +196,8 @@ Network:
 
 ```
 ELV_collected → ELV_dismantled        dismantling, component-keyed
-              → ELV_shredded          (the residual: what stays in the hulk)
-              → ELV_loss_dismantling  loss
+              → ELV_not_dismantled    what is left in the car
+ELV_not_dismantled → ELV_shredded     = 1.0, definitional
 ELV_dismantled → ELV_reused           reuse_sorting, material-keyed, recovered
                → ELV_loss_dismantled  loss
 ELV_shredded   → ELV_ferrous          separation, material-keyed, recovered
@@ -304,3 +304,22 @@ dismantled" *and* "up to 18% lost", which forces the residual to −18%. The Mon
 Carlo caught it as 153,135 negative residuals and a negative 2.5th percentile on
 `ELV_loss_ASR`. Capped so each resource's maxima sum to at most 1, preserving the
 modes and the relative widths; the affected rows say so in `source`.
+
+## Corrected 2026-08-28: there is no loss at dismantling
+
+The network above originally sent part of every component to a terminal
+`ELV_loss_dismantling`, and separately to `ELV_shredded` as the residual. Both
+were wrong in the same way the electronics case was: dismantling sorts material
+rather than destroying it, and "not dismantled" and "goes to the shredder" are
+one event, not two. The two coefficients became one — the fraction left in the
+car — and recovery moved from 79.2% to 82.8% of collected mass.
+
+The table also carries **no residual rows** now. Every coefficient is stated in
+its own right and the sum-to-1 constraint is enforced by conditioning. The cap
+`make_carcomposition_tcs.py` used to apply to the maxima existed only to stop a
+residual going negative; with none, the check lives in `src/validate_inputs.py`,
+where a hand-edited table meets it too.
+
+**These are still invented numbers.** HANDOVER.md §5 has why a second range in a
+two-row group carries no information the first does not, which is what most of
+these groups are.

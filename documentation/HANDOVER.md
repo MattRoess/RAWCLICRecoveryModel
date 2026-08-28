@@ -12,10 +12,14 @@ shredder". Both edges are gone, replaced by one `F_not_dismantled` that flows on
 to the shredder at 1.0. One fewer coefficient per component, and the one left is
 answerable. §2 has the shape.
 
-**No residual rows.** All 22 in `bev_electronics` are now measured in their own
-right, at the user's instruction: a derived coefficient is not a measurement and
-they did not want any. `bev_electronics_all_measured`, which existed only to
-contrast the two schemes, went the same day.
+**No residual rows anywhere.** All 22 in `bev_electronics` and all 278 in
+`carcomposition_mockup` are now measured in their own right, at the user's
+instruction: a derived coefficient is not a measurement and they did not want
+any. `bev_electronics_all_measured`, which existed only to contrast the two
+schemes, went the same day. Both cases carry the corrected dismantling network,
+and both generators write it -- `make_skeleton.py`'s template and
+`make_carcomposition_tcs.py` -- so neither the loss edge nor a residual row can
+come back through a rebuild.
 
 **§5 is guarded, not just written down.** Its three fixable traps — a
 `child_layer` that balances while being wrong, a residual that can be driven
@@ -46,8 +50,9 @@ document is for picking the work back up.
 | years | 2030–2050 | 2040 |
 | draws | 200,000 | 50,000 |
 | mass in | 640.7 kt (2050) | 13,863 kt (2040) |
-| mass balance | 2.8e-16 | 4.4e-11 |
+| mass balance | 2.8e-16 | 4.7e-11 |
 | result rows | 600 | 4,117 |
+| residual rows | none | none |
 
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
 suites on fixed fixtures (109 checks), then the pipeline and a mass balance.
@@ -71,11 +76,11 @@ Not one is measured.
 | case | rows | invented outright | derived or definitional |
 |---|---|---|---|
 | `bev_electronics` | 52 | 44 `PLACEHOLDER (Claude, not data)` | 8 routing decisions and the hulk transfer |
-| `carcomposition_mockup` | 632 | 354 `MADE UP (Claude)` | 278 residuals |
+| `carcomposition_mockup` | 632 | 532 `MADE UP (Claude)` | 100 definitional hulk transfers |
 
-**The derived rows are not measurements either.** In the electronics case there
-are no residuals left, so its 44 placeholders are the whole table bar eight rows
-that route nothing or state a definition. A residual is
+**Neither table has a residual row left.** What remains beside the placeholders
+states a definition (a hulk that was not dismantled goes to the shredder, at 1)
+or a routing decision (a flow that does not apply here, at 0). A residual is
 `parent − Σ known children`, so it is arithmetic on the invented numbers beside
 it — which is why the headline above says every coefficient and means it. The
 split is worth stating only because the `source` column distinguishes them, and
@@ -298,7 +303,7 @@ existing figure and saved table there is keyed on it.
    five drivetrains over five years is roughly 20,000 result rows, which at
    200,000 draws exceeds the 4 GB budget and would be refused.
 
-### Built 2026-08-28: F_loss_dismantling was not a loss
+### Built 2026-08-28: the dismantling loss was not a loss, in either case
 
 Raised by the user on 2026-08-27, argued through, built the next day.
 
@@ -320,9 +325,16 @@ remove `F_collected -> F_shredded`. The two coefficients on the removed edges
 became **one** — the fraction of harnesses not removed — which is a question
 somebody can answer, where "how much is lost during dismantling" was not.
 
-`tools/make_skeleton.py`'s `DEFAULT_PROCESSES` wrote the old network, so every
-new case would have resurrected it. It writes this one now, with the argument
-beside it.
+**Both cases.** `carcomposition_mockup` carried exactly the same defect --
+`ELV_loss_dismantling` terminal, and `ELV_collected -> ELV_shredded` naming the
+same event -- and was corrected the same way. Recovery there moved from 79.2% to
+82.8% of collected mass, which is the material that used to be destroyed at
+dismantling now reaching the shredder.
+
+Both generators wrote the old network, so a rebuild would have resurrected it:
+`make_skeleton.py`'s `DEFAULT_PROCESSES` and `make_carcomposition_tcs.py`'s row
+builders. Both write the corrected one now, with the argument beside it, and
+neither emits a residual row.
 
 **`F_separated_electronics` stays**, at the user's decision on 2026-08-28: it is
 a real handoff to a separate recovery stream with its own coefficients, and it
