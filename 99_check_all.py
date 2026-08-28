@@ -53,7 +53,6 @@ ensure_venv()
 import glob
 import subprocess
 
-import numpy as np
 import pandas as pd
 
 from src.params_schema import ParameterError, current

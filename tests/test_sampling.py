@@ -286,7 +286,6 @@ def test_basic_test_groups_are_not_constrained() -> None:
 
 def test_constrained_groups_sum_to_one_on_every_draw() -> None:
     """After sampling, each constrained group must total exactly 1."""
-    from src.mass_balance import RESOURCE
     tcs = _tcs('template')
     values, report = sample(tcs, draws=2000)
 

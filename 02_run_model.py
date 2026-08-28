@@ -41,7 +41,7 @@ from src.model_run import solve_and_draw
 from src.monte_carlo import MemoryBudgetExceeded
 from src.params_schema import ParameterError, current
 from src.sampling import SamplingError
-from src.upstream import UpstreamError, load as refresh
+from src.upstream import UpstreamError
 from src.plot_structure import choose, find_cases
 from src.validate_inputs import InputDataError
 

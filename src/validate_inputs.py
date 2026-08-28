@@ -210,10 +210,7 @@ def _check_coefficients_present(tcs: pd.DataFrame) -> list[Problem]:
 
 
 
-# The key that identifies one resource: everything that is transferred as a
-# unit, split across the output flows it reaches. MODEL_MECHANICS.md section 4.
-RESOURCE = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
-            'TC_target_layer', 'TC_target_key']
+from src.mass_balance import RESOURCE
 
 
 def _numeric(tcs: pd.DataFrame):

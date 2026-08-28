@@ -274,6 +274,10 @@ def build(case: str, composition: pd.DataFrame | None = None) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=COLUMNS)
 
 
+# NOT src.mass_balance.RESOURCE, and deliberately so: this carries
+# Output_FlowID, which identifies one ROW. RESOURCE leaves it out, because a
+# resource is the thing split ACROSS the output flows. Merging needs to match
+# rows; totalling needs to match resources.
 KEY = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
        'Output_FlowID', 'TC_target_layer', 'TC_target_key']
 

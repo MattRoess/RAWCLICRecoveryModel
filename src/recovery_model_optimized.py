@@ -14,7 +14,7 @@ import networkx as nx
 from itertools import product
 
 from src.process_join import (INFLOW_POSITION, LAYERS, TC_POSITION, process_pairs)
-from src.rest import REST, add_rest
+from src.rest import add_rest
 from src.selection import chosen_scenario, chosen_years, is_year_match as _is_year_match, select
 from src.tc_precedence import apply_precedence
 from src.validate_inputs import validate

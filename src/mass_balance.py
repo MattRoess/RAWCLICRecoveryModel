@@ -22,7 +22,12 @@ TOLERANCE = 1e-9
 
 # A resource is identified by where it comes from and what it becomes.
 # Output_FlowID is deliberately absent: that is the axis we sum over.
-RESOURCE = ['Input_FlowID', 'Input_layer', 'Input_layer_key', 'TC_target_layer', 'TC_target_key']
+# THE key: everything transferred as a unit, split across the output flows it
+# reaches. Grouping by anything else produces numbers that are not quantities
+# (MODEL_MECHANICS.md section 4), which is why this is defined once and imported
+# rather than retyped -- it had been written out five times.
+RESOURCE = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
+            'TC_target_layer', 'TC_target_key']
 
 
 def check_transfer_coefficients(tcs: pd.DataFrame) -> pd.DataFrame:

@@ -42,7 +42,7 @@ import numpy as np
 import pandas as pd
 
 
-from src.monte_carlo import Structure, solve_draws
+from src.monte_carlo import solve_draws
 from src.recovery_model_optimized import RecoveryModelOptimized
 
 LAYERS = ['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']

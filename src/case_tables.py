@@ -60,9 +60,6 @@ def csv_path(case: str, table: str) -> str:
     return os.path.join(case, 'input_data', f'{table}.csv')
 
 
-def has_workbook(case: str) -> bool:
-    return os.path.exists(workbook_path(case))
-
 
 def _sheet_names(path: str) -> list[str]:
     from openpyxl import load_workbook

@@ -9,11 +9,11 @@ import numpy as np
 import pandas as pd
 import os
 from scipy.sparse import coo_array, csc_array, csr_array, eye_array, linalg
-from typing import Tuple, List
+from typing import List
 from dataclasses import dataclass
 from itertools import product
 
-from src.rest import REST, add_rest
+from src.rest import add_rest
 from src.selection import chosen_scenario, chosen_years, is_year_match, select
 from src.tc_precedence import apply_precedence
 from src.validate_inputs import InputDataError, validate

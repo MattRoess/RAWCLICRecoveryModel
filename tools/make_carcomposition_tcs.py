@@ -129,8 +129,7 @@ def material_rows(component: str, material: str) -> list[dict]:
     return rows
 
 
-RESOURCE = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
-            'TC_target_layer', 'TC_target_key']
+from src.mass_balance import RESOURCE
 
 
 def cap_maxima(tcs: pd.DataFrame) -> int:

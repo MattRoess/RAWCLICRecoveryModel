@@ -318,8 +318,7 @@ def test_a_residual_that_could_go_negative_is_refused() -> None:
     """
     from src.validate_inputs import check
 
-    KEY = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
-           'TC_target_layer', 'TC_target_key']
+    from src.mass_balance import RESOURCE as KEY
     # reference/template rather than basic_test: this needs a resource reaching
     # THREE flows. With only two, one partner capped at 1 sums to exactly 1 and
     # the residual is pinned at 0 -- tight, but not negative and not a defect.
