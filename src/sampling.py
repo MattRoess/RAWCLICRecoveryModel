@@ -111,6 +111,29 @@ MAX_COLUMN = 'value_max'
 # group -- normally the loss flow. See `enforce_sum_to_one`.
 RESIDUAL_COLUMN = 'is_residual'
 
+# How close a stated range has to sit to the one the constraint already implies
+# before it counts as the same number rather than a second opinion. The bounds
+# are written to two or three decimals, so this is loose on purpose.
+SAME_AS_IMPLIED = 5e-3
+
+
+def implied(low, mode, high, others):
+    """
+    What the sum-to-1 constraint alone says about one row, given the rest.
+
+    Reversed at the ends: the row is largest when the others are smallest. Used
+    both to report what a derived row would be and to recognise a range that
+    merely restates the others -- filling that in counts one measurement twice,
+    so the target becomes f(x)*f(x) rather than f(x).
+
+    Lives here rather than in the tool that first needed it, so the validator
+    and tools/tc_worklist.py cannot drift apart about what "already implied"
+    means.
+    """
+    return (1.0 - high[others].sum(),
+            1.0 - mode[others].sum(),
+            1.0 - low[others].sum())
+
 
 class SamplingError(ValueError):
     """Raised when a coefficient's three numbers cannot describe a distribution."""

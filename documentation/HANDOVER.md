@@ -360,7 +360,11 @@ without saying so first.
 
 ## 5. Things that will bite you
 
-- **Getting `child_layer` wrong does not fail.** It balances and it plots. §2.
+- **Getting `child_layer` wrong does not fail** on its own. It balances and it
+  plots. §2. **Guarded since 2026-08-28**: a process keyed at a layer the
+  composition never fills is refused, naming `child_layer` as the likely cause.
+  That is the observable symptom, and it is checkable where the setting alone
+  is not — nothing in the source table knows what the upstream files contain.
 - **A coarse TC scales the resource's whole subtree**; a fine one does not.
   All TCs writing into one output flow must target the same layer, or nesting
   breaks — measured at 82 Mg on a shared loss flow. `01_check_inputs.py` checks
@@ -372,8 +376,12 @@ without saying so first.
   goes negative on extreme draws and the model produces negative mass — which
   balances perfectly and is nonsense. It happened: 17 of 278 resources in the
   first 04_01 table, surfacing as a negative 2.5th percentile on `ELV_loss_ASR`.
-  `make_carcomposition_tcs.py` caps them; a hand-edited table can reintroduce it,
-  and the Monte Carlo will report it as `NEGATIVE RESIDUALS`.
+  `make_carcomposition_tcs.py` caps them. **Refused at input since 2026-08-28**,
+  before a run rather than after — but only for groups that HAVE a residual row.
+  Where every row is measured, conditioning enforces the constraint by
+  weighting, so the same arithmetic is fine and refusing it would wrongly reject
+  a measured case. `bev_electronics_all_measured` sums to 1.34 out of
+  `F_collected` and is correct.
 - **Do not manufacture a second measurement.** Conditioning is worth having
   only where the extra range was measured *without going through* the rest of
   the group. Both shortcuts were tried and measured:

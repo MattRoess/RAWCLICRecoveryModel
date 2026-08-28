@@ -243,9 +243,9 @@ def test_composition_closes_on_basic_test() -> None:
             f'off by {worst:g}')
 
 
-def _case_with(**edits):
+def _case_with(case: str = None, **edits):
     """
-    A throwaway copy of basic_test with one table edited.
+    A throwaway copy of a committed case with one table edited.
 
     Returns the folder. Used to prove the loader rejects what it is supposed to
     reject, without committing a data folder for every possible mistake.
@@ -254,7 +254,8 @@ def _case_with(**edits):
     import tempfile
 
     folder = tempfile.mkdtemp()
-    shutil.copytree(f'{CASE}/input_data', f'{folder}/input_data', dirs_exist_ok=True)
+    shutil.copytree(f'{case or CASE}/input_data', f'{folder}/input_data',
+                    dirs_exist_ok=True)
     for name, edit in edits.items():
         path = f'{folder}/input_data/{name.replace("_", ".")}'
         frame = pd.read_csv(path, keep_default_na=False, na_values=[])
@@ -272,6 +273,114 @@ def test_validation_accepts_every_committed_case() -> None:
         assert not errors, (
             f'{folder} does not pass validation:\n'
             + '\n'.join(str(problem) for problem in errors))
+
+
+
+
+def test_a_process_keyed_at_an_empty_layer_is_refused() -> None:
+    """
+    HANDOVER.md section 5 -- the `child_layer` trap.
+
+    Declaring the wrong child layer does not fail anywhere else: the reader
+    files materials where elements belong, every element-keyed coefficient
+    matches nothing, and the run still balances and still plots. The observable
+    symptom is a process keyed at a layer the composition never fills, so that
+    is what is checked -- built here by removing the element rows rather than
+    by mis-declaring `child_layer`, so the test needs no upstream data.
+    """
+    from src.validate_inputs import check
+
+    folder = _case_with(composition_csv=lambda f: f[f['Layer 4'] == ''])
+    pd.DataFrame([
+        dict(Input_FlowID='F1', Output_FlowID='F2', process='sorting',
+             technology='manual', keyed_at='element', role='recovered'),
+    ]).to_csv(f'{folder}/input_data/processes.csv', index=False)
+
+    keyed = [p for p in check(folder)
+             if p.severity == 'ERROR' and 'keyed at the' in p.message]
+    assert keyed, 'a process keyed at a layer nothing fills was accepted'
+    assert 'child_layer' in keyed[0].message, (
+        'the error does not name the setting that causes it: ' + keyed[0].message)
+
+
+def test_a_residual_that_could_go_negative_is_refused() -> None:
+    """
+    HANDOVER.md section 5 -- negative mass that still balances.
+
+    A residual is `1 - the others`, so if the others can all be drawn high at
+    once and sum past 1, the residual goes negative. It happened on 17 of 278
+    resources in the first 04_01 table and was visible only afterwards, as a
+    negative 2.5th percentile on a loss flow.
+
+    The same arithmetic is FINE without a residual row -- conditioning enforces
+    the constraint by weighting -- so the second half of this test insists the
+    check stays quiet there. Refusing it would wrongly reject a measured case.
+    """
+    from src.validate_inputs import check
+
+    KEY = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
+           'TC_target_layer', 'TC_target_key']
+    # reference/template rather than basic_test: this needs a resource reaching
+    # THREE flows. With only two, one partner capped at 1 sums to exactly 1 and
+    # the residual is pinned at 0 -- tight, but not negative and not a defect.
+    TEMPLATE = 'data_folder/reference/template' 
+
+    def widen(frame, residual: bool):
+        frame = frame.copy()
+        # Text, not floats: a residual row carries a blank bound, and a float
+        # column will not take one.
+        frame['value_min'] = frame['value'].astype(str)
+        frame['value_max'] = frame['value'].astype(str)
+        frame['is_residual'] = ''
+        # The first group that actually splits: a resource reaching one flow
+        # has no partners to sum past 1 with.
+        sizes = frame.groupby(KEY, dropna=False).size()
+        split = [name for name, count in sizes.items() if count > 1]
+        assert split, 'fixture has no group with more than one row'
+        group = frame.index[(frame[KEY] == pd.Series(split[0], index=KEY)).all(axis=1)]
+        frame.loc[group[1:], 'value_max'] = '1.0'
+        if residual:
+            frame.loc[group[0], 'is_residual'] = '1'
+            frame.loc[group[0], ['value_min', 'value_max']] = ''
+        return frame
+
+    found = [p for p in check(_case_with(TCs_csv=lambda f: widen(f, True), case=TEMPLATE))
+             if p.severity == 'ERROR' and 'negative mass' in p.message]
+    assert found, 'a residual that can be driven negative was accepted'
+
+    quiet = [p for p in check(_case_with(TCs_csv=lambda f: widen(f, False), case=TEMPLATE))
+             if 'negative mass' in p.message]
+    assert not quiet, (
+        'the same maxima were refused without a residual row, where conditioning '
+        'handles them: ' + str(quiet[0]))
+
+
+def test_a_range_restating_its_own_group_is_flagged() -> None:
+    """
+    HANDOVER.md section 5 -- one measurement counted twice.
+
+    `1 - the rest of the group` looks like a second opinion and is not: the
+    target becomes f(x)*f(x) and the answer narrows for no reason.
+
+    Checked against `reference/template`, whose loss rows are exactly this --
+    a real, documented instance rather than a fixture built to be caught. It
+    must stay a WARNING: arithmetic cannot tell it from a genuine second
+    measurement, only the `source` column can, so an error here would refuse
+    tables that are merely unproven.
+    """
+    from src.validate_inputs import check
+
+    flagged = [p for p in check('data_folder/reference/template')
+               if 'already implies' in p.message]
+    assert flagged, ("reference/template's loss rows restate their own groups, "
+                     'and nothing said so')
+    assert all(p.severity == 'WARNING' for p in flagged), (
+        'this must warn, not refuse -- only the source column can tell it from '
+        'a real second measurement')
+
+    # And it must not fire where the ranges are genuinely independent.
+    assert not [p for p in check(CASE) if 'already implies' in p.message], \
+        'basic_test was flagged, so the check does not distinguish anything'
 
 
 def test_validation_rejects_unknown_keys() -> None:

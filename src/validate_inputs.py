@@ -209,6 +209,156 @@ def _check_coefficients_present(tcs: pd.DataFrame) -> list[Problem]:
         f"value, and value_min/value_max if the coefficient is uncertain.")]
 
 
+
+# The key that identifies one resource: everything that is transferred as a
+# unit, split across the output flows it reaches. MODEL_MECHANICS.md section 4.
+RESOURCE = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
+            'TC_target_layer', 'TC_target_key']
+
+
+def _numeric(tcs: pd.DataFrame):
+    """value, value_min, value_max as floats, bounds falling back to the mode."""
+    mode = pd.to_numeric(tcs['value'], errors='coerce')
+    low = pd.to_numeric(tcs.get('value_min'), errors='coerce') if 'value_min' in tcs else mode
+    high = pd.to_numeric(tcs.get('value_max'), errors='coerce') if 'value_max' in tcs else mode
+    return low.fillna(mode), mode, high.fillna(mode)
+
+
+def _is_residual(tcs: pd.DataFrame):
+    from src.sampling import RESIDUAL_COLUMN
+    if RESIDUAL_COLUMN not in tcs.columns:
+        return pd.Series(False, index=tcs.index)
+    return tcs[RESIDUAL_COLUMN].astype(str).str.strip().isin(('1', '1.0', 'True', 'true'))
+
+
+def _check_keyed_layers(processes: pd.DataFrame,
+                        composition: pd.DataFrame) -> list[Problem]:
+    """
+    Every layer a process is keyed at must actually hold resources.
+
+    THIS IS THE `child_layer` GUARD. Declaring the wrong one does not fail
+    anywhere else: the reader files 04_01's materials at Layer 4 under an
+    invented placeholder, every element-keyed coefficient then matches nothing,
+    and the run still balances and still plots. The mass is right and the
+    answer is wrong.
+
+    It cannot be checked from `source.csv` alone -- nothing there knows what the
+    upstream files contain. It CAN be checked here: a process keyed at a layer
+    the composition never fills can never fire, so either the process names the
+    wrong layer or the case declares the wrong `child_layer`.
+    """
+    if processes is None or 'keyed_at' not in processes.columns:
+        return []
+
+    problems = []
+    for layer in sorted({str(value).strip() for value in processes['keyed_at']
+                         if str(value).strip()}):
+        if layer not in LAYER_NAMES:
+            continue                      # named elsewhere as an unknown layer
+        column = LAYERS[LAYER_NAMES.index(layer)]
+        if (composition[column] != '').any():
+            continue
+        filled = [name for name, col in zip(LAYER_NAMES, LAYERS)
+                  if (composition[col] != '').any()]
+        rows = int((processes['keyed_at'].astype(str).str.strip() == layer).sum())
+        problems.append(Problem(
+            'ERROR', '-',
+            f"processes: {rows} process(es) are keyed at the {layer} layer, but "
+            f"nothing in this case's composition sits there, so not one of their "
+            f"coefficients can ever fire.\n"
+            f"          The composition fills: {', '.join(filled) or 'nothing'}.\n"
+            f"          Either those processes name the wrong layer, or the case "
+            f"declares the wrong `child_layer` in its source table -- which does "
+            f"not fail on its own, and leaves a run that balances while being wrong."))
+    return problems
+
+
+def _check_residual_headroom(tcs: pd.DataFrame) -> list[Problem]:
+    """
+    A residual row must not be able to go negative.
+
+    A residual is `1 - the others`, so if the others can all be drawn high at
+    once and sum past 1, the residual goes NEGATIVE -- negative mass, which
+    balances perfectly and is nonsense. It happened: 17 of 278 resources in the
+    first 04_01 table, surfacing only afterwards as a negative 2.5th percentile.
+
+    ONLY FOR GROUPS THAT HAVE A RESIDUAL ROW. Where every row is measured the
+    constraint is enforced by conditioning, which handles maxima summing past 1
+    by weighting -- so the same arithmetic is perfectly fine there, and
+    refusing it would wrongly reject a conditioned case.
+    """
+    if not {'value_min', 'value_max'}.issubset(tcs.columns):
+        return []
+
+    low, mode, high = _numeric(tcs)
+    residual = _is_residual(tcs)
+    problems = []
+    for name, rows in tcs.groupby(RESOURCE, dropna=False).groups.items():
+        rows = pd.Index(rows)
+        if not residual[rows].any():
+            continue
+        others = rows[~residual[rows]]
+        total = float(high[others].sum())
+        if total <= 1.0 + 1e-9:
+            continue
+        worst = 1.0 - total
+        problems.append(Problem(
+            'ERROR', '-',
+            f"TCs: the coefficients of {name[4]!r} out of {name[0]} can sum to "
+            f"{total:.4g} at their maxima, but one of them is derived as the "
+            f"residual.\n"
+            f"          On a draw near those maxima the residual becomes "
+            f"{worst:+.4g} -- negative mass, which still balances.\n"
+            f"          Lower the maxima so they sum to at most 1, or measure "
+            f"the residual row too so the group is conditioned instead."))
+    return problems
+
+
+def _check_reflected(tcs: pd.DataFrame) -> list[Problem]:
+    """
+    A range that merely restates what the rest of its group already implies.
+
+    Writing `1 - the rest of the group` into a row looks like a second
+    measurement and is not: it counts the first one twice, so the target
+    becomes f(x)*f(x) rather than f(x) and the answer narrows by about a fifth
+    for no reason. Arithmetic cannot tell it from a genuine second opinion --
+    only the `source` column can -- so this is a warning, not a refusal.
+    """
+    if not {'value_min', 'value_max'}.issubset(tcs.columns):
+        return []
+    import numpy as np
+    from src.sampling import SAME_AS_IMPLIED, implied
+
+    low, mode, high = _numeric(tcs)
+    residual = _is_residual(tcs)
+    problems = []
+    for name, rows in tcs.groupby(RESOURCE, dropna=False).groups.items():
+        rows = pd.Index(rows)
+        if residual[rows].any() or abs(float(mode[rows].sum()) - 1.0) > 1e-9:
+            continue                       # derived on purpose, or unconstrained
+        l, m, h = low[rows].to_numpy(), mode[rows].to_numpy(), high[rows].to_numpy()
+        free = np.flatnonzero(h - l > 0)
+        if len(free) < 2:
+            continue                       # handled by src/sampling.py itself
+        for position in free:
+            others = np.setdiff1d(np.arange(len(rows)), position)
+            want = implied(l, m, h, others)
+            got = (l[position], m[position], h[position])
+            if all(abs(a - b) <= SAME_AS_IMPLIED for a, b in zip(want, got)):
+                flow = tcs.loc[rows[position], 'Output_FlowID']
+                problems.append(Problem(
+                    'WARNING', '-',
+                    f"TCs: {name[4]!r} -> {flow} states the range its own group "
+                    f"already implies ({want[0]:.3g}, {want[1]:.3g}, {want[2]:.3g}).\n"
+                    f"          That is one measurement counted twice, not a second "
+                    f"opinion: the target becomes f(x)*f(x) and the answer narrows "
+                    f"by roughly a fifth.\n"
+                    f"          If it was not measured independently, mark it "
+                    f"`is_residual` instead -- which says plainly that it is derived."))
+                break
+    return problems
+
+
 def check(folder: str, tables: dict | None = None) -> list[Problem]:
     """Every problem with a case's three tables. Empty means clean."""
     inputs, composition, tcs = _load(folder, tables)
@@ -244,6 +394,16 @@ def check(folder: str, tables: dict | None = None) -> list[Problem]:
     blank = _check_coefficients_present(tcs)
     if blank:
         return blank
+
+    # The three traps that used to be documented and unguarded: a `child_layer`
+    # that balances while being wrong, a residual that can go negative, and a
+    # range that restates its own group. HANDOVER.md section 5.
+    from src import case_tables
+    processes = (case_tables.read(folder, 'processes')
+                 if case_tables.exists(folder, 'processes') else None)
+    problems += _check_keyed_layers(processes, composition_with_rest)
+    problems += _check_residual_headroom(tcs)
+    problems += _check_reflected(tcs)
 
     # ---- 2.7  every key in inputs.csv has to name something -----------------
     # Checked as a (flow, product) PAIR, because composition is defined per flow

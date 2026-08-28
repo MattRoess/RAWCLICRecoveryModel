@@ -51,6 +51,7 @@ import argparse
 import numpy as np
 import pandas as pd
 
+from src import sampling
 from src.params_schema import ParameterError, current
 from src.plot_structure import choose, find_cases
 
@@ -60,7 +61,7 @@ FILENAME = 'tc_worklist.csv'
 # How close a stated range has to sit to the one the constraint already implies
 # before it is treated as the same number rather than a second opinion. The
 # bounds are written to two or three decimals, so this is loose on purpose.
-SAME = 5e-3
+SAME = sampling.SAME_AS_IMPLIED
 
 # What a group can be. Only the first is work; the rest are either fine as they
 # are or already broken.
@@ -70,15 +71,8 @@ REFLECTED = 'WARNING: the extra range is what the others already imply'
 COLLAPSED = 'REFUSED at run time: spreadless row and no is_residual'
 
 
-def implied(low, mode, high, others) -> tuple[float, float, float]:
-    """
-    What the constraint alone says about one row, given the rest of its group.
-
-    Reversed at the ends: the row is largest when the others are smallest.
-    """
-    return (1.0 - high[others].sum(),
-            1.0 - mode[others].sum(),
-            1.0 - low[others].sum())
+# One definition, in src/sampling.py, shared with src/validate_inputs.py.
+from src.sampling import implied
 
 
 def classify(low, mode, high, residual, members) -> tuple[str, tuple]:
