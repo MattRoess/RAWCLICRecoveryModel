@@ -132,13 +132,27 @@ _NESTING = list(LAYER_COLUMN)
 INPUT_LAYER_FOR = {child: _NESTING[depth - 1]
                    for depth, child in enumerate(_NESTING) if depth}
 
-# A starting point, not a proposal about your system. Seven lines: three ways
-# out of the collected flow, then one recovery and one loss per treatment.
+# A starting point, not a proposal about your system. Two ways out of the
+# collected flow, the definitional step that follows one of them, then one
+# recovery and one loss per treatment.
+#
+# THERE IS NO LOSS AT DISMANTLING, and that is deliberate. Manual dismantling
+# SORTS material; it does not destroy it. A harness that is not pulled out is
+# still in the hulk, and the hulk goes to the shredder -- so a terminal
+# `F_loss_dismantling` asserts a destruction that does not happen, and it
+# writes the material off AND denies it the chance to be recovered at
+# shredding. It was also redundant: "not dismantled" IS "goes to the shredder",
+# so `F_collected -> F_shredded` and `F_collected -> F_loss_dismantling` named
+# one event twice.
+#
+# The two coefficients on those edges become one -- the fraction not removed --
+# which is a question somebody can answer, where "how much is lost during
+# dismantling" was not.
 DEFAULT_PROCESSES = """\
 Input_FlowID,Output_FlowID,process,technology,keyed_at,role
 F_collected,F_dismantled,dismantling,manual,component,intermediate
-F_collected,F_shredded,dismantling,manual,component,intermediate
-F_collected,F_loss_dismantling,dismantling,manual,component,loss
+F_collected,F_not_dismantled,dismantling,manual,component,intermediate
+F_not_dismantled,F_shredded,hulk_transfer,definitional,component,intermediate
 F_dismantled,F_refined,refining,pyro,element,recovered
 F_dismantled,F_loss_refining,refining,pyro,element,loss
 F_shredded,F_recovered_shredder,shredding,hammer_mill,element,recovered
