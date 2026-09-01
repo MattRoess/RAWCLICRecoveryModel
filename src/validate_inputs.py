@@ -111,6 +111,97 @@ def _known_keys(composition: pd.DataFrame) -> dict[str, set[str]]:
             for name, column in zip(LAYER_NAMES, LAYERS)}
 
 
+def _check_nothing_strands(processes: pd.DataFrame | None,
+                           composition: pd.DataFrame,
+                           tcs: pd.DataFrame) -> list[Problem]:
+    """
+    Every resource entering a flow that something leaves must have a
+    coefficient to leave it by. Otherwise its mass stops there and vanishes.
+
+    A flow nothing leaves is terminal and exempt -- recovered, lost, handed
+    off. Which flows those are is read from the `processes` table, never
+    listed here: a flow is terminal exactly when it is no process's input.
+
+    WHY THIS IS AN ERROR AND NOT A WARNING
+    --------------------------------------
+    The mass does not go somewhere questionable. It is gone, the totals no
+    longer add up, and nothing else notices -- the run writes a solution, draws
+    its figures and reports a recovery rate computed from less mass than
+    entered. On 2026-09-01 that was 5.9% of the electronics case, found by
+    totalling the terminal flows by hand.
+
+    The opposite direction has been checked since 2026-08-17: a TC row naming a
+    resource that does not exist. That one is a warning, correctly -- an inert
+    row costs nothing. This one is the same join read the other way round, and
+    it costs the answer.
+
+    THE MATCHING RULE IS THE ENGINE'S
+    ---------------------------------
+    A row covers a resource when its target key names the resource and its
+    input key names the resource's parent -- or is blank or a wildcard, which
+    both mean "whatever the parent is". That is the same precedence the engine
+    applies (DEFECTS.md 2.3), stated once here for coverage rather than for
+    which row wins.
+    """
+    if processes is None or 'Input_FlowID' not in tcs.columns:
+        return []
+
+    flows_with_an_exit = {str(flow).strip() for flow in processes['Input_FlowID']}
+    depth_of = {name: depth for depth, name in enumerate(LAYER_NAMES)}
+
+    problems = []
+    for flow in sorted(flows_with_an_exit):
+        leaving = tcs[tcs['Input_FlowID'].astype(str).str.strip() == flow]
+        if not len(leaving):
+            continue                       # named as an input by no coefficient
+
+        for layer in sorted({str(value).strip()
+                             for value in leaving['TC_target_layer']}):
+            if layer not in depth_of:
+                continue                   # already reported as an unknown layer
+            depth = depth_of[layer]
+            covered, anywhere = set(), set()
+            for _, row in leaving[leaving['TC_target_layer'].astype(str)
+                                  .str.strip() == layer].iterrows():
+                target, parent = str(row['TC_target_key']), str(row['Input_layer_key'])
+                if not parent or '*' in parent:
+                    anywhere.add(target)
+                else:
+                    covered.add((parent, target))
+
+            # The resources this layer defines: rows whose deepest filled layer
+            # is this one. A deeper row is a sub-quantity of one of them and is
+            # carried along by whatever moves its parent.
+            at_depth = composition[LAYERS[depth]] != ''
+            for deeper in LAYERS[depth + 1:]:
+                at_depth &= composition[deeper] == ''
+
+            here = {(str(row[LAYERS[depth - 1]]) if depth else '',
+                     str(row[LAYERS[depth]]))
+                    for _, row in composition[at_depth].iterrows()}
+            stranded = sorted((parent, child) for parent, child in here
+                              if child not in anywhere
+                              and (parent, child) not in covered)
+
+            if not stranded:
+                continue
+            named = ', '.join(f'{parent}/{child}' if parent else child
+                              for parent, child in stranded[:8])
+            more = f' ... and {len(stranded) - 8} more' if len(stranded) > 8 else ''
+            problems.append(Problem(
+                'ERROR', '-',
+                f'{len(stranded)} resource(s) reach {flow} and no coefficient '
+                f'moves them on:\n'
+                f'          {named}{more}\n'
+                f'          Their mass stops there and disappears from every '
+                f'total. {flow} is not\n'
+                f'          terminal -- the processes table gives it an exit -- '
+                f'so each of these\n'
+                f'          needs a row in TCs, even if the value is 0. '
+                f'tools/make_skeleton.py writes them.'))
+    return problems
+
+
 # The unit table and the conversion itself live in src/units.py, so that the
 # check here and the conversion done on load cannot disagree about what a
 # unit means.
@@ -399,6 +490,7 @@ def check(folder: str, tables: dict | None = None) -> list[Problem]:
     processes = (case_tables.read(folder, 'processes')
                  if case_tables.exists(folder, 'processes') else None)
     problems += _check_keyed_layers(processes, composition_with_rest)
+    problems += _check_nothing_strands(processes, composition_with_rest, tcs)
     problems += _check_residual_headroom(tcs)
     problems += _check_reflected(tcs)
 

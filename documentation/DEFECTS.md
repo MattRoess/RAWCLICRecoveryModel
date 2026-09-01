@@ -743,6 +743,78 @@ within their own run, and `Nd`, `Dy`, `Pr` and `Tb`, the elements this case
 exists for, are still the 21 August files. The folder has to be emptied and
 04_02 re-run once before the electronics case reads again.
 
+### 3.11 A resource with no way out of a flow lost its mass silently — **FIXED 2026-09-01**
+
+Found by hand-totalling the terminal flows after the Layer 3 work, not by any
+check.
+
+A coefficient is keyed on the resource's parent — `Motors_mixed / Al`. When the
+material layer became real, `Al` moved to `bulk`, so that row no longer reached
+it. `Al`, and `Mn` and `Sr` with it, arrived at `F_dismantled` and
+`F_shredded` and **stopped**. The run wrote a solution, drew its figures and
+reported a recovery rate over less mass than entered.
+
+Measured on `bev_electronics`, 2050:
+
+| | kg |
+|---|---|
+| entered `F_collected` | 640,831,681 |
+| left through the four terminal flows | 603,149,794 |
+| **gone** | **37,681,887 — 5.9%** |
+
+Per flow: `F_dismantled` kept 32.0 Mkg of the 365.5 it received, `F_shredded`
+5.7 of 275.4. Every one of the four resources shows `0` in every onward flow.
+
+**The check that existed was the same join read the other way.** Since
+2026-08-17 a TC row naming a resource that does not exist has been reported —
+as a *warning*, correctly, since an inert row costs nothing. Nothing looked for
+a resource that no row names. That asymmetry is why five years of runs could
+have lost mass without a word.
+
+**FIXED:** `validate_inputs._check_nothing_strands`. For each flow that
+something leaves, every resource at each layer the outgoing coefficients target
+must be covered by one of them. An **error**, not a warning: the mass is not
+questionable, it is gone.
+
+    ERROR 4 resource(s) reach F_dismantled and no coefficient moves them on:
+              bulk/Al, cfsteel/Mn, esteel/Mn, magnet/Sr
+
+Which flows are terminal is read from the `processes` table — a flow is
+terminal exactly when it is no process's input — so no flow name is written in
+the code. **A case with no `processes` table is not checked**, since nothing
+then says which flows ought to have an exit. Both real cases have one; the
+reference fixtures predate the sheet, which is why the test for this lives in
+`tests/test_generality.py`, whose synthetic case writes one.
+
+### 3.12 `make_skeleton` deleted filled rows while documented as merging — **FIXED 2026-09-01**
+
+`merge()` dropped any filled row whose resource was not in the composition, and
+reported it as `dropped`. Both the module docstring and CASES.md called the
+script safe to re-run.
+
+A resource leaves the composition for two ordinary reasons, neither of which
+says the row is wrong: **narrowing `groups` to work one component at a time** —
+the workflow the script exists for, and the one its own docstring recommends —
+and **an upstream export resolving fewer elements than the last one**.
+
+Both happened at once on 2026-09-01. Upstream re-exported 24 elements instead
+of 68, and the material layer moved `Al` out of the placeholder. One re-run
+deleted **32 filled rows** from `bev_electronics` — every rare earth among them,
+each with a hand-written provenance note. They were recovered from a copy taken
+before the run; nothing in git would have helped, since `case.xlsx` is a binary
+and the loss would have been a silent 52 → 36.
+
+**FIXED:** a filled row is kept whatever happens — appended after the skeleton
+and reported as *inert*. Only a blank stale row is removed, since it says
+nothing. `src/validate_inputs.py` already reports a row that cannot fire, which
+is the honest state: the row is not wrong, it is not currently reachable.
+
+**Worth the space because the word was right and the behaviour was not.**
+"Merges" was in the docstring, in CASES.md and in HANDOVER §4, and it was
+trusted on all three counts. The code even carried a comment about not causing
+"quiet loss" — attached to the handling of extra *columns*, three lines above
+the rows being dropped.
+
 ---
 
 ## 4. Code quality notes

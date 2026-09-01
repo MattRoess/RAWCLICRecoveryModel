@@ -901,6 +901,120 @@ def test_the_skeleton_counts_loss_destinations_from_role() -> None:
     assert loss_destinations_of(handed) == {'a': 0}, loss_destinations_of(handed)
 
 
+def test_a_resource_that_cannot_leave_its_flow_is_refused() -> None:
+    """
+    A resource reaching a non-terminal flow with no coefficient to leave by
+    loses its mass, silently: the run still writes a solution, still draws its
+    figures, and reports a recovery rate computed from less mass than entered.
+
+    Measured 2026-09-01 on the electronics case at 5.9%, and found by totalling
+    the terminal flows by hand rather than by anything complaining. Four
+    resources had been moved to a new material by the Layer 3 work, so the
+    coefficients keyed on their old one no longer reached them.
+
+    The opposite direction -- a coefficient naming a resource that does not
+    exist -- has been a warning since 2026-08-17, and correctly: an inert row
+    costs nothing. Same join read the other way, and it costs the answer.
+
+    This lives here rather than beside the other validation tests because the
+    check reads which flows are terminal from the `processes` table, and no
+    reference fixture has one. This suite's synthetic case does.
+    """
+    from src.upstream import load
+    from src.validate_inputs import InputDataError, validate
+
+    params, case, root = build_everything()
+    try:
+        tables = load(params, params.run.data_folder, quiet=True)
+        coefficients(case, tables['composition'])
+
+        path = os.path.join(case, 'input_data', 'TCs.csv')
+        tcs = pd.read_csv(path, keep_default_na=False, na_values=[])
+        # Take away every way out of the delaminated flow for one element,
+        # leaving the composition untouched. Its mass now arrives and stays.
+        stuck = ((tcs['Input_FlowID'] == 'PV_delaminated')
+                 & (tcs['TC_target_key'] == 'Cu'))
+        assert stuck.any(), 'the fixture no longer has the rows this test removes'
+        tcs[~stuck].to_csv(path, index=False)
+
+        try:
+            # The panel's inflow and composition are never written to disk, so
+            # the tables are handed in the way a stage hands them in.
+            validate(case, tables)
+        except InputDataError as error:
+            message = str(error)
+        else:
+            raise AssertionError(
+                'a resource with no way out of a non-terminal flow was accepted')
+
+        assert 'Cu' in message and 'PV_delaminated' in message, \
+            f'the refusal names neither the resource nor the flow:\n{message}'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_the_skeleton_never_deletes_a_filled_row() -> None:
+    """
+    A re-run must not remove a coefficient somebody entered, whatever happened
+    to the composition since.
+
+    This is not hypothetical tidiness. A resource leaves the composition for
+    two ordinary reasons, and neither says the row is wrong: narrowing `groups`
+    to work one component at a time -- the workflow the script exists for --
+    and an upstream export resolving fewer elements than the last one. Both
+    happened together on 2026-09-01 and a single re-run deleted 32 filled rows
+    from `bev_electronics`, every rare earth among them, reporting it as
+    `dropped`.
+
+    A blank stale row is still removed: it says nothing, so there is nothing to
+    lose.
+    """
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from tools.make_skeleton import merge
+
+    columns = ['Input_FlowID', 'Input_layer', 'Input_layer_key', 'Output_FlowID',
+               'TC_target_layer', 'TC_target_key', 'value', 'value_min',
+               'value_max', 'is_residual', 'process', 'technology', 'source']
+
+    def row(key, value, **rest):
+        base = dict.fromkeys(columns, '')
+        base.update(Input_FlowID='F_in', Output_FlowID='F_out',
+                    Input_layer_key='old_material', TC_target_key=key,
+                    value=value, **rest)
+        return base
+
+    existing = pd.DataFrame([
+        row('Keeper', '0.42', source='Smith 2023, table 4'),   # filled, now absent
+        row('Blank', ''),                                      # blank, now absent
+        row('Present', '0.30'),                                # filled and still there
+    ], columns=columns)
+    skeleton = pd.DataFrame([
+        row('Present', ''),
+        row('Fresh', ''),
+    ], columns=columns)
+
+    merged, change = merge(existing, skeleton)
+    keys = list(merged['TC_target_key'])
+
+    assert 'Keeper' in keys, \
+        f'a filled row was deleted because its resource left the composition: {keys}'
+    assert 'Blank' not in keys, \
+        'a blank stale row carries nothing and should not be kept'
+    assert keys[-1] == 'Keeper', \
+        f'the inert row should sit at the end, out of the way: {keys}'
+    assert change['inert'] == 1, f"expected one inert row, got {change['inert']}"
+
+    kept = merged[merged['TC_target_key'] == 'Keeper'].iloc[0]
+    assert kept['value'] == '0.42' and kept['source'] == 'Smith 2023, table 4', \
+        'the inert row was kept but its value or its provenance was not'
+
+    # And the ordinary business still works.
+    assert merged[merged['TC_target_key'] == 'Present'].iloc[0]['value'] == '0.30', \
+        'a value that is still in the composition was overwritten'
+    assert change['kept'] == 1 and change['added'] == 1, change
+
+
 def test_the_processes_sheet_offers_role_and_keyed_at() -> None:
     """
     Both fixed-vocabulary columns come out as dropdowns over the data rows,

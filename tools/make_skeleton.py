@@ -16,10 +16,12 @@ the composition actually contains:
         v
     <case>/input_data/TCs.csv           one row per coefficient, values blank
 
-Run it again whenever the case grows. It **merges**: every value already filled
-in is kept, rows for new resources are added blank, and rows whose resource no
-longer exists are dropped. So the intended way to work is one component at a
-time --
+Run it again whenever the case grows. It **merges, and it deletes nothing**:
+every value already filled in is kept, rows for new resources are added blank,
+and a filled row whose resource is not in the composition this run resolved is
+kept too -- moved to the end and reported as inert, because a resource leaves
+the composition for reasons that say nothing about whether the row is right.
+So the intended way to work is one component at a time --
 
     groups = ('Wiring',)             one domain, eight rows, run it
     groups = ('Wiring', 'Motors')    re-import, re-run this, fill the new rows
@@ -284,29 +286,51 @@ KEY = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
 
 def merge(existing: pd.DataFrame, skeleton: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     """
-    Keep what is filled in, add what is new, drop what no longer exists.
+    Keep what is filled in, add what is new, and delete nothing.
 
     This is what makes growing a case one component at a time possible. A value
     someone has entered is never overwritten -- not even by the `rest` rows this
     script fills in itself, because they might have been deliberately changed.
 
     Returns the merged table and a count of what happened to it.
+
+    IT USED TO DROP A FILLED ROW WHOSE RESOURCE HAD LEFT THE COMPOSITION
+    -------------------------------------------------------------------
+    Which sounds like tidying, and is deletion. A resource leaves the
+    composition for reasons that have nothing to do with the row being wrong:
+    narrowing `groups` to work on one component at a time -- the very workflow
+    this script exists for -- and an upstream export resolving fewer elements
+    than the last one.
+
+    Both happened on 2026-09-01, in one run. Upstream re-exported 24 elements
+    instead of 68, and the material layer moved `Al` out of the placeholder into
+    `bulk`. 32 filled rows, every rare earth among them, were deleted from
+    `bev_electronics` by a single re-run that reported it as `dropped`.
+
+    So a filled row is now kept whatever happens, appended after the skeleton
+    and counted as inert. `src/validate_inputs.py` already warns that such a row
+    does not fire, which is the honest state: the row is not wrong, it is not
+    currently reachable. Only a BLANK stale row is removed, since it says
+    nothing at all.
     """
     filled = existing[existing['value'].astype(str).str.strip() != ''] \
         if 'value' in existing.columns else existing.iloc[0:0]
     known = filled.set_index(KEY) if len(filled) else None
 
-    merged, kept, added = [], 0, 0
+    merged, kept, added, covered = [], 0, 0, set()
     for _, row in skeleton.iterrows():
         key = tuple(row[column] for column in KEY)
         if known is not None and key in known.index:
             merged.append(known.loc[key].to_dict() | dict(zip(KEY, key)))
+            covered.add(key)
             kept += 1
         else:
             merged.append(row.to_dict())
             added += int(str(row['value']).strip() == '')
 
-    dropped = len(filled) - kept
+    inert = [row.to_dict() for _, row in filled.iterrows()
+             if tuple(row[column] for column in KEY) not in covered]
+    merged.extend(inert)
 
     # Columns the skeleton does not know about -- a `notes` column somebody
     # added while filling the table in -- are carried through. Restricting to
@@ -314,7 +338,7 @@ def merge(existing: pd.DataFrame, skeleton: pd.DataFrame) -> tuple[pd.DataFrame,
     # exactly the kind of quiet loss this tool must not cause.
     extra = [column for column in existing.columns if column not in skeleton.columns]
     return (pd.DataFrame(merged, columns=list(skeleton.columns) + extra),
-            {'kept': kept, 'added': added, 'dropped': dropped})
+            {'kept': kept, 'added': added, 'inert': len(inert)})
 
 
 def write_atomically(frame: pd.DataFrame, path: str) -> None:
@@ -417,7 +441,7 @@ def main(case: str) -> int:
     path = where[1] if where else case_tables.csv_path(case, 'TCs')
 
     change = {'kept': 0, 'added': int((skeleton['value'].astype(str).str.strip() == '').sum()),
-              'dropped': 0}
+              'inert': 0}
     if where is not None:
         existing = case_tables.read(case, 'TCs', dtype=str)
         skeleton, change = merge(existing, skeleton)
@@ -433,8 +457,10 @@ def main(case: str) -> int:
     print(f'\n{path}: {len(skeleton)} rows')
     if change['kept']:
         print(f'  {change["kept"]:4d} kept -- already filled in, untouched')
-    if change['dropped']:
-        print(f'  {change["dropped"]:4d} dropped -- their resource is no longer in the composition')
+    if change['inert']:
+        print(f'  {change["inert"]:4d} kept but inert -- filled in, and their resource is not in the\n'
+              f'          composition this run resolved. Nothing is deleted; they sit at the\n'
+              f'          end of the sheet and 01_check_inputs.py reports that they do not fire.')
     print(f'  {int(blank.sum()):4d} still to fill in')
     for keyed_at, group in skeleton[blank].groupby('TC_target_layer', sort=False):
         print(f'       {len(group):4d} keyed at {keyed_at}')

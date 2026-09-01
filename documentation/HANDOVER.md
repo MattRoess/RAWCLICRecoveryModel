@@ -3,13 +3,27 @@
 Current as of **2026-09-01**, commit `76ac8e3`. Rewritten from the ground up on
 2026-08-21 and updated since; git has the older text.
 
-**Read this first: the electronics case does not currently run.** Not a code
-regression — all 109 checks pass. The upstream draw folder was rewritten on
-2026-08-31 and now holds four runs at once, because upstream writes it file by
-file and never clears it. `src/upstream.py` used to read the union of them
-without a word; since 2026-09-01 it refuses, naming the widths. Nothing here
-needs changing: the folder has to be emptied and 04_02 re-run once upstream.
-DEFECTS.md §3.10 has the measurement, and §3 below has what upstream changed.
+**Read this first: what happened on 2026-09-01.** The upstream draw folder had
+been rewritten on 08-31 and held **four runs at once**, because upstream writes
+it file by file and never clears it — Motors' elements came to 1.81 of Motors.
+`src/upstream.py` read the union of them without a word; it now refuses, naming
+the widths (DEFECTS.md §3.10). The user emptied the folder and re-ran 04_02 the
+same day, and it came back clean: one run, one draw count, no `_ppm` files.
+
+Three things followed from that day, all built and all tested:
+
+1. **Layer 3 is real.** `<element>__<material>__<group>` is read, so `esteel`
+   and `magnet` sit at Layer 3 where a placeholder stood. The placeholder stays
+   for what is not resolved, so an export without those files gives exactly the
+   rows it always did. CASES.md has the three rules.
+2. **A resource that cannot leave a flow is refused.** It used to lose its mass
+   in silence — 5.9% of the electronics case, found by hand. DEFECTS.md §3.11.
+3. **`make_skeleton` no longer deletes.** It dropped filled rows whose resource
+   had left the composition while being documented as merging, and took 32 of
+   them, every rare earth included. DEFECTS.md §3.12.
+
+**The electronics case reads again and stops at 16 blank coefficients** — the
+rows for the new materials, which are the user's to fill. §4.
 
 **What changed on 2026-08-28 — the flow itself.** The user's modification, which
 §4 had recorded as agreed in principle, is built. `F_loss_dismantling` was a
@@ -48,22 +62,24 @@ document is for picking the work back up.
 
 ## 1. Where things stand
 
-**Car composition runs end to end on real upstream data. Electronics does not,
-as of 2026-08-31 — its upstream folder, not its code.** All 109 fixture checks
-pass either way; they do not touch the real draws.
+**Both pipelines read real upstream data. All 117 checks pass.** Car composition
+solves end to end; electronics reads its draws and its composition, and stops at
+16 coefficients nobody has filled in yet.
 
-The table below is what each pipeline last produced. The electronics column was
-measured on 2026-08-28 and will not reproduce until the upstream folder is
-emptied and 04_02 re-run: `Nd`, `Dy`, `Pr` and `Tb` in it are still the 21
-August files, and the run that overwrote everything around them left the Motors
-elements 3.7% above the Motors total.
+The electronics column below was measured on 2026-08-28 and **will not
+reproduce**. The 09-01 re-export resolves 24 elements instead of 68, so `Nd`,
+`Dy`, `Co`, `Pr`, `Tb`, `Ga` and `Nb` are no longer in Motors at all — the known
+fraction of Motors falls from ~100% to 17%, the remainder becoming derived
+`rest`, which counts as unrecovered. Those elements now appear under **Sensors**,
+which this case's `groups` does not include. Whether to widen `groups` is a
+modelling decision nobody has taken.
 
 | | 04_02 electronics | 04_01 car composition |
 |---|---|---|
 | case folder | `data_folder/bev_electronics` | `data_folder/carcomposition_mockup` |
 | covers | wiring and motors in BEVs | whole cars, five drivetrains |
 | finest resolution | **element** — Cu, Nd, Dy | **material** — calAHSS, battery |
-| Layer 3 | placeholder when measured; **real materials** after the re-run | material |
+| Layer 3 | **real materials** — bulk, magnet, esteel, cfsteel — and a placeholder | material |
 | years | 2030–2050 | 2040 |
 | draws | 200,000 | 50,000 |
 | mass in | 640.7 kt (2050) | 13,863 kt (2040) |
@@ -72,9 +88,7 @@ elements 3.7% above the Motors total.
 | residual rows | none | none |
 
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
-suites on fixed fixtures (109 checks), then the pipeline and a mass balance.
-**Point it at `carcomposition_mockup` until the upstream folder is re-run** —
-the fixtures pass either way, but the pipeline half needs draws it can read.
+suites on fixed fixtures (117 checks), then the pipeline and a mass balance.
 
 **`run.data_folder` points at `bev_electronics`.** It has **no residual rows**:
 every coefficient is measured in its own right. `bev_electronics_all_measured`,
@@ -315,11 +329,21 @@ existing figure and saved table there is keyed on it.
 
 ## 4. What to do next, in order
 
+0. **Sixteen blank coefficients block the electronics case right now.**
+   `01_check_inputs.py` stops on them. They are the four (material, element)
+   pairs the new Layer 3 created — `bulk/Al`, `cfsteel/Mn`, `esteel/Mn`,
+   `magnet/Sr` — across refining and shredding, recovered and lost. Written by
+   `make_skeleton.py` on 2026-09-01; the values are nobody's but yours. Until
+   they are filled, that case reads and does not solve.
+
 1. **Replace the coefficients. This is the whole of what is left.** The user
    asked on 2026-08-26 to have the case ready for real use; the model side is
    finished and nothing else is in the way. For electronics,
-   `tools/make_skeleton.py` writes the rows and **merges**, so you can do it a
-   domain at a time without losing what you filled in. For car composition,
+   `tools/make_skeleton.py` writes the rows and **merges, deleting nothing**,
+   so you can do it a domain at a time without losing what you filled in — a
+   row whose resource has left the composition is kept as inert rather than
+   dropped, which it was not until 2026-09-01 (DEFECTS.md §3.12). For car
+   composition,
    `tools/make_carcomposition_tcs.py` generated the current invented table and
    **overwrites** — but it now refuses to, once any row's `source` says
    something it did not write. `--overwrite` forces a deliberate rebuild.

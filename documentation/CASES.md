@@ -131,11 +131,21 @@ resource left without coefficients.
 ./.venv/bin/python tools/make_carcomposition_tcs.py data_folder/carcomposition_mockup
 ```
 
-**`make_skeleton.py` merges.** Re-run it whenever the case grows: values you
-have already filled in are kept, rows for new resources are added blank, and
-rows whose resource no longer exists are dropped. Nothing you typed is ever
-overwritten. That is what makes it safe to work one domain at a time — narrow
-`groups` in `source`, run it, fill the handful of rows, widen, repeat.
+**`make_skeleton.py` merges, and deletes nothing.** Re-run it whenever the case
+grows: values you have already filled in are kept, rows for new resources are
+added blank, and a filled row whose resource is not in the composition this run
+resolved is kept as well — moved to the end of the sheet and reported as
+*inert*. Nothing you typed is ever overwritten or removed. That is what makes it
+safe to work one domain at a time — narrow `groups` in `source`, run it, fill
+the handful of rows, widen, repeat.
+
+It used to drop such a row, which sounds like tidying and is deletion. A
+resource leaves the composition for reasons that say nothing about the row: the
+one-domain-at-a-time workflow above does it every time, and so does an upstream
+export resolving fewer elements than the last one. Both happened together on
+2026-09-01 and cost `bev_electronics` 32 filled rows in one re-run.
+`01_check_inputs.py` already reports a row that cannot fire, which is the honest
+state — the row is not wrong, it is not currently reachable.
 
 **`make_carcomposition_tcs.py` overwrites**, deliberately: everything it writes
 is invented and marked `MADE UP (Claude)` in the `source` column, so there is

@@ -130,9 +130,15 @@ Only for a **new** case. The two that exist already have theirs.
 It writes one row for every coefficient the case needs, with the identifying
 columns filled and the values blank.
 
-**It merges.** Run it again after the upstream data gains a resource and it
-adds the new rows without touching anything you have filled in. So you can do a
-case in stages.
+**It merges, and it deletes nothing.** Run it again after the upstream data
+gains a resource and it adds the new rows without touching anything you have
+filled in. So you can do a case in stages.
+
+If the upstream data *loses* a resource — a re-export resolving fewer elements,
+or a row moving to a different material — the coefficient you wrote for it is
+**kept**, moved to the end of the sheet and reported as *inert*.
+`01_check_inputs.py` then says it does not currently fire. Your number is never
+thrown away because the data moved under it.
 
 **Close Excel first.** It writes the workbook by replacing the file, and Excel
 holding it open is the one thing that stops that working.
