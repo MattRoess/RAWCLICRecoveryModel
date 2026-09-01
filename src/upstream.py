@@ -109,20 +109,71 @@ def read_draws(folder: str, flow: str, group_marker: str = '__domain__'):
         raise UpstreamError(f'{flow_dir} does not exist. Found: '
                             f'{sorted(os.listdir(folder))}.')
 
-    domain_mass, element_mass = {}, {}
+    domain_mass, element_mass, widths = {}, {}, {}
     for path in sorted(glob.glob(os.path.join(flow_dir, '*.npy'))):
         stem = os.path.basename(path)[:-4]
         # Split on the LAST '__': the domain files are named '__domain____Motors',
         # which begins with the separator, so splitting from the front loses them.
         left, _, right = stem.rpartition('__')
         if left == group_marker:
-            domain_mass[right] = np.load(path, mmap_mode='r')
+            array = domain_mass[right] = np.load(path, mmap_mode='r')
         elif right != 'total':
-            element_mass[(left, right)] = np.load(path, mmap_mode='r')
+            array = element_mass[(left, right)] = np.load(path, mmap_mode='r')
+        else:
+            continue
+        widths.setdefault(array.shape[0], []).append(stem)
 
     if not domain_mass:
         raise UpstreamError(f'{flow_dir} holds no {group_marker}__*.npy arrays.')
+    one_run(flow_dir, widths)
     return years, domain_mass, element_mass
+
+
+def one_run(flow_dir: str, widths: dict[int, list[str]]) -> None:
+    """
+    Refuse a folder whose arrays do not all hold the same number of draws.
+
+    Raises:
+        UpstreamError: naming how many arrays sit at each width, and some of
+            them, so the odd family is identifiable without listing the folder.
+
+    WHY THIS IS NOT PARANOIA
+    ------------------------
+    A folder is written file by file and never cleared, so it is the UNION of
+    every run that has ever written to it. A file is replaced only when a later
+    run happens to emit the same name -- change the element list upstream and
+    the old names are left behind rather than removed. Nothing upstream reports
+    that, because from there each run wrote exactly what it meant to.
+
+    Downstream it is not visible either. `_one_product` means each array over
+    `array[:draws]`, and slicing 200,000 rows from a 20,000-row array returns
+    the 20,000 without complaint -- so a share becomes one run's element over
+    another run's domain total, and the model solves it.
+
+    It happened on 2026-08-31: `element_draws/BAU/collected` held four runs at
+    once, and Motors' elements summed to 1.81 of Motors. That surfaced only
+    because `src/rest.py` refuses parts exceeding the whole. A mix that stayed
+    under 1 would have balanced, plotted and been wrong. Hence a check on the
+    draw count, which is the one property every array in a run shares and no
+    two runs need to.
+    """
+    if len(widths) < 2:
+        return
+
+    lines = []
+    for draws in sorted(widths, reverse=True):
+        names = sorted(widths[draws])
+        shown = ', '.join(names[:4]) + (', ...' if len(names) > 4 else '')
+        lines.append(f'  {len(names):4d} array(s) at {draws:,} draws: {shown}')
+
+    raise UpstreamError(
+        f'{flow_dir} holds arrays from more than one run.\n'
+        + '\n'.join(lines) + '\n'
+        f'A folder is written file by file and never cleared, so a name a later\n'
+        f'run does not write is left behind instead of replaced. Read together,\n'
+        f'one run\'s element is divided by another run\'s total and the shares are\n'
+        f'meaningless -- while still summing, balancing and plotting.\n'
+        f'Empty the folder and re-run the upstream stage that writes it.')
 
 
 def wanted_years(available: np.ndarray, setting: str) -> list[int]:
@@ -274,7 +325,19 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
 
     keep_years = wanted_years(years, params.run.years)
 
-    available = next(iter(per_product[described['products'][0]][0].values())).shape[0]
+    # `read_draws` has already refused any single folder that mixes runs, so
+    # one array per product settles that product's width. The products still
+    # have to agree with each other: 04_01's five drivetrains are five folders,
+    # and re-running one of them alone leaves the others at the old width --
+    # the same mix as within a folder, one level up.
+    per_product_width, by_width = {}, {}
+    for product, (domains, _) in per_product.items():
+        width = per_product_width[product] = next(iter(domains.values())).shape[0]
+        by_width.setdefault(width, []).append(
+            f'{product} in {source_module.flow_for(described, product)}/')
+    one_run(source, by_width)
+
+    available = per_product_width[described['products'][0]]
     draws = min(described['draws'], available)
 
     inflow, composition, report = build(

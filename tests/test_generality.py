@@ -30,6 +30,8 @@ WHAT IS CHECKED
    layer up, with no placeholder -- the 04_01 shape rather than the 04_02 one.
 7. Several products in one case each close to 1 on their OWN total, not on the
    pooled one -- the 04_01 drivetrain shape.
+8. Draws from two different runs are refused rather than silently averaged
+   together, both within one folder and across a case's product folders.
 
 The item is named in the case's own `source.csv`, never in `src/params_schema.py`.
 That is what lets 04_01 and 04_02 be different cases rather than different runs
@@ -229,6 +231,78 @@ def test_a_different_recovery_item_can_be_read() -> None:
         # Upstream reports kilotonnes whatever the project works in; the
         # conversion to working_unit happens in the engine, on load.
         assert set(inflow['Unit']) == {'kt'}, 'upstream mass is kilotonnes'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_a_folder_holding_two_runs_is_refused() -> None:
+    """
+    An upstream folder is never cleared, so it is the union of every run that
+    has written to it: a name a later run does not emit is left behind rather
+    than replaced. Read together, one run's element is divided by another run's
+    total.
+
+    This is not hypothetical. On 2026-08-31 `element_draws/BAU/collected` held
+    four runs at once and Motors' elements came to 1.81 of Motors. It surfaced
+    only because `src/rest.py` refuses parts exceeding the whole; a mix landing
+    under 1 would have balanced and plotted.
+
+    Nothing in the arrays says which run wrote them. The draw count does: every
+    array of one run shares it, and two runs have no reason to.
+    """
+    from src.upstream import UpstreamError, load
+
+    params, case, root = build_everything()
+    try:
+        # A leftover under a name the current run does not write, so nothing
+        # replaced it -- exactly how the real folder came to hold four runs.
+        np.save(os.path.join(root, 'upstream', 'HIGH', 'collected',
+                             f'Zz__{GROUPS[0]}.npy'),
+                np.full((DRAWS // 4, len(YEARS)), 0.1, dtype=np.float32))
+
+        try:
+            load(params, params.run.data_folder, quiet=True)
+        except UpstreamError as error:
+            message = str(error)
+        else:
+            raise AssertionError(
+                'a folder holding two draw counts was read without complaint')
+
+        for wanted in (f'{DRAWS:,}', f'{DRAWS // 4:,}', f'Zz__{GROUPS[0]}'):
+            assert wanted in message, \
+                f'the refusal does not mention {wanted!r}:\n{message}'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_products_from_different_runs_are_refused() -> None:
+    """
+    The same mix one level up. 04_01's five drivetrains are five folders, so
+    re-running one alone leaves the other four at the previous width -- and
+    each folder is internally consistent, which is what the check inside
+    `read_draws` would see.
+    """
+    from src.upstream import UpstreamError, load
+
+    params, case, root = build_everything(products=PRODUCTS)
+    try:
+        narrowed = os.path.join(root, 'upstream', 'HIGH', f'{PRODUCTS[0]}_collected')
+        for name in sorted(os.listdir(narrowed)):
+            path = os.path.join(narrowed, name)
+            np.save(path, np.load(path)[:DRAWS // 4])
+
+        try:
+            load(params, params.run.data_folder, quiet=True)
+        except UpstreamError as error:
+            message = str(error)
+        else:
+            raise AssertionError(
+                'products at two draw counts were read without complaint')
+
+        assert PRODUCTS[0] in message and PRODUCTS[1] in message, \
+            f'the refusal does not name the products that disagree:\n{message}'
     finally:
         shutil.rmtree(root, ignore_errors=True)
         shutil.rmtree(case, ignore_errors=True)

@@ -689,6 +689,60 @@ two units differ by exactly the factor that makes a plausible number out of an
 implausible one. Three units are in play in this project — data folders in Mg,
 upstream in kt, arithmetic in kg — and nothing but the label tells them apart.
 
+### 3.10 A draw folder holding two runs was read as one — **FIXED 2026-09-01**
+
+Found by re-checking the pipeline, not by a test. It had already happened.
+
+An upstream draw folder is written **file by file and never cleared**, so it is
+the union of every run that has written to it. A file is replaced only when a
+later run happens to emit the same name — change the element list upstream and
+the old names stay, indefinitely.
+
+`src/upstream.py` read whatever `*.npy` it found. `_one_product` means each
+array over `array[:draws]`, and slicing 200,000 rows from a 20,000-row array
+returns the 20,000 without complaint. So a share became one run's element over
+another run's domain total, and the model solved it.
+
+**Measured 2026-08-31**, on `element_draws/BAU/collected` after upstream's
+`57a06f4` changed 04_02's element list and re-ran it:
+
+| written | draws | what |
+|---|---|---|
+| 08-21 10:52 | 200,000 | 7 Motors elements, incl. `Nd`, `Dy`, `Pr`, `Tb` |
+| 08-31 13:23 | **20,000** | 16 `*_ppm__Motors` |
+| 08-31 13:56 | **20,000** | 20 plain `*__Motors`, incl. `Fe`, `Al`, `O` |
+| 08-31 15:09–15:44 | 200,000 | material-resolved Motors (`Fe__esteel`, …), Wiring, PCB, Sensors, and the domain arrays |
+
+Four runs in one folder. Iron was present three times over — `Fe__Motors`,
+`Fe__{cfsteel,esteel,magnet,copper}__Motors` and `Fe_ppm__Motors` — because
+`rpartition('__')` reads `Fe__esteel__Motors` as an element named `Fe__esteel`.
+Motors' children summed to **1.81** of Motors.
+
+**It surfaced only by luck.** `src/rest.py` refuses parts exceeding the whole,
+so 1.81 stopped the run. A mix landing under 1 would have balanced, plotted and
+been wrong — the §5-of-HANDOVER failure mode exactly.
+
+**FIXED:** `upstream.one_run()`. Every array in one folder must hold the same
+number of draws, and every product folder in one case must agree with the
+others; anything else is refused, naming the widths, the counts and examples.
+The draw count is the one property every array of a run shares and that two
+runs have no reason to.
+
+    ../RAWCLICStockAndFlow/data/processed/element_draws/BAU/collected holds
+    arrays from more than one run.
+        84 array(s) at 200,000 draws: Ag__PCB, Ag__Sensors, Ag__copper__Motors, ...
+        36 array(s) at 20,000 draws: Ag__Motors, Ag_ppm__Motors, Al__Motors, ...
+
+`tests/test_generality.py` covers both halves: a leftover file under a name the
+current run does not write, and one product folder re-run alone.
+
+**What the check does not do.** It says the folder mixes runs; it does not say
+which run is wanted, and it cannot. Two things are still open and are upstream's
+to settle — the plain Motors elements exceed the Motors domain mass by 3.7% even
+within their own run, and `Nd`, `Dy`, `Pr` and `Tb`, the elements this case
+exists for, are still the 21 August files. The folder has to be emptied and
+04_02 re-run once before the electronics case reads again.
+
 ---
 
 ## 4. Code quality notes

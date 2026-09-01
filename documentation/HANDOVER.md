@@ -1,7 +1,15 @@
 # Handover
 
-Current as of **2026-08-28**, commit `d8a1901`. Rewritten from the ground up on
+Current as of **2026-09-01**, commit `76ac8e3`. Rewritten from the ground up on
 2026-08-21 and updated since; git has the older text.
+
+**Read this first: the electronics case does not currently run.** Not a code
+regression — all 109 checks pass. The upstream draw folder was rewritten on
+2026-08-31 and now holds four runs at once, because upstream writes it file by
+file and never clears it. `src/upstream.py` used to read the union of them
+without a word; since 2026-09-01 it refuses, naming the widths. Nothing here
+needs changing: the folder has to be emptied and 04_02 re-run once upstream.
+DEFECTS.md §3.10 has the measurement, and §3 below has what upstream changed.
 
 **What changed on 2026-08-28 — the flow itself.** The user's modification, which
 §4 had recorded as agreed in principle, is built. `F_loss_dismantling` was a
@@ -40,7 +48,15 @@ document is for picking the work back up.
 
 ## 1. Where things stand
 
-**Two pipelines run end to end on real upstream data. All ten checks pass.**
+**Car composition runs end to end on real upstream data. Electronics does not,
+as of 2026-08-31 — its upstream folder, not its code.** All 109 fixture checks
+pass either way; they do not touch the real draws.
+
+The table below is what each pipeline last produced. The electronics column was
+measured on 2026-08-28 and will not reproduce until the upstream folder is
+emptied and 04_02 re-run: `Nd`, `Dy`, `Pr` and `Tb` in it are still the 21
+August files, and the run that overwrote everything around them left the Motors
+elements 3.7% above the Motors total.
 
 | | 04_02 electronics | 04_01 car composition |
 |---|---|---|
@@ -56,6 +72,8 @@ document is for picking the work back up.
 
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
 suites on fixed fixtures (109 checks), then the pipeline and a mass balance.
+**Point it at `carcomposition_mockup` until the upstream folder is re-run** —
+the fixtures pass either way, but the pipeline half needs draws it can read.
 
 **`run.data_folder` points at `bev_electronics`.** It has **no residual rows**:
 every coefficient is measured in its own right. `bev_electronics_all_measured`,
@@ -211,9 +229,32 @@ commits are this work:
 | `00af52a` | A single-year period reads the per-year draws 03_02 already writes, instead of demanding a period histogram that does not exist. |
 | `7d6c9dd` | Every drivetrain gets a single-year vehicle count, without re-running 03_02. |
 
-Those three touch **only** `code/04_01_carcomposition.py`.
-**`03_02_adjustedflows.py` and `04_02_BEVelectronics.py` are unmodified**, and
+Those three touch **only** `code/04_01_carcomposition.py`, and
 `data/processed/bev_draws` (2.6 GB) was never rewritten.
+
+**Five more commits landed there on 2026-08-31**, after this document recorded
+the project as parked, and three of them change `04_02_BEVelectronics.py`:
+
+| commit | what |
+|---|---|
+| `cbf8903` | 04_02 skips an element no domain resolves, instead of stopping |
+| `57a06f4` | seeds the segment split with `crc32` rather than `hash`, and makes `bev_electronics_elements` default to **empty = every element the draws resolve** |
+| `d93e8ed` | reports critical and strategic materials |
+
+`57a06f4` is the one that matters here. The element list is now read from the
+upstream models' own files, so the exported names include what those models
+call things — `Fe__esteel`, `Al__bulk`, `Sr__magnet`, `Ag_ppm` — which are
+decompositions and restatements of elements already exported, not new elements.
+`rpartition('__')` reads `Fe__esteel__Motors` as an element named `Fe__esteel`,
+so read together they triple-count iron.
+
+**That, plus a folder never being cleared, is why electronics does not run.**
+The material-resolved names are worth having — Layer 3 in this case is a
+placeholder, and `Fe__esteel` is real material resolution to put there — but
+only once one run's export stands alone in the folder. Deciding whether to read
+them, and how, is work; it is not what stops the case today.
+
+**`03_02_adjustedflows.py` is still unmodified.**
 
 The branch itself is **20 commits ahead of `main`** — the other 17 are earlier
 work that had not been merged. Merging it brings all twenty, not three.
@@ -343,10 +384,19 @@ for removal.
 
 ### Not in this repository
 
-**The upstream project is parked as of 2026-08-26** — the user's words: stock
-and flow is done for the moment. These need it and should not be started
-without saying so first.
+The upstream project was parked on 2026-08-26 — the user's words: stock and
+flow is done for the moment — but **five commits landed there on 2026-08-31**
+(§3), so it is being worked on again. These still need it and should not be
+started without saying so first.
 
+- **Empty `element_draws/<scenario>/` and re-run 04_02 once.** This is what
+  unblocks the electronics case here, and it is the only thing that does. The
+  folder is written file by file and never cleared, so it now holds four runs;
+  emptying it first is what makes one run's export stand alone. Two things to
+  settle while doing it: the plain Motors elements sum to 3.7% more than the
+  Motors domain mass within their own run, and the export writes decompositions
+  (`Fe__esteel`) and restatements (`Fe_ppm`) alongside the elements they belong
+  to, which anything reading the folder has to be able to tell apart.
 - **Widen 03_02's per-year export** to all five drivetrains, next time it runs
   anyway. Removes the approximation in §3.
 - **04_03 and 04_04.** Each needs its own year-sliced export upstream, then a
@@ -379,6 +429,16 @@ without saying so first.
   composition never fills is refused, naming `child_layer` as the likely cause.
   That is the observable symptom, and it is checkable where the setting alone
   is not — nothing in the source table knows what the upstream files contain.
+- **An upstream draw folder is never cleared, so it is the union of every run
+  that has written to it.** A file is replaced only when a later run happens to
+  emit the same name; change the element list upstream and the old names stay.
+  Reading them together divides one run's element by another run's total, and
+  `array[:draws]` on a short array returns what there is without complaint.
+  **Guarded since 2026-09-01**: every array in a folder, and every product
+  folder in a case, must agree on the draw count. That catches a mixed folder;
+  it cannot say which run was wanted. DEFECTS.md §3.10 — it had already
+  happened, and only tripped because the mix came to 1.81 and `rest` refuses
+  parts exceeding the whole.
 - **A coarse TC scales the resource's whole subtree**; a fine one does not.
   All TCs writing into one output flow must target the same layer, or nesting
   breaks — measured at 82 Mg on a shared loss flow. `01_check_inputs.py` checks
