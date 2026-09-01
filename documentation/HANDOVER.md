@@ -22,8 +22,11 @@ Three things followed from that day, all built and all tested:
    had left the composition while being documented as merging, and took 32 of
    them, every rare earth included. DEFECTS.md §3.12.
 
-**The electronics case reads again and stops at 16 blank coefficients** — the
-rows for the new materials, which are the user's to fill. §4.
+**The electronics case runs end to end again.** The 16 coefficients the new
+Layer 3 needed were filled the same day, at the user's instruction, and are
+marked `PLACEHOLDER (Claude, not data)` like the 44 beside them. Mass closes to
+2.6e-16 and recovery comes out at 41–47% of collected mass. Not one of the 60
+is measured. §4.
 
 **What changed on 2026-08-28 — the flow itself.** The user's modification, which
 §4 had recorded as agreed in principle, is built. `F_loss_dismantling` was a
@@ -62,9 +65,7 @@ document is for picking the work back up.
 
 ## 1. Where things stand
 
-**Both pipelines read real upstream data. All 117 checks pass.** Car composition
-solves end to end; electronics reads its draws and its composition, and stops at
-16 coefficients nobody has filled in yet.
+**Both pipelines run end to end on real upstream data. All 117 checks pass.**
 
 The electronics column below was measured on 2026-08-28 and **will not
 reproduce**. The 09-01 re-export resolves 24 elements instead of 68, so `Nd`,
@@ -78,13 +79,14 @@ modelling decision nobody has taken.
 |---|---|---|
 | case folder | `data_folder/bev_electronics` | `data_folder/carcomposition_mockup` |
 | covers | wiring and motors in BEVs | whole cars, five drivetrains |
-| finest resolution | **element** — Cu, Nd, Dy | **material** — calAHSS, battery |
+| finest resolution | **element** — Cu, Al, Mn, Sr | **material** — calAHSS, battery |
 | Layer 3 | **real materials** — bulk, magnet, esteel, cfsteel — and a placeholder | material |
 | years | 2030–2050 | 2040 |
 | draws | 200,000 | 50,000 |
-| mass in | 640.7 kt (2050) | 13,863 kt (2040) |
-| mass balance | 2.8e-16 | 4.7e-11 |
-| result rows | 600 | 4,117 |
+| mass in | 640.8 kt (2050) | 13,863 kt (2040) |
+| mass balance | 2.6e-16 | 4.7e-11 |
+| recovered | 41.1% of collected (2050) | 82.8% of collected (2040) |
+| result rows | 355 | 4,117 |
 | residual rows | none | none |
 
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
@@ -108,7 +110,7 @@ Not one is measured.
 
 | case | rows | invented outright | derived or definitional |
 |---|---|---|---|
-| `bev_electronics` | 52 | 44 `PLACEHOLDER (Claude, not data)` | 8 routing decisions and the hulk transfer |
+| `bev_electronics` | 68 | 60 `PLACEHOLDER (Claude, not data)` | 8 routing decisions and the hulk transfer |
 | `carcomposition_mockup` | 632 | 532 `MADE UP (Claude)` | 100 definitional hulk transfers |
 
 **Neither table has a residual row left.** What remains beside the placeholders
@@ -329,12 +331,22 @@ existing figure and saved table there is keyed on it.
 
 ## 4. What to do next, in order
 
-0. **Sixteen blank coefficients block the electronics case right now.**
-   `01_check_inputs.py` stops on them. They are the four (material, element)
-   pairs the new Layer 3 created — `bulk/Al`, `cfsteel/Mn`, `esteel/Mn`,
-   `magnet/Sr` — across refining and shredding, recovered and lost. Written by
-   `make_skeleton.py` on 2026-09-01; the values are nobody's but yours. Until
-   they are filled, that case reads and does not solve.
+0. **The four new materials are filled in, and three of them do not matter.**
+   `bulk/Al`, `cfsteel/Mn`, `esteel/Mn` and `magnet/Sr`, across refining and
+   shredding, recovered and lost — placeholders written on 2026-09-01, each
+   saying so in `source`. `filling_sheet.py` ranks `bulk/Al` **7th of 60** at
+   0.74% of the spread and the other three at **0.00%**, because cfsteel is
+   0.09% of Motors, esteel 0.05% and magnet 1.6%. So look up `bulk/Al` when
+   convenient and leave the rest; measuring them would buy nothing.
+
+   Two of the eight carry a judgement worth revisiting rather than a number
+   worth measuring. `bulk/Al` at shredding was carried over unchanged from the
+   `Motors_mixed/Al` row it replaces, so moving to a real material key changed
+   no value — but a bulk aluminium part should separate better than aluminium
+   dispersed through a motor. And `esteel/Mn` was given the same number as
+   `cfsteel/Mn` deliberately: nothing points to a difference, so inventing one
+   would be worse, yet laminated stator steel inside a copper winding plausibly
+   does worse than a pressed housing.
 
 1. **Replace the coefficients. This is the whole of what is left.** The user
    asked on 2026-08-26 to have the case ready for real use; the model side is
@@ -357,9 +369,10 @@ existing figure and saved table there is keyed on it.
    reported beside it as `influence`.
 
    The difference decides what to do first. On the electronics case **3 rows of
-   44** carry 80% of the spread, and two of those three are the same
-   measurement — copper out of the shredder, seen from the recovered side and
-   the loss side. On car composition, **12 of 354** rather than the 88 the
+   60** carry 80% of the spread (remeasured 2026-09-01), and two of those three
+   are the same measurement — copper out of the shredder, seen from the
+   recovered side and the loss side. The third is the fraction of wiring that
+   is not dismantled. On car composition, **12 of 354** rather than the 88 the
    influence ranking suggested.
 
    Fill in `value`, `value_min` and `value_max`.
