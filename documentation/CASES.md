@@ -545,7 +545,7 @@ differs by stage, and the filename cannot tell you:
 | `child_layer` | `element` | `material` |
 | Layer 1 | BEV | drivetrain — BEV, Diesel, … |
 | Layer 2 | domain — Wiring, Motors | component — elvBIW, elvBattery |
-| Layer 3 | *placeholder, meaningless* | **material** — calAHSS, battery |
+| Layer 3 | **material** — esteel, magnet — *and a placeholder for the rest* | **material** — calAHSS, battery |
 | Layer 4 | element — Cu, Nd | *unused* |
 
 Getting this wrong does not fail. It silently files materials where elements
@@ -553,6 +553,41 @@ belong, and every coefficient keyed at the element layer then matches nothing �
 the model still runs and still balances, and the answer is wrong. Hence a named
 setting rather than a guess, and `tests/test_generality.py` runs one synthetic
 fixture through **both** shapes to keep the material path honest.
+
+### What fills Layer 3 in the `element` shape
+
+A file name may carry one more level: `<element>__<material>__<group>.npy` says
+which material an element sits in, and that material is written at Layer 3.
+Upstream began exporting these for 04_02 on 2026-08-31; before that Layer 3
+could only be a placeholder, because nothing said what the materials were.
+
+The segments run **finest first** and end with the group, so the depth of a
+name decides its layer. That is the whole rule — `src/upstream.py` knows no
+element and no material by name, and neither does anything downstream of it.
+Both are read from the file names, the layers they map onto from this table.
+
+Three things follow, and they are what the shares mean:
+
+- **A material's own mass is not exported**, so it is the sum of the elements
+  exported for it. Its elements therefore sum to exactly 1 within it, and the
+  part of that material upstream does not resolve into elements is *not* inside
+  it — it stays in the group.
+- **The aggregate `<element>__<group>` is that element's total**, not a sibling
+  of its resolved parts. Adding both would count the resolved part twice, so
+  the placeholder holds `total − what the materials account for`, per element.
+  An element resolved fully leaves nothing there; one not resolved at all is
+  entirely there.
+- **The placeholder is what is left of the group**, `1 − Σ materials`. With no
+  material files at all it comes out at 1.0 and every element is a share of the
+  group, which is exactly what every case read before — the new shape
+  generalises the old one rather than replacing it, and the test suite pins
+  that by comparing a group with material files against one without, in the
+  same run.
+
+If an element's parts claim more than the element's own total, or if the
+materials leave no room for elements exported outside them, the run is refused
+naming both. That is the arrays disagreeing with each other, and no share can
+be computed around it.
 
 ## Adding 04_03 or 04_04
 

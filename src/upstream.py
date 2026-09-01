@@ -24,22 +24,32 @@ kilotonnes. It keeps percentiles and drops the draws, so it also writes the raw
 draws for the years named in its own settings:
 
     <upstream>/data/processed/element_draws/<scenario>/<flow>/
-        years.npy                      the years exported
-        __domain____<domain>.npy       (draws, years)  mass of the domain itself
-        <element>__<domain>.npy        (draws, years)  that element within it
+        years.npy                              the years exported
+        __domain____<group>.npy                (draws, years)  the group itself
+        <element>__<group>.npy                 (draws, years)  an element in it
+        <element>__<material>__<group>.npy     (draws, years)  and in a material
 
 HOW IT MAPS ONTO THE FOUR LAYERS
 ---------------------------------
     Layer 1  product     BEV
     Layer 2  component   the electronics domain: Wiring, Motors, PCB, Sensors
-    Layer 3  material    one placeholder per domain
+    Layer 3  material    what the file names resolve, and a placeholder for
+                         whatever they do not
     Layer 4  element     Cu, Nd, Au, ...
 
-The material layer is a placeholder: upstream has no material resolution, going
-straight from a domain to the elements in it. Inventing materials would be
-inventing data, so each domain gets one material with a share of 1.0 and the
-layer is carried for the model's sake. Nothing at the material layer is
-informative here.
+**No name here is written in this file.** The segments of a file name run
+finest first and end with the group, so depth alone says which layer a name
+belongs at; which elements and which materials exist is read from the files,
+and how they map onto layers from the case's own source table. That is what
+lets one model serve a vehicle, a panel and a battery -- and it is checked by
+`tests/test_generality.py`, which solves an item sharing no name with any of
+them.
+
+Layer 3 used to be a placeholder and nothing else, because upstream exported
+only `<element>__<group>`. Since 2026-08-31 it also exports the material an
+element sits in, and that is real resolution where this model had a stand-in.
+The placeholder is still written for what is not resolved, so a folder without
+the new files produces exactly the rows it always did.
 
 WHAT THE INFLOW IS
 ------------------
@@ -66,6 +76,13 @@ import pandas as pd
 
 class UpstreamError(FileNotFoundError):
     """Raised when the upstream draws are missing or do not cover the request."""
+
+
+# How far an element's material-resolved parts may exceed the element's own
+# exported total before that is a disagreement rather than arithmetic noise.
+# Two arrays written by one run, meaned over the same draws, agree to about
+# 1e-4 relative; a real double-count is orders of magnitude bigger.
+PARTS_TOLERANCE = 1e-3
 
 
 def source_dir(params, folder: str = '') -> str:
@@ -118,7 +135,21 @@ def read_draws(folder: str, flow: str, group_marker: str = '__domain__'):
         if left == group_marker:
             array = domain_mass[right] = np.load(path, mmap_mode='r')
         elif right != 'total':
-            array = element_mass[(left, right)] = np.load(path, mmap_mode='r')
+            # The segments before the group run FINEST FIRST: 'Fe__Motors' is
+            # the element Fe, 'Fe__esteel__Motors' is Fe within electrical
+            # steel. Which is which is not decided here -- this only records
+            # how deep the name goes, and `_one_product` maps depth onto
+            # layers. Nothing in this file knows an element or a material by
+            # name; both are read from the file names and the case's
+            # source table.
+            child = tuple(left.split('__'))
+            if len(child) > 2:
+                raise UpstreamError(
+                    f'{stem}.npy in {flow_dir} names {len(child)} levels below '
+                    f'the group.\nThis model has two: a material and an element '
+                    f'within it. A file named\n<element>__<material>__<group> is '
+                    f'read; anything deeper has nowhere to go.')
+            array = element_mass[(child, right)] = np.load(path, mmap_mode='r')
         else:
             continue
         widths.setdefault(array.shape[0], []).append(stem)
@@ -225,8 +256,9 @@ def build(years, per_product: dict, keep_years: list[int],
     stage and cannot be guessed from the files (src/source.py):
 
         'element'   Cu within Wiring, from 04_02. The group's children are
-                    elements, so a placeholder material is inserted between
-                    them -- upstream has no material resolution there.
+                    elements, and Layer 3 holds whatever material the file
+                    names resolve, plus a placeholder for what they do not.
+                    See `_material_and_element_rows`.
 
         'material'  calAHSS within elvBIW, from 04_01. The group's children
                     ARE materials, so they sit at Layer 3 and there is no
@@ -276,26 +308,153 @@ def _one_product(product, domain_mass, element_mass, years, keep_years, draws,
                                      'Value': totals[domain] / product_total,
                                      'parameterCode': 'c-p'})
 
-            if child_layer == 'element':
-                # A placeholder material, whole, so the children have something
-                # to be a share of. It carries no information.
-                material = f'{domain}{material_suffix}'
-                composition_rows.append({**base, 'Layer 3': material, 'Layer 4': '',
-                                         'Value': 1.0, 'parameterCode': 'm-c'})
+            here = {child: mean_of(array)
+                    for (child, in_domain), array in sorted(element_mass.items())
+                    if in_domain == domain}
+            here = {child: mass for child, mass in here.items() if mass > 0}
 
-            for (child, in_domain), array in sorted(element_mass.items()):
-                if in_domain != domain:
-                    continue
-                share = mean_of(array) / totals[domain]
-                if share <= 0:
-                    continue
-                if child_layer == 'element':
-                    composition_rows.append({**base, 'Layer 3': material,
-                                             'Layer 4': child, 'Value': share,
-                                             'parameterCode': 'e-m'})
-                else:
-                    composition_rows.append({**base, 'Layer 3': child, 'Layer 4': '',
-                                             'Value': share, 'parameterCode': 'm-c'})
+            if child_layer == 'element':
+                composition_rows.extend(
+                    _material_and_element_rows(base, domain, totals[domain],
+                                               here, material_suffix))
+            else:
+                for child, mass in here.items():
+                    if len(child) > 1:
+                        raise UpstreamError(
+                            f"{'__'.join(child)}__{domain}.npy names a material "
+                            f"and something inside it,\nbut this case reads its "
+                            f"children AS materials (`child_layer` is 'material' "
+                            f"in its\nsource table), so there is no layer below "
+                            f"for the inner name to sit at.")
+                    composition_rows.append({**base, 'Layer 3': child[0],
+                                             'Layer 4': '',
+                                             'Value': mass / totals[domain],
+                                             'parameterCode': 'm-c'})
+
+
+def _material_and_element_rows(base, domain: str, domain_total: float,
+                               here: dict[tuple[str, ...], float],
+                               material_suffix: str) -> list[dict]:
+    """
+    One domain's Layer 3 and Layer 4 rows, from the arrays exported for it.
+
+    Args:
+        base: the Year / flow / Layer 1 / Layer 2 columns, already filled.
+        domain: the Layer 2 name, for error messages.
+        domain_total: the domain's own mass, which Layer 3 is a share of.
+        here: mass per exported child of this domain, keyed by the path from
+            the file name -- `('Cu',)` for an element whose material upstream
+            does not resolve, `('Fe', 'esteel')` for one it does.
+        material_suffix: what to call the material that holds the rest.
+
+    Returns:
+        The rows, Layer 3 before its own Layer 4 children.
+
+    Raises:
+        UpstreamError: if an element's resolved parts exceed the element's own
+            exported total, or if the resolved materials leave no room for
+            elements exported outside them. Both mean the arrays disagree with
+            each other, which no share can be computed around.
+
+    WHAT SITS AT LAYER 3
+    --------------------
+    Whatever the file names resolve, and a placeholder for the rest. Upstream
+    used to export only `<element>__<group>`, so every element's material was
+    unknown and Layer 3 could only be one placeholder holding the whole domain.
+    Since 2026-08-31 it also exports `<element>__<material>__<group>`, and that
+    IS the material layer -- real resolution where this model had a stand-in.
+
+    Both arrive in the same folder, and an element can be in both: `Fe__Motors`
+    is all the iron, `Fe__esteel__Motors` the part of it in electrical steel.
+    So the aggregate is the element's TOTAL, not a sibling of its parts, and
+    adding both would count the resolved part twice.
+
+    Hence: each resolved material holds what was exported for it, and the
+    placeholder holds `total - what the materials account for`, per element.
+    An element upstream resolves fully leaves nothing there; one it does not
+    resolve at all is entirely there, exactly as before.
+
+    THIS GENERALISES THE OLD SHAPE RATHER THAN REPLACING IT
+    -------------------------------------------------------
+    With no `<element>__<material>__<group>` files the placeholder comes out at
+    1.0 of the domain and every element is a share of it -- the same rows, to
+    the bit, as before this function existed. `tests/test_generality.py` pins
+    that: the same fixture read with and without the material files agrees on
+    every share it had before.
+
+    WHAT IS DELIBERATELY NOT DONE
+    -----------------------------
+    A material's own mass is not exported, so it is the sum of the elements
+    exported for it -- which makes those elements sum to exactly 1 within it,
+    with no remainder. The mass of that material which upstream does not
+    resolve into elements is therefore not inside it; it stays in the domain
+    and reaches the placeholder, or `src/rest.py`, as unresolved. Attributing
+    it to the material would mean inventing how much of it there is.
+    """
+    resolved: dict[str, dict[str, float]] = {}
+    aggregate: dict[str, float] = {}
+    for child, mass in here.items():
+        if len(child) == 1:
+            aggregate[child[0]] = mass
+        else:
+            element, material = child
+            resolved.setdefault(material, {})[element] = mass
+
+    placed: dict[str, float] = {}
+    for parts in resolved.values():
+        for element, mass in parts.items():
+            placed[element] = placed.get(element, 0.0) + mass
+
+    # What is left of each element once its resolved materials have taken
+    # their share. Negative means the parts claim more than the whole.
+    loose: dict[str, float] = {}
+    for element, mass in sorted(aggregate.items()):
+        left = mass - placed.get(element, 0.0)
+        if left < -PARTS_TOLERANCE * mass:
+            raise UpstreamError(
+                f'{element} in {domain}: the materials it is resolved into hold '
+                f'{placed[element]:,.6g},\nwhich is more than the '
+                f'{mass:,.6g} exported for {element} itself. One of the two is\n'
+                f'from a different run, or the resolution counts something twice.')
+        if left > 0:
+            loose[element] = left
+
+    material_total = {material: sum(parts.values())
+                      for material, parts in resolved.items()}
+    outside = domain_total - sum(material_total.values())
+
+    rows = []
+    for material in sorted(material_total):
+        rows.append({**base, 'Layer 3': material, 'Layer 4': '',
+                     'Value': material_total[material] / domain_total,
+                     'parameterCode': 'm-c'})
+        for element, mass in sorted(resolved[material].items()):
+            rows.append({**base, 'Layer 3': material, 'Layer 4': element,
+                         'Value': mass / material_total[material],
+                         'parameterCode': 'e-m'})
+
+    # The placeholder is emitted when it has something to hold, and when
+    # nothing was resolved at all -- which is the old shape, and where it comes
+    # out at 1.0. When the materials cover the domain and every element sits in
+    # one, it is not emitted and Layer 3 is entirely real.
+    if not loose and material_total:
+        return rows
+
+    if loose and outside <= 0:
+        raise UpstreamError(
+            f'{domain}: its resolved materials already account for the whole '
+            f'domain mass,\nyet {len(loose)} element(s) are exported outside '
+            f'them ({", ".join(sorted(loose))}).\nThere is no room left for '
+            f'them, so the arrays disagree about how big {domain} is.')
+
+    material = f'{domain}{material_suffix}'
+    rows.append({**base, 'Layer 3': material, 'Layer 4': '',
+                 'Value': max(outside, 0.0) / domain_total,
+                 'parameterCode': 'm-c'})
+    for element, mass in sorted(loose.items()):
+        rows.append({**base, 'Layer 3': material, 'Layer 4': element,
+                     'Value': mass / outside, 'parameterCode': 'e-m'})
+    return rows
 
 
 def load(params, folder: str, quiet: bool = False) -> dict | None:

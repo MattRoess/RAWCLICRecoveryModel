@@ -247,9 +247,12 @@ class DataParams:
     # child is an ELEMENT; a case whose children are already materials leaves
     # it blank and gets no placeholder. See `child_layer` in src/source.py.
     # WHAT THE PLACEHOLDER MATERIAL LAYER IS CALLED, appended to the group name.
-    # Upstream has no material resolution -- it goes straight from a group to
-    # the elements in it -- so each group gets exactly one material named after
-    # it. The layer is carried for the model's sake and means nothing.
+    # It holds what the upstream file names do NOT resolve into a material. A
+    # file named <element>__<material>__<group> puts its material at Layer 3 in
+    # its own right; where there is no such file the element's material is
+    # unknown, and the placeholder is where it sits. An export with none of them
+    # gives one placeholder per group holding the whole of it, which is what
+    # every case read before 2026-08-31. See CASES.md, `child_layer`.
     # SAFE TO CHANGE: yes -- it is a label.
     material_suffix: str = '_mixed'
 

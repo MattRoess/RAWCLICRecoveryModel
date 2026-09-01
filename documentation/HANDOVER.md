@@ -63,6 +63,7 @@ elements 3.7% above the Motors total.
 | case folder | `data_folder/bev_electronics` | `data_folder/carcomposition_mockup` |
 | covers | wiring and motors in BEVs | whole cars, five drivetrains |
 | finest resolution | **element** — Cu, Nd, Dy | **material** — calAHSS, battery |
+| Layer 3 | placeholder when measured; **real materials** after the re-run | material |
 | years | 2030–2050 | 2040 |
 | draws | 200,000 | 50,000 |
 | mass in | 640.7 kt (2050) | 13,863 kt (2040) |
@@ -249,10 +250,27 @@ decompositions and restatements of elements already exported, not new elements.
 so read together they triple-count iron.
 
 **That, plus a folder never being cleared, is why electronics does not run.**
-The material-resolved names are worth having — Layer 3 in this case is a
-placeholder, and `Fe__esteel` is real material resolution to put there — but
-only once one run's export stands alone in the folder. Deciding whether to read
-them, and how, is work; it is not what stops the case today.
+
+**The material-resolved names are now read** (2026-09-01). `Fe__esteel__Motors`
+puts `esteel` at Layer 3 and `Fe` beneath it, where this case had a placeholder
+and nothing else. The placeholder stays for what the export does not resolve,
+so a folder without the new files produces exactly the rows it always did.
+CASES.md, *What fills Layer 3 in the `element` shape*, has the three rules that
+decide what the shares mean.
+
+**It is not verified against the real data and cannot be** until the folder is
+emptied and 04_02 re-run — the guard refuses to read it, which is the point.
+It is verified on a synthetic fixture that resolves two materials in one group
+and none in another, checked share by share against exact arithmetic, and
+falsified two ways to confirm the checks bite.
+
+`Fe_ppm` is a different problem and is **not** solved here. It is a
+single-underscore name, so structurally it is simply an element called
+`Fe_ppm`, sitting beside `Fe` and stating the same quantity again. Nothing in a
+file name distinguishes a restatement from an element, and this model will not
+guess from values. If a clean re-run still writes them, they double-count, and
+the answer is upstream's: either stop exporting them or name them so their
+level is visible.
 
 **`03_02_adjustedflows.py` is still unmodified.**
 
@@ -393,10 +411,18 @@ started without saying so first.
   unblocks the electronics case here, and it is the only thing that does. The
   folder is written file by file and never cleared, so it now holds four runs;
   emptying it first is what makes one run's export stand alone. Two things to
-  settle while doing it: the plain Motors elements sum to 3.7% more than the
-  Motors domain mass within their own run, and the export writes decompositions
-  (`Fe__esteel`) and restatements (`Fe_ppm`) alongside the elements they belong
-  to, which anything reading the folder has to be able to tell apart.
+  settle while doing it:
+  - The plain Motors elements sum to **3.7% more than the Motors domain mass**
+    within their own run. That is a fact about the export, not about the mix,
+    and nothing here can compute a share around it.
+  - `Fe_ppm` restates `Fe` under a name whose level is invisible. `Fe__esteel`
+    is read correctly now, because `__` says how deep the name goes; a single
+    underscore says nothing, so `Fe_ppm` reads as an element and double-counts.
+    Either stop exporting them or give them a `__` level.
+
+  After the re-run, press Run on `tools/make_skeleton.py` for the electronics
+  case. Layer 3 will hold real materials, so the TC table needs rows for them —
+  it **merges**, so nothing already filled in is lost.
 - **Widen 03_02's per-year export** to all five drivetrains, next time it runs
   anyway. Removes the approximation in §3.
 - **04_03 and 04_04.** Each needs its own year-sliced export upstream, then a

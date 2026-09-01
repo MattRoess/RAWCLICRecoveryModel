@@ -70,6 +70,16 @@ GROUPS = ('Frame', 'Laminate', 'JunctionBox')
 ELEMENTS = {'Frame': {'Al': 1.0},                        # complete: no rest
             'Laminate': {'Si': 0.40, 'Ag': 0.001},       # incomplete -> rest
             'JunctionBox': {'Cu': 0.35, 'Pb': 0.02}}     # incomplete -> rest
+
+# Part of an element's share, resolved into the material holding it -- what
+# upstream writes as <element>__<material>__<group>. Shares of the GROUP, so
+# each is a slice of that element's entry above: 0.30 of the Laminate is
+# silicon in glass feedstock, and the remaining 0.10 of its silicon is not
+# resolved into any material. `Frame` has none at all, so it keeps the old
+# shape and the two can be compared in one run.
+MATERIALS = {'Laminate': {'glassfeed': {'Si': 0.30}},
+             'JunctionBox': {'braid': {'Cu': 0.20},
+                             'solderbed': {'Cu': 0.05, 'Pb': 0.015}}}
 YEARS = (2035, 2045)
 DRAWS = 400
 FLOW = 'PV_collected'
@@ -80,13 +90,18 @@ PRODUCTS = ('PVMono', 'PVThin')
 FOLDERS = ('collected', 'inflow', *(f'{p}_collected' for p in PRODUCTS))
 
 
-def write_upstream(root: str) -> None:
+def write_upstream(root: str, materials: bool = False) -> None:
     """
     A synthetic upstream export, in the layout the reader expects.
 
     Written with a generator rather than committed as fixtures: the arrays are
     (draws, years) floats and there is no reason to put binaries in git when
     twenty lines reproduce them exactly.
+
+    `materials` adds the `<element>__<material>__<group>` files upstream began
+    writing on 2026-08-31. Off by default, so most of this suite keeps reading
+    the shape that has no material resolution at all -- which is the shape the
+    new one has to reproduce exactly.
     """
     scenario = os.path.join(root, 'HIGH')
     os.makedirs(scenario, exist_ok=True)
@@ -108,6 +123,13 @@ def write_upstream(root: str) -> None:
                     mass.astype(np.float32))
             for element, share in ELEMENTS[group].items():
                 np.save(os.path.join(folder, f'{element}__{group}.npy'),
+                        (mass * share).astype(np.float32))
+            if not materials:
+                continue
+            for material, parts in MATERIALS.get(group, {}).items():
+                for element, share in parts.items():
+                    np.save(os.path.join(
+                        folder, f'{element}__{material}__{group}.npy'),
                         (mass * share).astype(np.float32))
 
 
@@ -170,13 +192,15 @@ def settings(root: str, case_name: str) -> Params:
     return params
 
 
-def build_everything(child_layer: str = 'element', products=None):
+def build_everything(child_layer: str = 'element', products=None,
+                     materials: bool = False):
     """Set the whole thing up, and return (params, case folder, temp root)."""
     root = tempfile.mkdtemp()
     upstream = os.path.join(root, 'upstream')
-    write_upstream(upstream)
+    write_upstream(upstream, materials)
 
-    case_name = f'pv_panels_test_{child_layer}{"_multi" if products else ""}'
+    case_name = (f'pv_panels_test_{child_layer}{"_multi" if products else ""}'
+                 f'{"_materials" if materials else ""}')
     case = os.path.join('data_folder', case_name)
     if os.path.isdir(case):
         shutil.rmtree(case)
@@ -231,6 +255,200 @@ def test_a_different_recovery_item_can_be_read() -> None:
         # Upstream reports kilotonnes whatever the project works in; the
         # conversion to working_unit happens in the engine, on load.
         assert set(inflow['Unit']) == {'kt'}, 'upstream mass is kilotonnes'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_a_resolved_material_lands_at_layer_3() -> None:
+    """
+    `<element>__<material>__<group>` puts the material at Layer 3 and the
+    element beneath it -- where a placeholder used to stand alone.
+
+    Every number here is exact rather than approximate: the fixture writes each
+    element as a fixed fraction of its group's mass, so the shares are those
+    fractions whatever the draws did.
+
+    The arithmetic being checked, on `Laminate`:
+
+        Si is 0.40 of the group, and 0.30 of the group is Si in `glassfeed`.
+        So `glassfeed` is 0.30 of the group and Si is ALL of `glassfeed`;
+        the placeholder is the other 0.70, holding the 0.10 of silicon whose
+        material upstream does not resolve, and the 0.001 of silver.
+
+    Note what is NOT here: no element or material name appears in `src/`. The
+    names in this file are a panel's, and the reader has never seen them.
+    """
+    from src.upstream import load
+
+    params, case, root = build_everything(materials=True)
+    try:
+        composition = load(params, params.run.data_folder,
+                           quiet=True)['composition']
+        one_year = composition[composition['Year'] == YEARS[0]]
+
+        def share(group: str, material: str, element: str = '') -> float:
+            rows = one_year[(one_year['Layer 2'] == group)
+                            & (one_year['Layer 3'] == material)
+                            & (one_year['Layer 4'] == element)]
+            assert len(rows) == 1, \
+                f'expected one row for {group}/{material}/{element}, got {len(rows)}'
+            return float(rows['Value'].iloc[0])
+
+        held = 'Laminate_mixed'
+        assert abs(share('Laminate', 'glassfeed') - 0.30) < 1e-6, \
+            f"glassfeed is {share('Laminate', 'glassfeed'):.6f} of Laminate, expected 0.30"
+        assert abs(share('Laminate', 'glassfeed', 'Si') - 1.0) < 1e-6, \
+            'a material holds only the elements exported for it, so they sum to 1'
+        assert abs(share('Laminate', held) - 0.70) < 1e-6, \
+            f"the placeholder is {share('Laminate', held):.6f}, expected 1 - 0.30"
+        assert abs(share('Laminate', held, 'Si') - 0.10 / 0.70) < 1e-6, \
+            'the silicon upstream does not resolve should stay in the placeholder'
+        assert abs(share('Laminate', held, 'Ag') - 0.001 / 0.70) < 1e-6, \
+            'an element with no material resolution is a share of the placeholder'
+
+        # Two materials over one group, one of them holding two elements.
+        assert abs(share('JunctionBox', 'braid') - 0.20) < 1e-6
+        assert abs(share('JunctionBox', 'solderbed') - 0.065) < 1e-6
+        assert abs(share('JunctionBox', 'solderbed', 'Cu') - 0.05 / 0.065) < 1e-6, \
+            'within a material, an element is a share of THAT material'
+
+        # Shares still nest: materials within the group, elements within each.
+        for (group, _), rows in one_year[one_year['Layer 4'] == ''].groupby(
+                ['Layer 2', 'Year']):
+            below = rows[rows['Layer 3'] != '']['Value'].sum()
+            assert below <= 1.0 + 1e-9, \
+                f'{group}: its materials sum to {below:.6f} of it'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_no_material_files_give_exactly_the_rows_they_always_did() -> None:
+    """
+    The material layer generalises the placeholder rather than replacing it.
+
+    A group upstream does not resolve must come out identical either way, and
+    a whole export without the new files must come out as one placeholder at
+    1.0 with every element a share of the group -- which is what every case
+    read before 2026-08-31, and what the electronics case will still be for any
+    domain the new export does not reach.
+
+    `Frame` is in both fixtures and has no material files in either, so it is
+    compared row for row across the two.
+    """
+    from src.upstream import load
+
+    plain_params, plain_case, plain_root = build_everything()
+    rich_params, rich_case, rich_root = build_everything(materials=True)
+    try:
+        plain = load(plain_params, plain_params.run.data_folder,
+                     quiet=True)['composition']
+        rich = load(rich_params, rich_params.run.data_folder,
+                    quiet=True)['composition']
+
+        # Without the files: one placeholder per group, whole, and nothing else
+        # at Layer 3.
+        materials = plain[(plain['Layer 3'] != '') & (plain['Layer 4'] == '')]
+        assert set(materials['Layer 3']) == {f'{g}_mixed' for g in GROUPS}, \
+            f"Layer 3 holds {sorted(set(materials['Layer 3']))}, expected placeholders"
+        assert (materials['Value'] == 1.0).all(), \
+            'with nothing resolved the placeholder must be the whole group'
+
+        columns = ['Year', 'Layer 2', 'Layer 3', 'Layer 4', 'Value']
+        for frame in (plain, rich):
+            frame.sort_values(columns[:-1], inplace=True)
+        untouched = [f[f['Layer 2'] == 'Frame'][columns].reset_index(drop=True)
+                     for f in (plain, rich)]
+        assert untouched[0].equals(untouched[1]), \
+            ('a group with no material files changed when another group gained '
+             f'them:\n{untouched[0]}\n{untouched[1]}')
+    finally:
+        for path in (plain_root, plain_case, rich_root, rich_case):
+            shutil.rmtree(path, ignore_errors=True)
+
+
+def test_parts_exceeding_their_element_are_refused() -> None:
+    """
+    An element's resolved parts are inside its own total, not beside it. Parts
+    claiming more than the whole means the two came from different runs, or
+    that the resolution counts something twice -- and either way no share can
+    be computed around it.
+
+    Without this the surplus would silently reduce what is left for the
+    placeholder, or drive it negative.
+    """
+    from src.upstream import UpstreamError, load
+
+    params, case, root = build_everything(materials=True)
+    try:
+        # Si is 0.40 of the Laminate; claim 0.55 of it for one material.
+        folder = os.path.join(root, 'upstream', 'HIGH', 'collected')
+        whole = np.load(os.path.join(folder, '__domain____Laminate.npy'))
+        np.save(os.path.join(folder, 'Si__glassfeed__Laminate.npy'),
+                (whole * 0.55).astype(np.float32))
+
+        try:
+            load(params, params.run.data_folder, quiet=True)
+        except UpstreamError as error:
+            message = str(error)
+        else:
+            raise AssertionError(
+                'parts claiming more than their element were read without complaint')
+
+        assert 'Si' in message and 'Laminate' in message, \
+            f'the refusal names neither the element nor the group:\n{message}'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_a_case_with_real_materials_solves_and_closes() -> None:
+    """
+    The point of the layer: a case whose Layer 3 is several real materials and
+    a placeholder solves, nests and balances, with coefficients keyed at the
+    material layer as readily as at the element layer.
+
+    `tools/make_skeleton.py` writes those coefficients from the composition, so
+    the materials reach the TC table without anyone naming them either.
+    """
+    from src.upstream import load
+
+    params, case, root = build_everything(materials=True)
+    try:
+        tables = load(params, params.run.data_folder, quiet=True)
+        coefficients(case, tables['composition'])
+
+        written = pd.read_csv(os.path.join(case, 'input_data', 'TCs.csv'),
+                              dtype=str).fillna('')
+        keys = set(written['Input_layer_key'])
+        for material in ('glassfeed', 'braid', 'solderbed'):
+            assert material in keys, \
+                f'{material} reached Layer 3 but no coefficient was written for it'
+
+        solution = RecoveryModelOptimized(
+            data_folder=case, layer_names=NAMES, tables=tables,
+            working_unit=params.run.working_unit, years='',
+        ).solve_models_and_write_to_output()
+        solution['Value'] = pd.to_numeric(solution['Value'])
+
+        layers = ['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
+        depth = (solution[layers] != '').sum(axis=1)
+        for year, group in solution.assign(depth=depth).groupby('Year'):
+            def total(flow):
+                rows = group[group['Stock/Flow ID'] == flow]
+                return 0.0 if rows.empty else \
+                    rows[rows['depth'] == rows['depth'].min()]['Value'].sum()
+            entering = total(FLOW)
+            leaving = sum(total(f) for f in ('PV_recovered', 'PV_loss_leaching',
+                                             'PV_loss_handling'))
+            assert entering > 0, f'{year}: nothing entered'
+            assert abs(entering - leaving) / entering < 1e-9, \
+                f'{year}: {entering:,.3f} entered but {leaving:,.3f} left'
+
+        # The materials are in the answer, not just in the inputs.
+        assert {'glassfeed', 'braid', 'solderbed'} <= set(solution['Layer 3']), \
+            'the resolved materials did not survive into the solution'
     finally:
         shutil.rmtree(root, ignore_errors=True)
         shutil.rmtree(case, ignore_errors=True)
