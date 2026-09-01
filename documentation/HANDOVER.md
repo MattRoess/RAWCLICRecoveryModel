@@ -22,6 +22,23 @@ Three things followed from that day, all built and all tested:
    had left the composition while being documented as merging, and took 32 of
    them, every rare earth included. DEFECTS.md §3.12.
 
+**The electronics study is becoming two cases** (2026-09-01, the user's design).
+A shredder separates MATERIALS -- copper, an aluminium alloy, an iron alloy that
+is steel and cast iron and the ferrite magnets together -- and whatever is
+alloyed into one of those stays in it. Reporting `Mn recovered` claims a
+manganese separation nobody performs. Boards and sensors go somewhere that does
+separate elements, so they are their own case:
+
+| case | groups | `child_layer` | recovers |
+|---|---|---|---|
+| `bev_electronics_boards` | PCB, Sensors | `element` | Au, Ag, Pd, Cu, Nd, Dy, Co |
+| the metals case, not yet built | Wiring, Motors | `material` | copper, Al alloy, Fe alloy |
+
+**The boards case is built and runs**; it needed nothing from upstream. **The
+metals case is blocked on one 04_02 change** -- see §3. No code changes here for
+either: `child_layer` already takes both values and
+`tests/test_generality.py` runs a fixture through each.
+
 **The electronics case runs end to end again.** The 16 coefficients the new
 Layer 3 needed were filled the same day, at the user's instruction, and are
 marked `PLACEHOLDER (Claude, not data)` like the 44 beside them. Mass closes to
@@ -289,6 +306,59 @@ the answer is upstream's: either stop exporting them or name them so their
 level is visible.
 
 **`03_02_adjustedflows.py` is still unmodified.**
+
+### What 04_02 has to change for the metals case
+
+**It must write the material's own mass, and not go down to the elements** for
+the metal domains. 04_01 already exports exactly this shape --
+`calAHSS__elvBIW.npy` -- and this model reads it with `child_layer = material`
+and no element layer at all. 04_02 writes elements instead, which is why Layer 3
+here can only ever be a by-product of element names.
+
+Four files, and they are the whole ask:
+
+    copper__Wiring.npy      the harness
+    copper__Motors.npy      the windings -- the motor copper IS wiring
+    alalloy__Motors.npy
+    fealloy__Motors.npy     steel + cast iron + the ferrite magnets, one stream
+
+**The numbers are already there, and no approximation is involved.**
+`RAWCLICVehicleElectronics/Composition/element_draws/motors_<segment>_elements.txt`
+names every column of the fractions array, and each is either a bare element or
+`<element>__<material>`:
+
+    Cu  O__copper Ag__copper Pb__copper ... Mn__copper
+    Fe__esteel Si__esteel C__esteel Mn__esteel Al__esteel P__esteel S__esteel
+    Sr__magnet Fe__magnet O__magnet
+    Fe__cfsteel C__cfsteel Mn__cfsteel P__cfsteel S__cfsteel
+    Al__bulk  Plastic  Unspecified
+
+and `motors_<segment>_esteel_elements.txt` names `Fe Si C Mn Al P S` -- the same
+seven. So **every element of every alloy is in the main list**, and an alloy's
+mass is the exact sum of its `__<material>` columns. Nothing is missing and
+nothing has to be invented:
+
+    copper   = Cu + every X__copper        (the bare `Cu` IS the copper metal,
+                                            which is why no Cu__copper exists)
+    alalloy  = every X__bulk
+    fealloy  = every X__esteel + X__cfsteel + X__magnet
+
+The change is in `code/04_02_BEVelectronics.py`, in the export block that calls
+`_write_element_draws` -- 04_02's own figures and tables do not move.
+
+**This will not work off the current export.** The 09-01 re-run resolved 24
+elements and dropped `Fe` entirely, so summing today gives 0.06% of Motors
+rather than the steel. `bev_electronics_elements` has to be empty (= all) when
+it runs.
+
+### Why the metals case is not built yet
+
+Two attempts were made on 2026-09-01 and both were wrong, in the same way:
+keying the recovery at the material layer while `child_layer` stayed `element`
+leaves `Al`, `Mn` and `Sr` sitting underneath `bulk`, `cfsteel` and `magnet`.
+The user's instruction is that there is no element layer there at all. There is
+no way to that shape from an elemental export, so the case waits for the four
+files. Nothing half-built was left behind -- `case.xlsx` was reverted.
 
 The branch itself is **20 commits ahead of `main`** — the other 17 are earlier
 work that had not been merged. Merging it brings all twenty, not three.
