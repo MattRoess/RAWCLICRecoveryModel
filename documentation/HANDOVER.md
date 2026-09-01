@@ -34,10 +34,27 @@ separate elements, so they are their own case:
 | `bev_electronics_boards` | PCB, Sensors | `element` | Au, Ag, Pd, Cu, Nd, Dy, Co |
 | the metals case, not yet built | Wiring, Motors | `material` | copper, Al alloy, Fe alloy |
 
-**The boards case is built and runs**; it needed nothing from upstream. **The
-metals case is blocked on one 04_02 change** -- see §3. No code changes here for
-either: `child_layer` already takes both values and
-`tests/test_generality.py` runs a fixture through each.
+**Both are built and both run**, and no code changed here for either:
+`child_layer` already takes both values and `tests/test_generality.py` runs a
+fixture through each. 04_02 was changed to export the alloys (§3).
+
+The metals case has **no element layer at all** -- zero Layer 4 rows in its
+solution -- and Layer 3 is what a plant actually produces:
+
+| | share of a motor | 2050 recovery |
+|---|---|---|
+| `fealloy` | 67.5% | `F_recovered_fe_alloy` 31.2% of collected mass |
+| `copper` | 14.9% of Motors, 100% of Wiring | `F_recovered_cu` 40.6% |
+| `alalloy` | 10.1% | `F_recovered_al_alloy` 4.4% |
+| `rest` | 7.5% (Plastic, Unspecified) | unrecovered, as always |
+
+Recovery comes out at **74-76% of collected mass**, against 41% for the
+superseded element-keyed case -- not an improvement in the plant, but the alloy
+mass finally being visible instead of sitting inside `rest`.
+
+**`data_folder/bev_electronics` is superseded** by these two and is kept, not
+deleted. It will not read meaningfully off the current export: it is
+element-keyed, and 04_02 no longer writes element files for Wiring or Motors.
 
 **The electronics case runs end to end again.** The 16 coefficients the new
 Layer 3 needed were filled the same day, at the user's instruction, and are
@@ -109,7 +126,7 @@ modelling decision nobody has taken.
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
 suites on fixed fixtures (117 checks), then the pipeline and a mass balance.
 
-**`run.data_folder` points at `bev_electronics`.** It has **no residual rows**:
+**`run.data_folder` points at `bev_electronics_metals`.** It has **no residual rows**:
 every coefficient is measured in its own right. `bev_electronics_all_measured`,
 which existed to contrast a conditioned case against a residual one, was deleted
 on 2026-08-28 once that contrast no longer existed.
