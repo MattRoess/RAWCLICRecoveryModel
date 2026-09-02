@@ -9,16 +9,25 @@ away the thing that was expensive to compute. These five figures each answer a
 different question about the spread, and together they are what "understanding
 the effect of the Monte Carlo" means in practice:
 
-  1. `mc_distribution`  -- what does the answer look like, and where does the
-     deterministic run sit inside it?
-  2. `mc_spread`        -- which flows are uncertain, and by how much?
-  3. `mc_mode_vs_mean`  -- how far is running at the mode from the mean, per
+  1. `over_time`        -- is it growing, and how sure is that? Median per
+     resource per year, with the 95% interval.
+  2. `pdf_all`          -- what does each answer look like, and where does the
+     deterministic run sit inside it? The `pdf_<resource>` panels on one page,
+     resources as rows and years as columns.
+  3. `flows_over_time`  -- where does the collected mass end up, year by year?
+  4. `spread`           -- which flows are uncertain, and by how much?
+  5. `mode_vs_mean`     -- how far is running at the mode from the mean, per
      flow? This is the figure that says whether the Monte Carlo changed the
      answer or only added error bars to it.
-  4. `mc_convergence`   -- how many draws are actually needed?
-  5. `mc_sensitivity`   -- which coefficients drive the spread?
+  6. `convergence`      -- how many draws are actually needed?
+  7. `sensitivity`      -- which coefficients drive the spread?
 
-Figure 3 is the one to look at first. A deterministic run sets every
+THERE IS NO FIGURE THAT SUMS THE YEAR AXIS FOR AN ABSOLUTE MASS. `distribution`
+did, and was deleted on 2026-09-02: adding 2030's 10 kt of copper to 2050's 254
+gives a quantity nobody has a use for, dominated by whichever year is last.
+Per-year is the only honest way to draw a distribution here.
+
+Figure 5 is the one to look at first. A deterministic run sets every
 coefficient to its mode, and a product of triangular variables does not put its
 mode at its mean, so the two differ systematically rather than randomly. If
 that gap is large, every number produced before this existed was biased, not
@@ -166,117 +175,6 @@ def _band(values: np.ndarray) -> tuple[float, float, float, float, float]:
 # ----------------------------------------------------------------------
 #  1. What the answer looks like
 # ----------------------------------------------------------------------
-
-def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, unit: str):
-    """
-    One histogram per element: total recovered mass, across draws.
-
-    The deterministic value and the Monte Carlo mean are drawn on top, because
-    the distance between those two lines is the whole point.
-    """
-    layer = finest_layer(run.keys)
-    recovered = recovered_flows(run, run.case)
-    if not recovered:
-        return None
-
-    # THE TOTALS FIRST, SO A RESOURCE THAT IS NEVER RECOVERED GETS NO PANEL.
-    # `rest` is the plain case: it is written 1.0 into a loss flow by design, so
-    # its recovered mass is exactly zero on every draw. Drawn anyway it gave a
-    # panel with an axis from -0.4 to 0.4 kg, one bar at zero and a deterministic
-    # line on top of it -- an empty box beside three real distributions, which
-    # reads as though something had gone wrong with the run.
-    #
-    # Dropped, not hidden: the names come back so the caller can say which
-    # resources have no recovery at all, because that is a finding about the
-    # case rather than a fact about the figure.
-    drawn: dict[str, np.ndarray] = {}
-    empty: list[str] = []
-    for element in sorted({e for e in run.keys[layer].unique() if e}):
-        totals = np.zeros(run.draws)
-        for flow in recovered:
-            rows = element_rows(run, flow, element)
-            if rows.size:
-                totals += run.values[rows].sum(axis=0)
-        if totals.max() > 0:
-            drawn[element] = totals
-        else:
-            empty.append(element)
-    elements = list(drawn)
-    if not elements:
-        return None
-
-    # A GRID, NOT A ROW. One row of panels is fine for the nine elements 04_02
-    # resolves and absurd for the twenty-eight materials 04_01 does: it produced
-    # a 28,000 x 833 pixel strip that no screen or page can show, with every
-    # label overlapping its neighbour. Columns are capped so a panel keeps a
-    # readable width whatever the case contains.
-    columns = min(5, len(elements))
-    rows = -(-len(elements) // columns)
-    figure, axes, colours = chart(400 * columns, 320 * rows, theme, rows, columns)
-    panels = list(axes.ravel()) if hasattr(axes, 'ravel') else [axes]
-
-    # Panels with nothing to draw would otherwise show an empty box with ticks.
-    for spare in panels[len(elements):]:
-        spare.set_visible(False)
-
-    for index, (element, panel) in enumerate(zip(elements, panels)):
-        totals = drawn[element]
-
-        # Each panel picks its own unit. Gold and copper differ by two orders
-        # of magnitude here and by more on real data, so one shared unit would
-        # leave one of them unreadable (src/units.py).
-        scale, shown = scale_for(totals, unit)
-        totals = totals * scale
-
-        panel.hist(totals, bins=60, color=PALETTE[index % len(PALETTE)],
-                   alpha=0.75, edgecolor='none')
-
-        mean = totals.mean()
-        panel.axvline(mean, color=colours['title'], linewidth=1.6,
-                      label=f'Monte Carlo mean  {mean:,.1f}')
-        if deterministic is not None:
-            point = _deterministic_total(deterministic, recovered, element, layer)
-            if point is not None:
-                # SCALED, like everything else on this axis. The panel picks its
-                # own unit from the Monte Carlo values, and the deterministic
-                # total arrives in the working unit -- kilograms -- so drawing it
-                # raw put a line at 59,750,828 on an axis whose data ran to 60.
-                # It landed off the right edge with a label a million times the
-                # mean beside it. `figure_pdf` and `figure_mode_vs_mean` both
-                # scale the same value; only this one did not.
-                point = point * scale
-                panel.axvline(point, color=PALETTE[3], linewidth=1.6, linestyle='--',
-                              label=f'deterministic (mode)  {point:,.1f}')
-
-        low, _, median, _, high = _band(totals)
-        panel.axvspan(low, high, color=colours['meta'], alpha=0.10,
-                      label=f'95% interval  {low:,.1f} to {high:,.1f}')
-
-        panel.set_title(f'{element} recovered', color=colours['title'],
-                        fontsize=11, fontweight='bold')
-        panel.set_xlabel(f'mass ({shown})', color=colours['meta'], fontsize=9)
-        panel.set_ylabel('draws' if index == 0 else '', color=colours['meta'], fontsize=9)
-        # 'best', not 'upper right': these distributions pile up against the
-        # right-hand cap, so a fixed corner put the legend on top of the bars.
-        legend = panel.legend(fontsize=7.5, frameon=False, loc='best')
-        for text in legend.get_texts():
-            text.set_color(colours['meta'])
-
-    title = 'Recovered mass, across draws'
-    if empty:
-        # Named, so that a resource missing from the figure is a statement and
-        # not an omission the reader has to notice for themselves.
-        title += f"   ({', '.join(empty)}: never recovered, so not drawn)"
-    header(figure, title, colours, f'total recovered mass, {years_covered(run)}')
-    return figure
-
-
-def _deterministic_total(deterministic: pd.DataFrame, flows: list[str],
-                         element: str, layer: str = 'Layer 4') -> float | None:
-    rows = deterministic[(deterministic['Stock/Flow ID'].isin(flows))
-                         & (deterministic[layer] == element)]
-    return float(rows['Value'].sum()) if len(rows) else None
-
 
 
 # ----------------------------------------------------------------------
@@ -798,7 +696,6 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
     out_dir = folder_for(out_dir, case) if case else out_dir
 
     figures = [
-        ('distribution', figure_distribution(run, deterministic, theme, unit)),
         ('over_time', figure_over_time(run, theme, unit)),
         ('pdf_all', figure_pdf_grid(run, deterministic, theme, unit)),
         ('flows_over_time', figure_flows_over_time(run, theme, unit)),
