@@ -96,6 +96,22 @@ def years_covered(run) -> str:
     return f'{years[0]}\u2013{years[-1]}, all {len(years)} years summed'
 
 
+def every_other(years: list) -> list:
+    """
+    Half the years, ends included: 2020, 2030, 2040, 2050, 2060, 2070.
+
+    A DENSITY FIGURE IS ONE PANEL PER YEAR, and eleven of them per resource is
+    a wall. Densities change slowly here -- the coefficients do not vary by
+    year, so consecutive years differ only by the inflow that scales them -- and
+    a panel that is nearly its neighbour costs space and adds nothing.
+
+    Taking every second entry keeps both ends and halves the count, which on a
+    5-year step gives a 10-year one. The trajectory figures still carry every
+    year; this thins only the shapes.
+    """
+    return years[::2] if len(years) > 6 else years
+
+
 def finest_layer(frame) -> str:
     """
     The deepest layer this case actually resolves.
@@ -301,7 +317,7 @@ def figure_pdf_grid(run, deterministic: pd.DataFrame | None, theme: str,
     uncertainty -- ten times aluminium's in kilotonnes -- look identical to it.
     Sharing one axis per year was honest and unreadable.
     """
-    years = sorted(int(y) for y in run.keys['Year'].unique())
+    years = every_other(sorted(int(y) for y in run.keys['Year'].unique()))
     layer = finest_layer(run.keys)
     recovered = recovered_flows(run, run.case)
     if not recovered or not years:
@@ -713,7 +729,7 @@ def figure_pdf(run, element: str, deterministic: pd.DataFrame | None,
     deterministic line is the whole argument for running the Monte Carlo: a
     single-value answer is one point inside a shape, and usually not its centre.
     """
-    years = sorted(run.keys['Year'].astype(str).unique())
+    years = every_other(sorted(run.keys['Year'].astype(str).unique()))
     panels_with_data = [y for y in years if recovered_rows(run, element, y, layer).size]
     if not panels_with_data:
         return None
