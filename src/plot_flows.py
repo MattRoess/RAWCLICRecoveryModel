@@ -109,6 +109,26 @@ def replay(folder: str, tables: dict | None = None):
     return edges, flows
 
 
+def finest_layer(frame: pd.DataFrame) -> str:
+    """
+    The deepest layer this case actually resolves.
+
+    NOT always Layer 4, and assuming it was is why per-resource Sankeys were
+    silently missing. `bev_electronics_wiring` stops at material -- copper,
+    alalloy, fealloy at Layer 3, Layer 4 empty in every row -- so a set built
+    from Layer 4 came back empty and the loop drew `total` and nothing else. No
+    error, no warning, just one figure where there should have been four.
+    `carcomposition_mockup` is material-keyed too and never had them either.
+
+    `src/plot_monte_carlo.py` has the same function for the same reason. The fix
+    was applied there and not here.
+    """
+    for column in ('Layer 4', 'Layer 3', 'Layer 2'):
+        if column in frame.columns and (frame[column].astype(str) != '').any():
+            return column
+    return 'Layer 2'
+
+
 def mass(frame: pd.DataFrame, element: str | None) -> float:
     """
     Total mass in a set of rows, without double counting the nesting.
@@ -121,7 +141,8 @@ def mass(frame: pd.DataFrame, element: str | None) -> float:
     frame = frame.copy()
     frame['Value'] = pd.to_numeric(frame['Value'])
     if element is not None:
-        return float(frame.loc[frame['Layer 4'] == element, 'Value'].sum())
+        return float(frame.loc[frame[finest_layer(frame)] == element,
+                               'Value'].sum())
     depths = depth_of(frame)
     return float(frame.loc[depths == depths.min(), 'Value'].sum())
 
@@ -262,7 +283,14 @@ def draw(folder: str | None = None, params: Params | None = None,
 
     elements = [None]
     if params.figures.element_figures:
-        elements += sorted({e for f in flows.values() for e in f['Layer 4'].unique() if e})
+        deepest = {finest_layer(f) for f in flows.values()}
+        # One layer across the case, or the sets would not be comparable between
+        # flows. A case mixing depths is refused at load (validate_inputs,
+        # "no output flow is written at mixed layers"), so this is a guard
+        # against that check being removed, not against real data.
+        layer = sorted(deepest)[0] if len(deepest) == 1 else 'Layer 4'
+        elements += sorted({e for f in flows.values()
+                            for e in f[layer].astype(str).unique() if e})
 
     print(f'{folder}: {len(flows)} flows, {len(edges)} transfers, '
           f'showing {shows}' + (f' of {of_many} combinations' if of_many > 1 else ''))

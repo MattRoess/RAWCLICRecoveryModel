@@ -864,6 +864,45 @@ before the sorted index ran on into groups that were not in the frame at all.
 A reminder that a small case is not a weaker test than a large one; it is a
 different one.
 
+### 3.15 Per-resource Sankeys were silently missing — **FIXED 2026-09-02**
+
+Asked for by the user: *"I want the sankey diagram also for the copper and each
+of the alloys."* They were supposed to exist already — `RUNNING.md` listed
+`<resource>.png`, one Sankey per resource — and `02_run_model.py` drew only
+`total.png`.
+
+One line in `src/plot_flows.py`:
+
+```python
+elements += sorted({e for f in flows.values() for e in f['Layer 4'].unique() if e})
+```
+
+**A hard-coded `Layer 4`.** A case that resolves to MATERIALS leaves Layer 4
+empty in every row, so the set came back empty and the loop drew the total and
+stopped. No error and no warning — one figure where there should have been
+several.
+
+It affected every material-keyed case: `bev_electronics_wiring`, and
+`carcomposition_mockup`, which has **never** had per-resource Sankeys in its
+life.
+
+**FIXED:** a `finest_layer` that reads the deepest layer the data actually
+fills. `mass()` had the same assumption when selecting a resource's rows and was
+fixed with it.
+
+**`src/plot_monte_carlo.py` already had `finest_layer`, for this exact reason,
+with a docstring warning that assuming Layer 4 gave 04_01 no per-resource
+figures at all, silently.** The fix was applied there and not to its sibling. A
+defect understood well enough to be documented, and left in place next door.
+
+    F_collected 515,880 t of copper, 2070
+      +- F_disassembled 192,420 -> F_cu_own      182,799   (95%)
+      +- F_in_car       323,460 -> F_cu_general  177,903   (55%)
+
+37% of the copper takes the dedicated road and yields more metal than the 63%
+that goes through the shredder. That is the entire case for disassembling, and
+no other figure shows it.
+
 ---
 
 ## 4. Code quality notes
