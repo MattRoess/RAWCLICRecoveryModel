@@ -22,45 +22,54 @@ Three things followed from that day, all built and all tested:
    had left the composition while being documented as merging, and took 32 of
    them, every rare earth included. DEFECTS.md §3.12.
 
-**The electronics study is becoming two cases** (2026-09-01, the user's design).
-A shredder separates MATERIALS -- copper, an aluminium alloy, an iron alloy that
-is steel and cast iron and the ferrite magnets together -- and whatever is
-alloyed into one of those stays in it. Reporting `Mn recovered` claims a
-manganese separation nobody performs. Boards and sensors go somewhere that does
-separate elements, so they are their own case:
+**The electronics case is `bev_electronics_metals`, and it is the only one.**
+Rebuilt from scratch on 2026-09-02 to the user's specification, after two
+earlier attempts they had not agreed to. `bev_electronics` and
+`bev_electronics_boards` were deleted the same day at their instruction; git has
+both (`e8c2373`, `0e965f0`).
 
-| case | groups | `child_layer` | recovers |
+**Materials only. No element layer anywhere** -- zero Layer 4 rows in the
+solution. Layer 3 is what a scrapyard sells:
+
+| | share of a motor |
+|---|---|
+| `fealloy` -- steel, cast iron AND the ferrite magnets | 67.5% |
+| `copper` | 14.9% of Motors, 100% of Wiring |
+| `alalloy` | 10.1% |
+| `rest` -- plastics and the like, never recovered | 7.5% |
+
+Whatever is alloyed into one of those stays in it. `Mn recovered` would claim a
+manganese separation nobody performs, which is why 04_02 was changed to export
+the alloys themselves (§3).
+
+**Two roads, and they are the point of the case.** Some of the wiring and some
+of the motors are DISASSEMBLED -- taken out whole with tools -- and go to their
+own shredder and their own recycling process. The rest stays in the car, and the
+car is crushed and torn apart by the general shredder. Nothing is lost by not
+being disassembled; it simply travels the other road. The dedicated route gets
+much more copper back, and that is the whole reason to disassemble.
+
+Six recovered flows, kept apart so the two roads can be compared, and added
+together in reporting rather than by a third flow that would double-count.
+2050, tonnes:
+
+| | own process | general | combined |
 |---|---|---|---|
-| `bev_electronics_boards` | PCB, Sensors | `element` | Au, Ag, Pd, Cu, Nd, Dy, Co |
-| the metals case, not yet built | Wiring, Motors | `material` | copper, Al alloy, Fe alloy |
+| copper | 130,842 | 129,357 | 260,199 |
+| Al alloy | 24,650 | 3,383 | 28,033 |
+| steel alloy | 171,353 | 28,647 | 200,000 |
+| rubbish | 38,607 | 113,993 | 152,600 |
 
-**Both are built and both run**, and no code changed here for either:
-`child_layer` already takes both values and `tests/test_generality.py` runs a
-fixture through each. 04_02 was changed to export the alloys (§3).
+76.2% of collected mass recovered, closing to 1.9e-16.
 
-The metals case has **no element layer at all** -- zero Layer 4 rows in its
-solution -- and Layer 3 is what a plant actually produces:
-
-| | share of a motor | 2050 recovery |
-|---|---|---|
-| `fealloy` | 67.5% | `F_recovered_fe_alloy` 31.2% of collected mass |
-| `copper` | 14.9% of Motors, 100% of Wiring | `F_recovered_cu` 40.6% |
-| `alalloy` | 10.1% | `F_recovered_al_alloy` 4.4% |
-| `rest` | 7.5% (Plastic, Unspecified) | unrecovered, as always |
-
-Recovery comes out at **74-76% of collected mass**, against 41% for the
-superseded element-keyed case -- not an improvement in the plant, but the alloy
-mass finally being visible instead of sitting inside `rest`.
-
-**`data_folder/bev_electronics` is superseded** by these two and is kept, not
-deleted. It will not read meaningfully off the current export: it is
-element-keyed, and 04_02 no longer writes element files for Wiring or Motors.
-
-**The electronics case runs end to end again.** The 16 coefficients the new
-Layer 3 needed were filled the same day, at the user's instruction, and are
-marked `PLACEHOLDER (Claude, not data)` like the 44 beside them. Mass closes to
-2.6e-16 and recovery comes out at 41–47% of collected mass. Not one of the 60
-is measured. §4.
+**24 rows, of which 10 are numbers a person chose.** 10 more are computed --
+what stays in the car, and what did not reach a pile -- and 4 are fixed at 1
+because they state a definition. THERE IS NO ROW FOR A MATERIAL THAT DOES NOT
+REACH A STREAM: an earlier version wrote the full material x destination matrix,
+22 of its 46 rows were structural zeros, and reading `copper` on an
+`F_recovered_al_alloy` row made it look as though copper were inside the alloy.
+Do not reintroduce them; `tools/make_skeleton.py` still expands the full matrix,
+so this table was written directly rather than generated.
 
 **What changed on 2026-08-28 — the flow itself.** The user's modification, which
 §4 had recorded as agreed in principle, is built. `F_loss_dismantling` was a
@@ -101,35 +110,30 @@ document is for picking the work back up.
 
 **Both pipelines run end to end on real upstream data. All 117 checks pass.**
 
-The electronics column below was measured on 2026-08-28 and **will not
-reproduce**. The 09-01 re-export resolves 24 elements instead of 68, so `Nd`,
-`Dy`, `Co`, `Pr`, `Tb`, `Ga` and `Nb` are no longer in Motors at all — the known
-fraction of Motors falls from ~100% to 17%, the remainder becoming derived
-`rest`, which counts as unrecovered. Those elements now appear under **Sensors**,
-which this case's `groups` does not include. Whether to widen `groups` is a
-modelling decision nobody has taken.
-
 | | 04_02 electronics | 04_01 car composition |
 |---|---|---|
-| case folder | `data_folder/bev_electronics` | `data_folder/carcomposition_mockup` |
+| case folder | `data_folder/bev_electronics_metals` | `data_folder/carcomposition_mockup` |
 | covers | wiring and motors in BEVs | whole cars, five drivetrains |
-| finest resolution | **element** — Cu, Al, Mn, Sr | **material** — calAHSS, battery |
-| Layer 3 | **real materials** — bulk, magnet, esteel, cfsteel — and a placeholder | material |
+| finest resolution | **material** — copper, alalloy, fealloy | **material** — calAHSS, battery |
+| element layer | **none at all** | none |
 | years | 2030–2050 | 2040 |
 | draws | 200,000 | 50,000 |
 | mass in | 640.8 kt (2050) | 13,863 kt (2040) |
-| mass balance | 2.6e-16 | 4.7e-11 |
-| recovered | 41.1% of collected (2050) | 82.8% of collected (2040) |
-| result rows | 355 | 4,117 |
-| residual rows | none | none |
+| mass balance | 1.9e-16 | 4.7e-11 |
+| recovered | 76.2% of collected (2050) | 82.8% of collected (2040) |
+| coefficient rows | 24, of which 10 are chosen | 632 |
+
+PCB and Sensors are exported by 04_02 and read by nothing. They are not in this
+case's `groups`, and the case that covered them was deleted on 2026-09-02.
 
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
 suites on fixed fixtures (117 checks), then the pipeline and a mass balance.
 
-**`run.data_folder` points at `bev_electronics_metals`.** It has **no residual rows**:
-every coefficient is measured in its own right. `bev_electronics_all_measured`,
-which existed to contrast a conditioned case against a residual one, was deleted
-on 2026-08-28 once that contrast no longer existed.
+**`run.data_folder` points at `bev_electronics_metals`.** Its loss rows ARE
+residual -- computed as `1 - what reached a pile` -- at the user's instruction on
+2026-09-02, so that a person types a yield and nothing else. That reverses the
+2026-08-28 decision below; simplicity won over having a measured range on both
+sides of every pair.
 
 Both case tables are **structurally finished**. `tools/tc_worklist.py` reports
 all 26 groups in the electronics case as *measured on every row*, and 278 of 278
