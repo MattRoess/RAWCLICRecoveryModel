@@ -159,9 +159,34 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
     the distance between those two lines is the whole point.
     """
     layer = finest_layer(run.keys)
-    elements = sorted({e for e in run.keys[layer].unique() if e})
     recovered = recovered_flows(run, run.case)
-    if not elements or not recovered:
+    if not recovered:
+        return None
+
+    # THE TOTALS FIRST, SO A RESOURCE THAT IS NEVER RECOVERED GETS NO PANEL.
+    # `rest` is the plain case: it is written 1.0 into a loss flow by design, so
+    # its recovered mass is exactly zero on every draw. Drawn anyway it gave a
+    # panel with an axis from -0.4 to 0.4 kg, one bar at zero and a deterministic
+    # line on top of it -- an empty box beside three real distributions, which
+    # reads as though something had gone wrong with the run.
+    #
+    # Dropped, not hidden: the names come back so the caller can say which
+    # resources have no recovery at all, because that is a finding about the
+    # case rather than a fact about the figure.
+    drawn: dict[str, np.ndarray] = {}
+    empty: list[str] = []
+    for element in sorted({e for e in run.keys[layer].unique() if e}):
+        totals = np.zeros(run.draws)
+        for flow in recovered:
+            rows = element_rows(run, flow, element)
+            if rows.size:
+                totals += run.values[rows].sum(axis=0)
+        if totals.max() > 0:
+            drawn[element] = totals
+        else:
+            empty.append(element)
+    elements = list(drawn)
+    if not elements:
         return None
 
     # A GRID, NOT A ROW. One row of panels is fine for the nine elements 04_02
@@ -179,11 +204,7 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
         spare.set_visible(False)
 
     for index, (element, panel) in enumerate(zip(elements, panels)):
-        totals = np.zeros(run.draws)
-        for flow in recovered:
-            rows = element_rows(run, flow, element)
-            if rows.size:
-                totals += run.values[rows].sum(axis=0)
+        totals = drawn[element]
 
         # Each panel picks its own unit. Gold and copper differ by two orders
         # of magnitude here and by more on real data, so one shared unit would
@@ -219,11 +240,18 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
                         fontsize=11, fontweight='bold')
         panel.set_xlabel(f'mass ({shown})', color=colours['meta'], fontsize=9)
         panel.set_ylabel('draws' if index == 0 else '', color=colours['meta'], fontsize=9)
-        legend = panel.legend(fontsize=7.5, frameon=False, loc='upper right')
+        # 'best', not 'upper right': these distributions pile up against the
+        # right-hand cap, so a fixed corner put the legend on top of the bars.
+        legend = panel.legend(fontsize=7.5, frameon=False, loc='best')
         for text in legend.get_texts():
             text.set_color(colours['meta'])
 
-    header(figure, 'Recovered mass, across draws', colours)
+    title = 'Recovered mass, across draws'
+    if empty:
+        # Named, so that a resource missing from the figure is a statement and
+        # not an omission the reader has to notice for themselves.
+        title += f"   ({', '.join(empty)}: never recovered, so not drawn)"
+    header(figure, title, colours)
     return figure
 
 
