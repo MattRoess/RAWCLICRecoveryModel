@@ -554,32 +554,68 @@ def figure_spread(run, theme: str, unit: str, most: int = 20,
 
 def figure_mode_vs_mean(run, deterministic: pd.DataFrame, theme: str, unit: str):
     """
-    How far the deterministic run sits from the Monte Carlo mean, per result.
+    How far the deterministic run sits from the Monte Carlo mean, IN ONE YEAR.
 
     Expressed as a percentage of the mean, because the absolute gap is only
     meaningful next to the size of the flow. A bar to the left means the
     deterministic run *understates* the expected mass.
+
+    ONE YEAR, NOT EVERY YEAR ADDED TOGETHER. This used to total 2020's mass
+    with 2070's on both sides of the ratio -- the same defect distribution.png
+    was deleted for (DECISIONS.md 14). The percentage still came out close to
+    right, because both halves were wrong in the same direction, which is the
+    worst kind of wrong: it looks correct and nothing justifies it. The value
+    written at the end of each bar was the one that gave it away -- a mass no
+    year has.
+
+    Which year is shown barely matters here, and the figure SAYS SO with a
+    measurement instead of leaving the reader to hope. `drift` is the largest
+    distance any one gap travels across all the years in the run; on this case
+    it is under a percentage point on a scale reaching -48%, because the gap is
+    a ratio of two quantities that both scale with the inflow.
     """
-    totals = totals_by_flow_and_element(run)
-    if not totals or deterministic is None:
+    if deterministic is None:
         return None
-    layer = finest_layer(run.keys)
-
-    scale, shown = scale_for(np.concatenate(list(totals.values())), unit)
-
-    entries = []
-    for (flow, element), values in totals.items():
-        rows = deterministic[(deterministic['Stock/Flow ID'] == flow)
-                             & (deterministic[layer] == element)]
-        if not len(rows):
-            continue
-        point = float(rows['Value'].sum())
-        mean = float(values.mean())
-        if mean > 0:
-            entries.append((f'{flow}  ·  {element}', 100.0 * (point - mean) / mean,
-                            point * scale, mean * scale))
-    if not entries:
+    years = sorted(int(y) for y in run.keys['Year'].unique())
+    if not years:
         return None
+    last = years[-1]
+    keys, layer = run.keys, finest_layer(run.keys)
+    year_of = keys['Year'].astype(int).to_numpy()
+    point_year = deterministic['Year'].astype(int).to_numpy()
+
+    def gap(flow: str, element: str, year: int):
+        """(percent away, deterministic mass, mean mass) for one year, or None."""
+        rows = np.flatnonzero((keys['Stock/Flow ID'] == flow).to_numpy()
+                              & (keys[layer] == element).to_numpy()
+                              & (year_of == year))
+        point_rows = deterministic[(deterministic['Stock/Flow ID'] == flow).to_numpy()
+                                   & (deterministic[layer] == element).to_numpy()
+                                   & (point_year == year)]
+        if not rows.size or not len(point_rows):
+            return None
+        mean = float(run.values[rows].sum(axis=0).mean())
+        if mean <= 0:
+            return None
+        point = float(point_rows['Value'].sum())
+        return 100.0 * (point - mean) / mean, point, mean
+
+    pairs = [(flow, element) for flow in terminal_flows(run)
+             for element in sorted({e for e in keys[layer].unique() if e})]
+    here = {pair: found for pair in pairs if (found := gap(*pair, last)) is not None}
+    if not here:
+        return None
+
+    scale, shown = scale_for(np.array([found[2] for found in here.values()]), unit)
+
+    entries, drift = [], 0.0
+    for (flow, element), (percent, point, mean) in here.items():
+        entries.append((f'{flow}  ·  {element}', percent,
+                        point * scale, mean * scale))
+        across = [found[0] for year in years
+                  if (found := gap(flow, element, year)) is not None]
+        if len(across) > 1:
+            drift = max(drift, max(across) - min(across))
 
     # THE BIGGEST GAPS, NOT EVERY ROW. 04_01 produces hundreds of
     # (flow, resource) pairs, and one bar each made a figure 10,277 pixels tall
@@ -611,14 +647,15 @@ def figure_mode_vs_mean(run, deterministic: pd.DataFrame, theme: str, unit: str)
                           color=colours['node'])
     panel.set_xlabel('deterministic run, as % away from the Monte Carlo mean',
                      color=colours['meta'], fontsize=9)
-    panel.set_title(f'Deterministic run against the Monte Carlo mean   '
-                    f'({years_covered(run)})'
-                    + (f'  --  the {len(entries)} largest gaps of '
-                       f'{len(entries) + trimmed}' if trimmed else ''),
-                    color=colours['title'], fontsize=12, fontweight='bold', loc='left')
     panel.grid(True, axis='x', color=colours['rule'], linewidth=0.7)
     panel.grid(False, axis='y')
-    figure.tight_layout()
+    header(figure, f'Deterministic run against the Monte Carlo mean, in {last}'
+           + (f'   --  the {len(entries)} largest gaps of '
+              f'{len(entries) + trimmed}' if trimmed else ''), colours,
+           f'a bar to the left means the single-value answer understates the '
+           f'expected mass.  across {years[0]}-{years[-1]} no gap moves by more '
+           f'than {drift:.1f} percentage points, so this year stands for all of '
+           f'them.')
     return figure
 
 

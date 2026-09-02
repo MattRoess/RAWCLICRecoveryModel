@@ -903,6 +903,62 @@ defect understood well enough to be documented, and left in place next door.
 that goes through the shredder. That is the entire case for disassembling, and
 no other figure shows it.
 
+### 3.16 `mode_vs_mean` compared two masses no year has — **FIXED 2026-09-02**
+
+The last figure that summed the year axis. `totals_by_flow_and_element(run)`
+adds every year's draws together, and the deterministic side was summed to
+match:
+
+```python
+point = float(rows['Value'].sum())          # every year of the point estimate
+mean = float(values.mean())                 # mean of every year, added up
+entries.append((..., 100.0 * (point - mean) / mean, point * scale, mean * scale))
+```
+
+`distribution.png` was deleted the same day for adding 2030's kilotonnes to
+2070's. This did the same thing and **survived, because it divides one total by
+the other** — and a ratio of two quantities that are wrong in the same direction
+comes out looking right. The percentage was within a percentage point of the
+truth. Nothing justified it.
+
+What gave it away was the label written at the end of every bar: `1,247.9 vs
+1,155.4 kt`, a mass belonging to no year, on a figure whose title said
+*2020–2070, all 11 years summed*.
+
+**FIXED:** the gap is computed per year, and the figure shows the LAST year.
+Which year hardly matters here — but the figure says so with a measurement
+instead of an assurance. `drift` is the largest distance any single gap travels
+across every year in the run:
+
+```
+F_cu_own        · copper    2.0 -> 3.0    0.95 pp
+F_disassembled  · copper   -2.7 -> -1.8   0.90 pp
+F_loss_own      · copper  -48.0 -> -47.6  0.49 pp
+30 rows, 2 of them moving more than 0.5 pp
+```
+
+0.9 percentage points, on a scale reaching −48%, and only copper moves at all —
+the one material that is in both Wiring and Motors, so the blend between them
+shifts as the two domains grow at different rates. Everything else is exactly
+flat, because the coefficients do not vary by year and the gap is a ratio of two
+quantities that both scale with the inflow.
+
+The subtitle now carries that number, so a reader asking *"which year, and would
+another one differ?"* gets both answers off the figure.
+
+**`03_run_monte_carlo.py` printed the wrong name in the same breath:**
+
+```python
+f'on {worst["Stock/Flow ID"]} {worst["Layer 4"] or worst["Layer 2"]}'
+```
+
+The same hard-coded `Layer 4` as §3.15. On a material-keyed case Layer 4 is
+empty, so it fell through to Layer 2 and named the worst result
+`F_loss_own Wiring` — the component — while the figure beside it said
+`F_loss_own · copper`. Two outputs of one run disagreeing about which result was
+worst. It now takes the deepest layer the row actually fills, and names the
+year.
+
 ---
 
 ## 4. Code quality notes

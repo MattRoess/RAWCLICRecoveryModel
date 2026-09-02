@@ -84,7 +84,7 @@ figures/<case>/
     spread.png                   how much and how sure, with both years on the
                                  rows whose certainty changed
     spread_last_year.png         the same, last year only -- twice the width
-    mode_vs_mean.png             deterministic against the MC mean, years SUMMED
+    mode_vs_mean.png             deterministic against the MC mean, last year
     convergence.png              is the draw count enough
     sensitivity.png              which coefficient drives the answer
 ```
@@ -96,11 +96,21 @@ The first three come from `02_run_model.py` and the rest from
 `03_run_monte_carlo.py`, so a folder holding only the Monte Carlo figures means
 02 has not been run since the case was last renamed or created.
 
-**`mode_vs_mean.png` still sums the year axis** and is the last figure that
-does. `distribution.png` was deleted on 2026-09-02 for exactly that -- adding
-one year's kilotonnes to another's makes a quantity nobody has a use for. This
-one reports a PERCENTAGE gap, so the summing blends rather than nonsense, but it
-is unfinished business. See DECISIONS.md, *Figures*.
+**No figure that reports a MASS sums the year axis any more.**
+`mode_vs_mean.png` was the last one that did, fixed on 2026-09-02;
+`distribution.png` was deleted for the same thing a few hours earlier
+(DEFECTS.md 3.16). It now compares one year -- the last -- and its subtitle
+carries the measured drift: the largest distance any one gap travels across
+every year in the run, 0.9 percentage points on the wiring case, against gaps
+that reach 48%. The gap hardly moves because it is a ratio of two quantities
+that both scale with the inflow. See DECISIONS.md, *Figures*.
+
+`convergence.png` and `sensitivity.png` DO still pool the years, and say so in
+their titles. Neither reports a mass: one asks whether 200,000 draws is enough,
+the other which coefficient drives the variance, and both answers are properties
+of the coefficients rather than of a year's tonnage. Pooling gives them more
+draws to answer with. If that ever stops being true -- a case whose coefficients
+vary by year -- they have to be split per year like the rest.
 
 ### The workbook, sheet by sheet
 

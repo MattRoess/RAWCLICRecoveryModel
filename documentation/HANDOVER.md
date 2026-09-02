@@ -32,17 +32,12 @@ before somebody noticed `pdf_<resource>` already did the job.
 
 **Open, and the only thing open here:**
 
-- `spread.png` is **uncommitted and unresolved.** It was a bar per result with
-  the years SUMMED -- which summed an absolute mass across years, the same
-  defect `distribution.png` was deleted for. It was rewritten as the 95%
-  interval as a percentage of the mean, per year, one line per result. That is
-  honest and it is twelve flat lines: the relative spread CANNOT vary by year,
-  because the coefficients do not vary by year. The user's verdict was that this
-  is a figure with no time behaviour and a legend a third of the page tall.
-  The proposal on the table is **ranked bars of the +/-% for a single year, with
-  a line saying it does not vary by year** -- one number per result, which is
-  what the figure actually contains. Not built; agree it first.
-- `mode_vs_mean.png` has the same flaw and has not been touched.
+`spread.png` and `mode_vs_mean.png` are done. Both used to sum the year axis;
+both now show one year and say, from a measurement rather than a hope, how much
+the answer would differ in another. `spread.png` carries the results that
+genuinely change between the first year and the last, side by side;
+`spread_last_year.png` is the same at twice the width for the last year only.
+
 - **The wiring case writes an empty `Layer 4` column** into every CSV and
   workbook sheet. It is material-keyed, so the column is dead in every row.
   Drop unused layer columns from what is WRITTEN; the arithmetic does not move.

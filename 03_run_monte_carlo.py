@@ -255,9 +255,14 @@ def run_case(folder, params, draws: int) -> int:
     if len(comparable):
         gap = 100.0 * (comparable['deterministic'] - comparable['mean']) / comparable['mean']
         worst = comparable.iloc[gap.abs().to_numpy().argmax()]
+        # The deepest layer this row actually fills. `Layer 4 or Layer 2` named
+        # the worst row 'Wiring' -- the component -- on a case whose resources
+        # live at Layer 3, so the printed line disagreed with mode_vs_mean.png
+        # about which result was worst.
+        named = next((worst[layer] for layer in reversed(KEYS[2:]) if worst[layer]), '')
         print(f'\nDeterministic run against the Monte Carlo mean:')
         print(f'  median gap {np.median(np.abs(gap)):.1f}%, largest {gap.abs().max():.1f}% '
-              f'on {worst["Stock/Flow ID"]} {worst["Layer 4"] or worst["Layer 2"]}')
+              f'on {worst["Stock/Flow ID"]} {named} in {worst["Year"]}')
         print(f'  Running every coefficient at its mode is not the same as the mean.')
     return 0
 

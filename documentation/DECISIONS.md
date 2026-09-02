@@ -88,9 +88,13 @@ lives in a chat message is a decision that will be broken.
     are; where scales differ, give each panel its own axis and state its
     numbers on it.
 
-14. **A distribution is per year, never summed across years.** Adding 2030's
-    10 kt to 2050's 254 kt gives a quantity nobody has a use for, dominated by
-    the last year.
+14. **A figure is per year, never summed across years.** Adding 2030's 10 kt to
+    2050's 254 kt gives a quantity nobody has a use for, dominated by the last
+    year. This holds for a ratio too: `mode_vs_mean` divided one such total by
+    another and looked right, because both halves were wrong the same way.
+
+    Where one year has to stand for the others, **measure how much the others
+    differ and print that number on the figure.** Do not assert it.
 
 15. **Say which years a figure covers**, on the figure.
 
