@@ -1,7 +1,7 @@
 # Handover
 
-Current as of **2026-09-01**, commit `76ac8e3`. Rewritten from the ground up on
-2026-08-21 and updated since; git has the older text.
+Current as of **2026-09-02**. Rewritten from the ground up on 2026-08-21 and
+updated since; git has the older text.
 
 **Read this first: what happened on 2026-09-01.** The upstream draw folder had
 been rewritten on 08-31 and held **four runs at once**, because upstream writes
@@ -12,21 +12,67 @@ same day, and it came back clean: one run, one draw count, no `_ppm` files.
 
 Three things followed from that day, all built and all tested:
 
-1. **Layer 3 is real.** `<element>__<material>__<group>` is read, so `esteel`
-   and `magnet` sit at Layer 3 where a placeholder stood. The placeholder stays
-   for what is not resolved, so an export without those files gives exactly the
-   rows it always did. CASES.md has the three rules.
+1. **Layer 3 is real.** `<element>__<material>__<group>` is read, so a material
+   sits at Layer 3 where a placeholder stood. CASES.md has the three rules.
+   Superseded on 2026-09-02 for the electronics cases: 04_02 now exports the
+   ALLOYS themselves, and neither case has a placeholder at all.
 2. **A resource that cannot leave a flow is refused.** It used to lose its mass
    in silence — 5.9% of the electronics case, found by hand. DEFECTS.md §3.11.
 3. **`make_skeleton` no longer deletes.** It dropped filled rows whose resource
    had left the composition while being documented as merging, and took 32 of
    them, every rare earth included. DEFECTS.md §3.12.
 
-**The electronics case is `bev_electronics_wiring`, and it is the only one.**
-Rebuilt from scratch on 2026-09-02 to the user's specification, after two
-earlier attempts they had not agreed to. `bev_electronics` and
-`bev_electronics_boards` were deleted the same day at their instruction; git has
-both (`e8c2373`, `0e965f0`).
+## NEXT: THE FIGURES. Nothing else.
+
+**The user's instruction, 2026-09-02: fix the figures in the recovery model.**
+Not the cases, not the coefficients, not upstream. Read
+[DECISIONS.md](DECISIONS.md) section *Figures* first -- every rule there was
+written after a figure was rejected, and five versions of one figure were built
+before somebody noticed `pdf_<resource>` already did the job.
+
+**Open, and the only thing open here:**
+
+- `spread.png` is **uncommitted and unresolved.** It was a bar per result with
+  the years SUMMED -- which summed an absolute mass across years, the same
+  defect `distribution.png` was deleted for. It was rewritten as the 95%
+  interval as a percentage of the mean, per year, one line per result. That is
+  honest and it is twelve flat lines: the relative spread CANNOT vary by year,
+  because the coefficients do not vary by year. The user's verdict was that this
+  is a figure with no time behaviour and a legend a third of the page tall.
+  The proposal on the table is **ranked bars of the +/-% for a single year, with
+  a line saying it does not vary by year** -- one number per result, which is
+  what the figure actually contains. Not built; agree it first.
+- `mode_vs_mean.png` has the same flaw and has not been touched.
+- **The wiring case writes an empty `Layer 4` column** into every CSV and
+  workbook sheet. It is material-keyed, so the column is dead in every row.
+  Drop unused layer columns from what is WRITTEN; the arithmetic does not move.
+
+**Do not invent a figure.** `pdf_<resource>.png` and `pdf_all.png` already show
+the per-year densities with the deterministic run on them. `over_time.png`
+already shows the median trajectory with the 95% band. Look at what is there
+before adding anything.
+
+---
+
+**Two cases, and neither has a placeholder layer any more.**
+`bev_electronics_wiring` and `bev_electronics_boards`, rebuilt 2026-09-02 to the
+user's specification after earlier attempts they had not agreed to. The older
+`bev_electronics` was deleted (git has it at `e8c2373`).
+
+| | Layer 2 | Layer 3 | Layer 4 |
+|---|---|---|---|
+| wiring | Wiring, Motors | copper, alalloy, fealloy, rest | none |
+| boards | PCB, Sensors | Ag, Au, Cu, Nd, ... , rest | none |
+
+The boards case carried `PCB_mixed` / `Sensors_mixed` until 2026-09-02 -- a
+placeholder with no information in it, put there by an assistant who had set
+`material_suffix` blank on the wiring case in the same session and did not apply
+the same decision to this one. Removing it moved the elements up to Layer 3 and
+the coefficients with them, `keyed_at` element to material, 46 rows, every
+number unchanged. **Layer 3 there now holds element names**, which is the right
+structure -- that route separates gold and palladium and there is nothing
+between the board and them -- but the column is called `material`. If that ever
+reads wrong, the fix is what the layers are NAMED, not where the numbers sit.
 
 **Materials only. No element layer anywhere** -- zero Layer 4 rows in the
 solution. Layer 3 is what a scrapyard sells:
@@ -332,6 +378,27 @@ the answer is upstream's: either stop exporting them or name them so their
 level is visible.
 
 **`03_02_adjustedflows.py` is still unmodified.**
+
+### Upstream state at the end of 2026-09-02
+
+| | setting | on disk |
+|---|---|---|
+| 04_02 | `bev_electronics_element_draws_years` = **all 51 years, 2020-2070** | **done** -- 5.88 GB, `(200000, 51)`, verified against the previous run to 3e-05 |
+| 04_01 | `carcomposition_draws_years` = **11 years, 2020-2070 step 5** | **NOT re-run.** The folder holds a PARTIAL result from an aborted run -- one flow's worth of the 11 years. Do not trust it; the next run overwrites it. |
+
+`monte_carlo.output_periods` is back to `[(1975, 2070)]` and must stay that way.
+It is shared with stages 02, 03_01 and 03_02, and every entry is a reporting
+window all of them compute. Putting single-year windows there to feed 04_01's
+export was tried twice on 2026-09-02 -- once at 52 entries -- and rejected both
+times. **04_01 derives its own export periods now** (`7b39946`), so a year that
+should be EXPORTED goes in `carcomposition_draws_years` and nowhere else.
+`(2040, 2040)` was removed from `output_periods` on the same day: it was the
+original version of that same shortcut and no longer bought anything.
+
+**04_01 costs about 1.2 minutes per period, and the period loop runs once per
+flow -- there are two.** So 11 export years is ~29 minutes and every year is
+~2 hours. Measured, not estimated. The user chose the step of 5 after watching
+the every-year version reach 1h 50m.
 
 ### What 04_02 has to change for the metals case
 

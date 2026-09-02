@@ -14,20 +14,20 @@ the effect of the Monte Carlo" means in practice:
   2. `pdf_all`          -- what does each answer look like, and where does the
      deterministic run sit inside it? The `pdf_<resource>` panels on one page,
      resources as rows and years as columns.
-  3. `flows_over_time`  -- where does the collected mass end up, year by year?
-  4. `spread`           -- which flows are uncertain, and by how much?
-  5. `mode_vs_mean`     -- how far is running at the mode from the mean, per
+  3. `spread`           -- how uncertain is each result, and does that change
+     over the years? The 95% interval as a percentage of the mean, per year.
+  4. `mode_vs_mean`     -- how far is running at the mode from the mean, per
      flow? This is the figure that says whether the Monte Carlo changed the
      answer or only added error bars to it.
-  6. `convergence`      -- how many draws are actually needed?
-  7. `sensitivity`      -- which coefficients drive the spread?
+  5. `convergence`      -- how many draws are actually needed?
+  6. `sensitivity`      -- which coefficients drive the spread?
 
 THERE IS NO FIGURE THAT SUMS THE YEAR AXIS FOR AN ABSOLUTE MASS. `distribution`
 did, and was deleted on 2026-09-02: adding 2030's 10 kt of copper to 2050's 254
 gives a quantity nobody has a use for, dominated by whichever year is last.
 Per-year is the only honest way to draw a distribution here.
 
-Figure 5 is the one to look at first. A deterministic run sets every
+Figure 4 is the one to look at first. A deterministic run sets every
 coefficient to its mode, and a product of triangular variables does not put its
 mode at its mean, so the two differ systematically rather than randomly. If
 that gap is large, every number produced before this existed was biased, not
@@ -357,150 +357,95 @@ def figure_pdf_grid(run, deterministic: pd.DataFrame | None, theme: str,
     return figure
 
 
-def figure_flows_over_time(run, theme: str, unit: str):
-    """
-    Where the collected mass ends up, year by year: a stacked area of the
-    terminal flows.
-
-    THE SANKEY IS ONE YEAR. It shows the network in full for a single slice and
-    says nothing about the trajectory; this says how the split moves, and the
-    two together are the flow picture. Recovered flows are drawn first, losses
-    last, so the recovered share is the block against the axis and its growth
-    is read off directly.
-
-    MEANS, NOT MEDIANS, and that is not a detail. The stack has to add up to the
-    mass that entered, and means add: the mean of a sum is the sum of the means,
-    whatever the shapes. Medians do not -- stacking them gives a total that is
-    nobody's total and misses the real one by a few per cent, silently. Every
-    other figure here reports medians, so the difference is stated on the
-    figure rather than left for a reader to trip over.
-
-    Terminal flows only: a flow something leaves is counted again downstream,
-    and stacking both would double the mass. Which flows those are is read from
-    the coefficient table (`terminal_flows`), not from their names.
-    """
-    years = sorted(int(y) for y in run.keys['Year'].unique())
-    if len(years) < 2:
-        return None
-    ends = terminal_flows(run)
-    if not ends:
-        return None
-    recovered = set(recovered_flows(run, run.case))
-    # Recovered first so they sit against the axis, each group alphabetical.
-    ends = sorted(ends, key=lambda f: (f not in recovered, f))
-
-    keys, depth = run.keys, (run.keys[LAYERS] != '').sum(axis=1).to_numpy()
-    per_flow: dict[str, list[float]] = {}
-    for flow in ends:
-        is_flow = (keys['Stock/Flow ID'] == flow).to_numpy()
-        if not is_flow.any():
-            continue
-        shallowest = depth[is_flow].min()
-        totals = []
-        for year in years:
-            rows = np.flatnonzero(is_flow & (depth == shallowest)
-                                  & (keys['Year'].astype(str) == str(year)).to_numpy())
-            totals.append(float(run.values[rows].sum(axis=0).mean()) if rows.size else 0.0)
-        if max(totals) > 0:
-            per_flow[flow] = totals
-    if not per_flow:
-        return None
-
-    scale, shown = scale_for(np.array([v for t in per_flow.values() for v in t]), unit)
-    figure, axes, colours = chart(1150, 640, theme, 1, 1)
-    panel = axes if not hasattr(axes, 'ravel') else axes.ravel()[0]
-
-    stacked = np.array([np.array(t) * scale for t in per_flow.values()])
-    labels = [f'{flow}   {t[-1] * scale:,.3g} {shown} in {years[-1]}'
-              for flow, t in per_flow.items()]
-    colours_used = [PALETTE[i % len(PALETTE)] for i in range(len(per_flow))]
-    panel.stackplot(years, stacked, labels=labels, colors=colours_used, alpha=0.85,
-                    edgecolor='none')
-
-    total = stacked.sum(axis=0)
-    panel.plot(years, total, color=colours['title'], linewidth=1.6, linestyle=':')
-    panel.annotate(f'collected  {total[-1]:,.3g} {shown}', (years[-1], total[-1]),
-                   textcoords='offset points', xytext=(-6, 6), ha='right',
-                   fontsize=9, color=colours['title'])
-
-    share = 100.0 * sum(np.array(t) for f, t in per_flow.items() if f in recovered)[-1] \
-        / sum(np.array(t) for t in per_flow.values())[-1]
-    panel.set_title(f'Where the collected mass ends up   '
-                    f'({share:.0f}% recovered in {years[-1]})',
-                    color=colours['title'], fontsize=12, fontweight='bold', loc='left')
-    panel.set_xlabel('year', color=colours['meta'], fontsize=10)
-    panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=10)
-    panel.set_xticks(years)
-    panel.set_xlim(years[0], years[-1])
-    panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
-    legend = panel.legend(fontsize=9, frameon=False, loc='upper left')
-    for text in legend.get_texts():
-        text.set_color(colours['meta'])
-    header(figure, 'Material flow over time', colours,
-           'mean mass per terminal flow, stacked -- means because they add up to '
-           'the mass that entered, where medians would not')
-    return figure
-
-
 # ----------------------------------------------------------------------
 #  2. Which flows are uncertain
 # ----------------------------------------------------------------------
 
-def figure_spread(run, theme: str, unit: str):
+def figure_spread(run, theme: str, unit: str, most: int = 12):
     """
-    Median, 50% and 95% interval for every terminal flow and element.
+    How uncertain each result is, per year: the 95% interval as a percentage of
+    the mean, one line per flow and resource.
 
-    Sorted by relative spread, so the least certain answer is at the top --
-    which is the one worth arguing about.
+    COMPARISON AND TRAJECTORY IN ONE FIGURE. Reading down at any year ranks the
+    results by how uncertain they are; reading along a line says whether that is
+    getting better or worse. The previous version was a bar per result with the
+    years SUMMED, which ranked them and destroyed the trajectory -- and summed
+    an absolute mass across years, adding 2030's 10 kt of copper to 2050's 254
+    to make a number with no physical meaning.
+
+    A RELATIVE SPREAD IS THE ONE QUANTITY THAT SURVIVES BOTH. It is scale-free,
+    so a flow carrying 3 kt and one carrying 300 belong on the same axis without
+    anything being rescaled to put them there, and it is meaningful per year, so
+    no summing is needed to draw it.
+
+    Losses come out far wider than recoveries and that is arithmetic, not noise:
+    a loss is `1 - yield`, so an alloy recovered at 0.95 leaves 0.05, and a
+    small movement in a large number is a large movement in a small one.
     """
-    totals = totals_by_flow_and_element(run)
-    if not totals:
+    years = sorted(int(y) for y in run.keys['Year'].unique())
+    layer = finest_layer(run.keys)
+    keys, values = run.keys, run.values
+    ends = terminal_flows(run)
+    if not ends or not years:
         return None
 
-    scale, shown = scale_for(np.concatenate(list(totals.values())), unit)
+    series: dict[str, dict[int, float]] = {}
+    for flow in ends:
+        is_flow = (keys['Stock/Flow ID'] == flow).to_numpy()
+        for element in sorted({e for e in keys[layer].unique() if e}):
+            is_element = (keys[layer] == element).to_numpy()
+            per_year = {}
+            for year in years:
+                rows = np.flatnonzero(is_flow & is_element
+                                      & (keys['Year'].astype(str) == str(year)).to_numpy())
+                if not rows.size:
+                    continue
+                totals = values[rows].sum(axis=0)
+                mean = float(totals.mean())
+                if mean <= 0:
+                    continue
+                low, high = np.percentile(totals, [2.5, 97.5])
+                per_year[year] = 100.0 * (high - low) / mean
+            if per_year:
+                series[f'{flow}  \u00b7  {element}'] = per_year
+    if not series:
+        return None
 
-    entries = []
-    for (flow, element), values in totals.items():
-        low, q1, median, q3, high = _band(values * scale)
-        relative = (high - low) / median if median > 0 else 0.0
-        entries.append((f'{flow}  ·  {element}', low, q1, median, q3, high, relative))
-    # The widest spreads, for the same reason as figure_mode_vs_mean: one bar
-    # per (flow, resource) is a readable chart for 04_02 and a 10,000-pixel
-    # column for 04_01. Every row is in the workbook.
-    entries.sort(key=lambda item: item[-1], reverse=True)
-    trimmed = max(0, len(entries) - MAX_BARS)
-    entries = entries[:MAX_BARS]
-    entries.sort(key=lambda item: item[-1])
+    # The widest at the last year, because a chart with one line per result is
+    # readable for this case and a thicket for 04_01's hundreds.
+    ranked = sorted(series.items(),
+                    key=lambda item: item[1].get(years[-1], 0.0), reverse=True)
+    trimmed = max(0, len(ranked) - most)
+    ranked = ranked[:most]
 
-    figure, panel, colours = chart(880, 90 + 26 * len(entries), theme)
-    for position, (name, low, q1, median, q3, high, relative) in enumerate(entries):
-        colour = PALETTE[position % len(PALETTE)]
-        panel.plot([low, high], [position, position], color=colour, linewidth=1.4, alpha=0.55)
-        panel.plot([q1, q3], [position, position], color=colour, linewidth=7, alpha=0.85,
-                   solid_capstyle='butt')
-        panel.plot([median], [position], marker='|', markersize=11,
-                   color=colours['bg'], markeredgewidth=1.8)
-        panel.text(high, position + 0.32, f'  ±{relative * 100:,.0f}%',
-                   color=colours['meta'], fontsize=8, va='center')
+    figure, panel, colours = chart(1150, 640, theme)
+    for index, (name, per_year) in enumerate(ranked):
+        colour = PALETTE[index % len(PALETTE)]
+        drawn = sorted(per_year)
+        panel.plot(drawn, [per_year[y] for y in drawn], color=colour, linewidth=2.0,
+                   marker='o', markersize=4,
+                   label=f'{name}   {per_year[drawn[-1]]:,.0f}% in {drawn[-1]}')
 
-    panel.set_yticks(range(len(entries)))
-    panel.set_yticklabels([entry[0] for entry in entries], fontsize=8.5,
-                          color=colours['node'])
-    panel.set_xlabel(f'mass ({shown})   —   bar is the 50% interval, line the 95%',
-                     color=colours['meta'], fontsize=9)
-    panel.set_title(f'Spread of each result   ({years_covered(run)})'
-                    + (f'  --  the {len(entries)} widest of {len(entries) + trimmed}'
-                       if trimmed else ''), color=colours['title'],
-                    fontsize=12, fontweight='bold', loc='left')
-    panel.grid(True, axis='x', color=colours['rule'], linewidth=0.7)
-    panel.grid(False, axis='y')
+    panel.set_title('How uncertain each result is, per year'
+                    + (f'   --  the {len(ranked)} widest of {len(ranked) + trimmed}'
+                       if trimmed else ''),
+                    color=colours['title'], fontsize=12, fontweight='bold', loc='left')
+    panel.set_xlabel('year', color=colours['meta'], fontsize=10)
+    panel.set_ylabel('95% interval, as % of the mean', color=colours['meta'], fontsize=10)
+    panel.set_xticks(years)
+    panel.set_ylim(bottom=0)
+    panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
+    # BELOW THE AXES, not inside them. Twelve entries in the upper left covered
+    # the two highest lines -- which are the widest spreads, the whole reason to
+    # look at the figure. A legend that hides the subject is worse than a taller
+    # image.
+    legend = panel.legend(fontsize=9, frameon=False, ncol=3,
+                          loc='upper center', bbox_to_anchor=(0.5, -0.10))
+    for text in legend.get_texts():
+        text.set_color(colours['meta'])
     figure.tight_layout()
     return figure
 
-
-# ----------------------------------------------------------------------
-#  3. The effect of running the Monte Carlo at all
-# ----------------------------------------------------------------------
 
 def figure_mode_vs_mean(run, deterministic: pd.DataFrame, theme: str, unit: str):
     """
@@ -698,7 +643,6 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
     figures = [
         ('over_time', figure_over_time(run, theme, unit)),
         ('pdf_all', figure_pdf_grid(run, deterministic, theme, unit)),
-        ('flows_over_time', figure_flows_over_time(run, theme, unit)),
         ('spread', figure_spread(run, theme, unit)),
         ('mode_vs_mean', figure_mode_vs_mean(run, deterministic, theme, unit)),
         ('convergence', figure_convergence(run, theme, unit)),

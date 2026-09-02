@@ -81,7 +81,6 @@ figures/<case>/
     over_time.png                median per resource per year, with the 95% band
     pdf_<resource>.png           the distribution, one panel per year
     pdf_all.png                  those panels on one page, resources x years
-    flows_over_time.png          where the collected mass ends up, stacked
     spread.png                   the 30 widest intervals
     mode_vs_mean.png             deterministic against the MC mean
     convergence.png              is the draw count enough
