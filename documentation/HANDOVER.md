@@ -31,13 +31,14 @@ the case is for.** Built the same day; see *the boards case* below.
 
 **Open:**
 
-- **Stage 03 will not run on the boards case at the current settings.** 1,661
-  rows x 200,000 draws is 2.66 GB of result and about 4.5 GB in all, against a
-  `monte_carlo.memory_budget_gb` of 4.0. It refuses before allocating anything
-  and names the levers. The machine has 32 GB, so raising the budget costs
-  nothing and changes no number; halving `data.draws` would change the numbers.
-  **The user picks the lever** -- the guard exists to hand them that choice.
-  Stage 02 runs, and the deterministic answer below comes from it.
+`monte_carlo.memory_budget_gb` went 4.0 -> 8.0 the same day, at the user's
+choice, because the boards case needs 4.5 GB: 1,661 rows x 200,000 draws is
+2.66 GB of result on its own. The budget is a guard, not a model parameter --
+no number in any result moves -- and the machine has 32 GB. Stage 03 refused
+before allocating anything and named its levers, which is what it is for; the
+other two levers, fewer draws and fewer years, both change the answer and were
+turned down.
+
 - **The wiring case writes an empty `Layer 4` column** into every CSV and
   workbook sheet. It is material-keyed, so the column is dead in every row.
   Drop unused layer columns from what is WRITTEN; the arithmetic does not move.

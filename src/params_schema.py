@@ -333,9 +333,11 @@ class MonteCarloParams:
     # ten minutes and then the process being killed with no explanation.
     #
     # Raise it if the machine has the memory. 4 GB suits a 16 GB laptop with
-    # something else open.
+    # something else open; 8 suits the 32 GB machine this is developed on, and
+    # is what the boards case needs -- 1,661 rows x 200,000 draws is 2.7 GB of
+    # result and about 4.5 GB in all, which 4 refused.
     # SAFE TO CHANGE: yes. A number above zero.
-    memory_budget_gb: float = 4.0
+    memory_budget_gb: float = 8.0
 
     # HOW A GROUP WITH NO `is_residual` ROW IS MADE TO SUM TO 1.
     #

@@ -959,6 +959,44 @@ empty, so it fell through to Layer 2 and named the worst result
 worst. It now takes the deepest layer the row actually fills, and names the
 year.
 
+### 3.17 Every figure was built before any was written — **FIXED 2026-09-02**
+
+`draw_all` built its list eagerly:
+
+```python
+figures = [('over_time', figure_over_time(...)), ...]
+for stem, figure in figures:
+    write(figure, ...); plt.close(figure)
+```
+
+The close was there and it was too late: the list comprehension had already
+constructed all of them. On the wiring case that is 11 figures and nobody
+noticed. On the boards case, with 20 resources, it is 27 — each holding its own
+histogram of 200,000 draws — and matplotlib says so out loud at 20:
+
+    RuntimeWarning: More than 20 figures have been opened.
+
+**FIXED:** the list holds thunks, and each figure is built, written and closed
+before the next one starts. The per-resource entries bind `resource` as a
+default argument, since a bare closure over the loop variable would have drawn
+the last resource 20 times.
+
+### 3.18 The per-element Sankey announced a depth it did not have — **FIXED 2026-09-02**
+
+    2070 -- one of 11 in this run. Element-depth rows only.
+
+On `bev_electronics_wiring`, whose rows are MATERIALS: copper, alalloy,
+fealloy at Layer 3, Layer 4 empty everywhere. `mass()` had been fixed to read
+the deepest layer each frame fills (3.15) and was drawing the right rows; the
+sentence under the title was still the one written when Layer 4 was assumed.
+A caption that names the wrong layer is worse than none: it is checkable, and
+it checks out false.
+
+**FIXED:** the subtitle names the layer it actually drew -- `Layer 3 rows only
+-- the deepest this case resolves` -- rather than asserting what is in it.
+Which is also the honest wording for the boards case, where Layer 3 holds
+element names while the column is called material.
+
 ---
 
 ## 4. Code quality notes

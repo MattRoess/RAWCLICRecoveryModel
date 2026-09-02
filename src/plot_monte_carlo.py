@@ -782,15 +782,21 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
 
     out_dir = folder_for(out_dir, case) if case else out_dir
 
+    # DRAWN ONE AT A TIME, hence the lambdas. Building the list eagerly built
+    # every figure before writing any of them, so all 27 of the boards case's
+    # were open at once -- matplotlib says so at 20 -- each holding its own
+    # histogram of 200,000 draws. They were closed after writing, which looked
+    # like enough right up until a case had more than a handful of resources.
     figures = [
-        ('over_time', figure_over_time(run, deterministic, theme, unit)),
-        ('pdf_all', figure_pdf_grid(run, deterministic, theme, unit)),
-        ('spread', figure_spread(run, theme, unit)),
+        ('over_time', lambda: figure_over_time(run, deterministic, theme, unit)),
+        ('pdf_all', lambda: figure_pdf_grid(run, deterministic, theme, unit)),
+        ('spread', lambda: figure_spread(run, theme, unit)),
         ('spread_last_year',
-         figure_spread(run, theme, unit, both_years=False)),
-        ('mode_vs_mean', figure_mode_vs_mean(run, deterministic, theme, unit)),
-        ('convergence', figure_convergence(run, theme, unit)),
-        ('sensitivity', figure_sensitivity(run, theme)),
+         lambda: figure_spread(run, theme, unit, both_years=False)),
+        ('mode_vs_mean',
+         lambda: figure_mode_vs_mean(run, deterministic, theme, unit)),
+        ('convergence', lambda: figure_convergence(run, theme, unit)),
+        ('sensitivity', lambda: figure_sensitivity(run, theme)),
     ]
 
     # One distribution figure per resource: the histograms ARE the result, and a
@@ -801,11 +807,15 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
     # at all rather than an error.
     layer = finest_layer(run.keys)
     for resource in sorted({e for e in run.keys[layer].unique() if e}):
-        figures.append((f'pdf_{resource}', figure_pdf(run, resource, deterministic,
-                                                         theme, unit, layer=layer)))
+        figures.append((f'pdf_{resource}',
+                        # bound now, not at call time: a bare `resource` would
+                        # be the last one for every entry in the list.
+                        lambda resource=resource: figure_pdf(
+                            run, resource, deterministic, theme, unit, layer=layer)))
 
     written = []
-    for stem, figure in figures:
+    for stem, draw in figures:
+        figure = draw()
         if figure is None:
             continue
         written.extend(write(figure, out_dir, stem, formats, dpi))

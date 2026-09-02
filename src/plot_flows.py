@@ -254,8 +254,17 @@ def figure_for(case: str, edges, flows, element: str | None, unit: str, theme: s
         which = f'{shows} — one of {of_many} in this run. '
 
     if element:
+        # NAME THE LAYER, do not assert it is elements. This said
+        # "Element-depth rows only" on every case, including the two that stop
+        # at material -- so the wiring case's copper Sankey, drawn from Layer 3
+        # material rows, announced an element depth it does not have. `mass()`
+        # was already reading the deepest layer each frame fills; only the
+        # sentence was stuck on Layer 4.
+        depth = max((finest_layer(frame) for frame in flows.values()
+                     if frame is not None and len(frame)), default='Layer 3')
         title = f'{case} — {element} through the recovery system'
-        subtitle = (f'{which}Element-depth rows only. Node and ribbon size are mass '
+        subtitle = (f'{which}{depth} rows only -- the deepest this case resolves. '
+                    f'Node and ribbon size are mass '
                     f'in {unit}. {len(nodes)} flows, {len(links)} transfers.')
     else:
         title = f'{case} — material flows'
