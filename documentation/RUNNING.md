@@ -75,7 +75,8 @@ data_folder/<case>/output_data/
     solution_optimized_model.csv the deterministic answer
 
 figures/<case>/
-    structure.png                the flow network and its coefficients
+    structure.png                the flow network, each endpoint's role, and
+                                 every coefficient behind every arrow
     total.png                    the Sankey, all resources
     <resource>.png               one Sankey per resource
     over_time.png                median per resource per year, with the 95% band

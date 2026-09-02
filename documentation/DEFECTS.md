@@ -997,6 +997,32 @@ it checks out false.
 Which is also the honest wording for the boards case, where Layer 3 holds
 element names while the column is called material.
 
+### 3.19 The structure diagram never said what an endpoint WAS — **FIXED 2026-09-02**
+
+Every box carried one line of meta -- `expressed at: material` -- and none said
+whether the mass that lands there is recovered, lost, or handed to a process
+the case does not model. So two boxes with no arrow leaving them looked
+identical:
+
+    F_recovered_own   expressed at: material      <- gold coming back
+    F_shredded        expressed at: component     <- a board nobody follows
+
+The `role` column has existed since the day it replaced guessing recovery from
+the flow's NAME (CASES.md), it is what the whole boards restructure turned on,
+and the one picture of the network did not carry it. `render` was never given
+the processes table at all -- only the TCs, which do not hold a role.
+
+**FIXED:** `draw` passes `flow_roles(case)` in, and each box states its role on
+a third line, coloured: recovered here (green), lost (red), handed on, not
+counted here (purple). `intermediate` is deliberately left off -- it says an
+arrow leaves the box, which the arrow already says -- and a case with no
+processes table keeps its two-line box. `tests/test_generality.py` renders a
+four-flow case and asserts on the strings that reach the axes.
+
+A local variable in that code was called `role` and held the TC target LAYER,
+which is likely how the real role went unnoticed for as long as it did. It is
+called `depth` now.
+
 ---
 
 ## 4. Code quality notes

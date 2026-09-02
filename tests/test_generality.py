@@ -1187,6 +1187,63 @@ def test_the_worklist_agrees_with_what_the_run_refuses() -> None:
             f'{"refuses" if refused else "accepts"} it')
 
 
+def test_the_structure_diagram_states_each_endpoints_role():
+    """
+    An endpoint's ROLE reaches the diagram, and `intermediate` does not.
+
+    Two boxes with no arrow leaving them are indistinguishable on the picture
+    -- one may be gold coming back, the other a shredded board this case does
+    not follow -- and until 2026-09-02 the diagram said only which layer each
+    was expressed at. `intermediate` is left off on purpose: it says an arrow
+    leaves the box, which the arrow already says.
+    """
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    from src.plot_structure import ROLE_LABEL, render
+
+    tcs = pd.DataFrame([
+        dict(Input_FlowID='F_in', Input_layer='product', Input_layer_key='P',
+             Output_FlowID='F_middle', TC_target_layer='component',
+             TC_target_key='C', value=1.0, value_min=1.0, value_max=1.0,
+             process='taking_apart', technology='manual'),
+        dict(Input_FlowID='F_middle', Input_layer='component', Input_layer_key='C',
+             Output_FlowID='F_back', TC_target_layer='material',
+             TC_target_key='M', value=0.9, value_min=0.8, value_max=1.0,
+             process='refining', technology='chemical'),
+        dict(Input_FlowID='F_middle', Input_layer='component', Input_layer_key='C',
+             Output_FlowID='F_gone', TC_target_layer='material',
+             TC_target_key='M', value=0.1, value_min=0.0, value_max=0.2,
+             process='refining', technology='chemical'),
+        dict(Input_FlowID='F_middle', Input_layer='component', Input_layer_key='C',
+             Output_FlowID='F_elsewhere', TC_target_layer='material',
+             TC_target_key='M', value=1.0, value_min=1.0, value_max=1.0,
+             process='shipping', technology='definitional'),
+    ])
+    roles = {'F_middle': 'intermediate', 'F_back': 'recovered',
+             'F_gone': 'loss', 'F_elsewhere': 'handoff'}
+
+    figure = render(tcs, 'a_case', roles=roles)
+    drawn = {text.get_text() for text in figure.axes[0].texts}
+    plt.close(figure)
+
+    for flow, role in roles.items():
+        if role == 'intermediate':
+            continue
+        assert ROLE_LABEL[role] in drawn, (
+            f'{flow} is {role} and the diagram does not say so')
+    assert 'intermediate' not in ' '.join(drawn), (
+        'intermediate is on the diagram; the arrow already says it')
+
+    # And a case with no processes table keeps the diagram it had.
+    plain = render(tcs, 'a_case')
+    without = {text.get_text() for text in plain.axes[0].texts}
+    plt.close(plain)
+    assert not ({ROLE_LABEL[r] for r in ROLE_LABEL} & without), (
+        'a case with no roles got role lines anyway')
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

@@ -152,7 +152,26 @@ def tc_blocks(tcs: pd.DataFrame, edges, has_range, process_col, technology_col):
 # Drawing
 # --------------------------------------------------------------------------
 
-def render(tcs: pd.DataFrame, case: str, theme: str = 'light'):
+# What each role is called on the diagram, and the colour it is drawn in.
+# THE ROLE IS THE ANSWER TO "and then what?", and until 2026-09-02 the diagram
+# did not carry it at all: every box said which layer it was expressed at and
+# none said whether the mass in it was recovered, lost, or handed to a process
+# this case does not model. Two boxes with no arrow leaving them looked
+# identical whether one was gold coming back and the other a shredded board
+# nobody follows.
+#
+# `intermediate` is deliberately absent. It says "an arrow leaves this box",
+# which the arrow already says.
+ROLE_LABEL = {
+    'recovered': 'recovered here',
+    'loss': 'lost',
+    'handoff': 'handed on, not counted here',
+}
+ROLE_COLOUR = {'recovered': PALETTE[2], 'loss': PALETTE[3], 'handoff': PALETTE[5]}
+
+
+def render(tcs: pd.DataFrame, case: str, theme: str = 'light',
+           roles: dict[str, str] | None = None):
     """
     Build the figure. One data unit is one typographic point, so the sizes
     below are literal point sizes and the layout is resolution independent --
@@ -170,7 +189,11 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light'):
     for node in nodes:
         columns.setdefault(column[node], []).append(node)
 
-    box_w, box_h, gap_y = 178, 46, 30
+    # Room for a third line in the boxes that have a role to state. A case
+    # with no processes table has none, and keeps the two-line box it had.
+    roles = roles or {}
+    shown_roles = {flow: role for flow, role in roles.items() if role in ROLE_LABEL}
+    box_w, box_h, gap_y = 214, (62 if shown_roles else 46), 30
     col_gap, left, top = 118, 24, 84
     tallest = max(len(group) for group in columns.values())
     diagram_h = top + tallest * (box_h + gap_y)
@@ -231,9 +254,12 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light'):
         axes.add_patch(Rectangle((x, y + 3), 4.5, box_h - 6, facecolor=accent[node],
                                  edgecolor='none'))
         expressed = tcs.loc[tcs['Output_FlowID'] == node, 'TC_target_layer']
-        role = expressed.iloc[0] if len(expressed) else 'inflow'
+        depth = expressed.iloc[0] if len(expressed) else 'inflow'
         label(axes, x + 14, y + 17, node, 12.5, colours['node'], 'bold')
-        label(axes, x + 14, y + 33, f'expressed at: {role}', 10.5, colours['meta'])
+        label(axes, x + 14, y + 33, f'expressed at: {depth}', 10.5, colours['meta'])
+        if node in shown_roles:
+            role = shown_roles[node]
+            label(axes, x + 14, y + 49, ROLE_LABEL[role], 10.5, ROLE_COLOUR[role], 'bold')
 
     axes.plot([left, width - left], [diagram_h - 10] * 2, color=colours['rule'], linewidth=1)
     label(axes, left, diagram_h + 14, 'Transfer coefficients behind each arrow', 13,
@@ -276,7 +302,8 @@ def draw(target: str | None = None, params: Params | None = None) -> None:
     if {'value_min', 'value_max'}.issubset(tcs.columns):
         from src.sampling import numeric_bounds
         tcs = numeric_bounds(tcs)
-    figure = render(tcs, case, theme=params.figures.theme)
+    from src.rest import flow_roles
+    figure = render(tcs, case, theme=params.figures.theme, roles=flow_roles(folder))
     for path in write(figure, folder_for(params.figures.out_dir, case), 'structure',
                       params.figures.enabled(), params.figures.dpi):
         print(f'wrote {path}')
