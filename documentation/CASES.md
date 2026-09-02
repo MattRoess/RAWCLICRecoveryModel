@@ -265,6 +265,13 @@ wrong — and it would have inflated the recovery figure, silently, the moment
 boards and sensors were included again. `role` exists so the meaning is stated
 rather than read out of the spelling.
 
+`bev_electronics_boards` is the live example: its `F_shredded` is a handoff.
+A board that was not disassembled goes to the general shredder, and that case
+stops there rather than splitting the mass into aluminium, iron and trash --
+what becomes of a shredded board is not the question it answers (DECISIONS.md
+12). Guessed from the name, `F_shredded` would have been counted as neither
+recovered nor lost by luck rather than by decision.
+
 `intermediate` marks a flow that is consumed further on. Those are excluded
 from the total anyway, by not being terminal, so the value is a statement of
 intent rather than something the sum depends on.

@@ -75,8 +75,20 @@ lives in a chat message is a decision that will be broken.
     together in reporting — never a third flow, which would count the same metal
     twice.
 
-12. **Boards and sensors left in the car keep no element.** Their mass reports
-    to the general aluminium and iron alloy streams, or to trash.
+12. **A board left in the car is not followed.** It goes to the general
+    shredder and the boards case stops there -- ONE handoff flow, not a split
+    into aluminium, iron and trash.
+
+    Nobody is asking what a shredded board becomes. The question that case
+    exists to answer is what the specialist route gets back, and the shredded
+    road is there only to say how much never reaches it. Splitting it cost
+    three flows and six coefficients that nobody would read, and each one was
+    a placeholder.
+
+    `handoff` is the role for it: not recovered here, not lost, passed to a
+    process this case does not model. The wiring case DOES split its general
+    road, because there the alloys coming off the general shredder are the
+    answer rather than the leftovers.
 
 ## Figures
 

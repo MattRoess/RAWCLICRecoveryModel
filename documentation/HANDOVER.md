@@ -22,25 +22,33 @@ Three things followed from that day, all built and all tested:
    had left the composition while being documented as merging, and took 32 of
    them, every rare earth included. DEFECTS.md §3.12.
 
-## NEXT: THE FIGURES. Nothing else.
+## NEXT: THE BOARDS CASE.
 
-**The user's instruction, 2026-09-02: fix the figures in the recovery model.**
-Not the cases, not the coefficients, not upstream. Read
-[DECISIONS.md](DECISIONS.md) section *Figures* first -- every rule there was
-written after a figure was rejected, and five versions of one figure were built
-before somebody noticed `pdf_<resource>` already did the job.
+**The user's instruction, 2026-09-02, after the figures were done: the boards
+structure is not what is needed. The shredded road is not split -- nobody is
+interested in it -- and the elements recovered by the specialist route are what
+the case is for.** Built the same day; see *the boards case* below.
 
-**Open, and the only thing open here:**
+**Open:**
 
-`spread.png` and `mode_vs_mean.png` are done. Both used to sum the year axis;
-both now show one year and say, from a measurement rather than a hope, how much
-the answer would differ in another. `spread.png` carries the results that
-genuinely change between the first year and the last, side by side;
-`spread_last_year.png` is the same at twice the width for the last year only.
-
+- **Stage 03 will not run on the boards case at the current settings.** 1,661
+  rows x 200,000 draws is 2.66 GB of result and about 4.5 GB in all, against a
+  `monte_carlo.memory_budget_gb` of 4.0. It refuses before allocating anything
+  and names the levers. The machine has 32 GB, so raising the budget costs
+  nothing and changes no number; halving `data.draws` would change the numbers.
+  **The user picks the lever** -- the guard exists to hand them that choice.
+  Stage 02 runs, and the deterministic answer below comes from it.
 - **The wiring case writes an empty `Layer 4` column** into every CSV and
   workbook sheet. It is material-keyed, so the column is dead in every row.
   Drop unused layer columns from what is WRITTEN; the arithmetic does not move.
+
+**The figures are done.** `spread.png` and `mode_vs_mean.png` both used to sum
+the year axis; both now show one year and say, from a measurement rather than a
+hope, how much the answer would differ in another. `spread.png` carries the
+results that genuinely change between the first year and the last, side by side;
+`spread_last_year.png` is the same at twice the width for the last year only.
+Read [DECISIONS.md](DECISIONS.md) section *Figures* before touching any of them
+-- every rule there was written after a figure was rejected.
 
 **Do not invent a figure.** `pdf_<resource>.png` and `pdf_all.png` already show
 the per-year densities with the deterministic run on them. `over_time.png`
@@ -69,8 +77,41 @@ structure -- that route separates gold and palladium and there is nothing
 between the board and them -- but the column is called `material`. If that ever
 reads wrong, the fix is what the layers are NAMED, not where the numbers sit.
 
-**Materials only. No element layer anywhere** -- zero Layer 4 rows in the
-solution. Layer 3 is what a scrapyard sells:
+**The boards case, 2026-09-02: the shredded road is ONE flow.** It used to
+split into `F_alalloy_general`, `F_fealloy_general` and `F_loss_general` --
+three flows and six coefficients, every one of them a placeholder, describing
+what becomes of a board nobody is asking about. The case exists to answer what
+the specialist route gets back; the other road is there only to say how much
+never reaches it.
+
+    F_collected --> F_disassembled --> F_recovered_own   Ag Au Cu Ni Pd (PCB)
+                |                  \-> F_loss_own        + 16 more (Sensors)
+                \-> F_in_car ------> F_shredded          handoff, and that is all
+
+`F_shredded` carries the role `handoff`: not recovered here, not lost, passed to
+a process this case does not model. 8 processes became 5, 58 coefficient rows
+became 52. Nothing else moved -- the disassembly split and every recovery
+coefficient are the numbers they were. DECISIONS.md 12.
+
+2070, kilograms -- the working unit -- from the deterministic run in
+`output_data/solution_optimized_model.csv`:
+
+| | collected | recovered | lost in the specialist route | handed to the shredder |
+|---|---|---|---|---|
+| Cu | 5,958,949 | 2,861,454 | 317,939 | 2,779,556 |
+| Ni | 318,871 | 134,599 | 23,753 | 160,519 |
+| Ag | 74,032 | 38,422 | 2,022 | 33,588 |
+| Au | 14,534 | 8,153 | 429 | 5,951 |
+| Pd | 7,437 | 4,239 | 223 | 2,975 |
+| Nd | 19,353 | 290 | 5,516 | 13,547 |
+
+The last column is the price of not disassembling, and the case now says it in
+one number per element instead of three flows of invented detail. Nd is the
+contrast worth keeping in view: 70% of it is never even offered to the
+specialist route, and of the 30% that is, the coefficient recovers 5%.
+
+**Materials only in the WIRING case. No element layer anywhere there** -- zero
+Layer 4 rows in its solution. Layer 3 is what a scrapyard sells:
 
 | | share of a motor |
 |---|---|
