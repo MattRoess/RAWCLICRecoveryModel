@@ -22,7 +22,7 @@ Three things followed from that day, all built and all tested:
    had left the composition while being documented as merging, and took 32 of
    them, every rare earth included. DEFECTS.md §3.12.
 
-**The electronics case is `bev_electronics_metals`, and it is the only one.**
+**The electronics case is `bev_electronics_wiring`, and it is the only one.**
 Rebuilt from scratch on 2026-09-02 to the user's specification, after two
 earlier attempts they had not agreed to. `bev_electronics` and
 `bev_electronics_boards` were deleted the same day at their instruction; git has
@@ -117,7 +117,7 @@ document is for picking the work back up.
 
 | | 04_02 electronics | 04_01 car composition |
 |---|---|---|
-| case folder | `data_folder/bev_electronics_metals` | `data_folder/carcomposition_mockup` |
+| case folder | `data_folder/bev_electronics_wiring` | `data_folder/carcomposition_mockup` |
 | covers | wiring and motors in BEVs | whole cars, five drivetrains |
 | finest resolution | **material** — copper, alalloy, fealloy | **material** — calAHSS, battery |
 | element layer | **none at all** | none |
@@ -134,7 +134,7 @@ case's `groups`, and the case that covered them was deleted on 2026-09-02.
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
 suites on fixed fixtures (117 checks), then the pipeline and a mass balance.
 
-**`run.data_folder` points at `bev_electronics_metals`.** Its loss rows ARE
+**`run.data_folder` points at `bev_electronics_wiring`.** Its loss rows ARE
 residual -- computed as `1 - what reached a pile` -- at the user's instruction on
 2026-09-02, so that a person types a yield and nothing else. That reverses the
 2026-08-28 decision below; simplicity won over having a measured range on both

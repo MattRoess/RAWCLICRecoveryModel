@@ -68,7 +68,7 @@ class RunParams:
     # A folder holding an `input_data/`, written from the project root.
     # `02_run_model.py --list` prints the folders that qualify.
     # SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
-    data_folder: str = 'data_folder/bev_electronics_metals'
+    data_folder: str = 'data_folder/bev_electronics_wiring'
 
     # WHICH SCENARIO TO RUN.  Blank when the data has no scenario dimension,
     # which is the case for every data folder in this repository today.
