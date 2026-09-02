@@ -815,6 +815,27 @@ trusted on all three counts. The code even carried a comment about not causing
 "quiet loss" — attached to the handling of extra *columns*, three lines above
 the rows being dropped.
 
+### 3.13 The deterministic line was drawn unscaled — **FIXED 2026-09-02**
+
+Spotted by the user in `distribution.png`: every histogram was a single spike at
+zero, with a dashed line off at the right edge labelled `59,750,828.6` beside a
+Monte Carlo mean of `57.1`.
+
+`figure_distribution` picks each panel's unit from the Monte Carlo values and
+scales them, but drew the deterministic total **raw**. That value arrives in the
+working unit — kilograms — so the line landed 10^6 away, the axis stretched to
+reach it, and the distribution collapsed into one bar.
+
+    alalloy   Monte Carlo mean 57.1 kt   deterministic drawn at 59,750,828.6
+
+**FIXED:** `point = point * scale`, one line. `figure_pdf` and
+`figure_mode_vs_mean` draw the same value and both already scaled it; only this
+one did not.
+
+**Worth the space** because the figure did not look broken, it looked *decisive*
+— a tight spike and a clear line — and it is the figure the whole Monte Carlo
+exists to produce. Same family as §3.9: a unit that is never wrong by a little.
+
 ---
 
 ## 4. Code quality notes

@@ -200,6 +200,14 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
         if deterministic is not None:
             point = _deterministic_total(deterministic, recovered, element, layer)
             if point is not None:
+                # SCALED, like everything else on this axis. The panel picks its
+                # own unit from the Monte Carlo values, and the deterministic
+                # total arrives in the working unit -- kilograms -- so drawing it
+                # raw put a line at 59,750,828 on an axis whose data ran to 60.
+                # It landed off the right edge with a label a million times the
+                # mean beside it. `figure_pdf` and `figure_mode_vs_mean` both
+                # scale the same value; only this one did not.
+                point = point * scale
                 panel.axvline(point, color=PALETTE[3], linewidth=1.6, linestyle='--',
                               label=f'deterministic (mode)  {point:,.1f}')
 
