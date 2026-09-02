@@ -81,7 +81,9 @@ figures/<case>/
     over_time.png                median per resource per year, with the 95% band
     pdf_<resource>.png           the distribution, one panel per year
     pdf_all.png                  those panels on one page, resources x years
-    spread.png                   how uncertain each result is, per year
+    spread.png                   how much and how sure, with both years on the
+                                 rows whose certainty changed
+    spread_last_year.png         the same, last year only -- twice the width
     mode_vs_mean.png             deterministic against the MC mean, years SUMMED
     convergence.png              is the draw count enough
     sensitivity.png              which coefficient drives the answer

@@ -392,89 +392,163 @@ def figure_pdf_grid(run, deterministic: pd.DataFrame | None, theme: str,
 #  2. Which flows are uncertain
 # ----------------------------------------------------------------------
 
-def figure_spread(run, theme: str, unit: str, most: int = 12):
+# How much a result's relative spread has to move between the first year and
+# the last before the earlier year is drawn beside it.
+SPREAD_MOVED = 1.0          # percentage points
+
+
+def figure_spread(run, theme: str, unit: str, most: int = 20,
+                  both_years: bool = True):
     """
-    How uncertain each result is, per year: the 95% interval as a percentage of
-    the mean, one line per flow and resource.
+    THE SPREAD ITSELF, as a bar per result -- and where it changed over time,
+    both years' bars side by side on the same row.
 
-    COMPARISON AND TRAJECTORY IN ONE FIGURE. Reading down at any year ranks the
-    results by how uncertain they are; reading along a line says whether that is
-    getting better or worse. The previous version was a bar per result with the
-    years SUMMED, which ranked them and destroyed the trajectory -- and summed
-    an absolute mass across years, adding 2030's 10 kt of copper to 2050's 254
-    to make a number with no physical meaning.
+    Each bar is that result's own distribution: the thick part the 50%
+    interval, the thin line the 95%, the tick its median.
 
-    A RELATIVE SPREAD IS THE ONE QUANTITY THAT SURVIVES BOTH. It is scale-free,
-    so a flow carrying 3 kt and one carrying 300 belong on the same axis without
-    anything being rescaled to put them there, and it is meaningful per year, so
-    no summing is needed to draw it.
+    MASS ON A LOG AXIS, so both questions are answered by one picture: WHERE the
+    bar sits is how much, HOW WIDE it is is how uncertain. A percent-of-own-mean
+    axis was tried and centred every bar on 100%, which showed the spread and
+    threw away the magnitude -- 232 kt and 2.5 kt drawn on top of each other.
+    Linear mass fails the other way: these results span 0.02 to 232 kt and the
+    same result grows a thousandfold across the years, so the small ones and the
+    early years vanish. On a log axis a relative spread has the same width
+    wherever it sits, so the bars stay comparable to one another and between
+    the two years.
 
-    Losses come out far wider than recoveries and that is arithmetic, not noise:
-    a loss is `1 - yield`, so an alloy recovered at 0.95 leaves 0.05, and a
-    small movement in a large number is a large movement in a small one.
+    THE SECOND BAR APPEARS ONLY WHERE IT DIFFERS. A result whose spread has
+    moved by at least SPREAD_MOVED points gets the first year drawn above the
+    last, hollow, so the two can be compared directly. The rest get one bar,
+    because their spread is identical in every year -- the coefficients do not
+    vary by year, so it is a fixed fraction of a growing mass.
+
+    On this case two of fourteen move, both COPPER, the one material present in
+    both Wiring and Motors: the mix of the two shifts as the fleet turns over,
+    so copper's total is a blend in changing proportion and the blend's spread
+    moves with it.
+
+    `both_years=False` draws the last year alone, and IS WORTH HAVING SEPARATELY
+    rather than being the same figure with less on it. The two early bars are
+    what force the axis down to 1e-2: showing them costs three decades to
+    display two pale bars, and every other bar is squeezed for it. Dropped, the
+    range is 2.5 to 232 kt -- two decades instead of five -- and each bar is
+    roughly twice as wide to read. Both are drawn: `spread.png` for the change,
+    `spread_last_year.png` for reading the answer.
     """
     years = sorted(int(y) for y in run.keys['Year'].unique())
+    if not years:
+        return None
+    first, last = years[0], years[-1]
     layer = finest_layer(run.keys)
     keys, values = run.keys, run.values
     ends = terminal_flows(run)
-    if not ends or not years:
+    if not ends:
         return None
 
-    series: dict[str, dict[int, float]] = {}
+    def at(flow: str, element: str, year: int):
+        rows = np.flatnonzero((keys['Stock/Flow ID'] == flow).to_numpy()
+                              & (keys[layer] == element).to_numpy()
+                              & (keys['Year'].astype(str) == str(year)).to_numpy())
+        if not rows.size:
+            return None
+        totals = values[rows].sum(axis=0)
+        mean = float(totals.mean())
+        if mean <= 0:
+            return None
+        low, q1, median, q3, high = _band(totals)
+        return (low, q1, median, q3, high, 100 * (high - low) / mean, median)
+
+    entries = []
     for flow in ends:
-        is_flow = (keys['Stock/Flow ID'] == flow).to_numpy()
         for element in sorted({e for e in keys[layer].unique() if e}):
-            is_element = (keys[layer] == element).to_numpy()
-            per_year = {}
-            for year in years:
-                rows = np.flatnonzero(is_flow & is_element
-                                      & (keys['Year'].astype(str) == str(year)).to_numpy())
-                if not rows.size:
-                    continue
-                totals = values[rows].sum(axis=0)
-                mean = float(totals.mean())
-                if mean <= 0:
-                    continue
-                low, high = np.percentile(totals, [2.5, 97.5])
-                per_year[year] = 100.0 * (high - low) / mean
-            if per_year:
-                series[f'{flow}  \u00b7  {element}'] = per_year
-    if not series:
+            now = at(flow, element, last)
+            if now is None:
+                continue
+            before = (at(flow, element, first)
+                      if both_years and first != last else None)
+            was = (before if before is not None
+                   and abs(before[5] - now[5]) >= SPREAD_MOVED else None)
+            entries.append((f'{flow}  \u00b7  {element}', now, was))
+    if not entries:
         return None
 
-    # The widest at the last year, because a chart with one line per result is
-    # readable for this case and a thicket for 04_01's hundreds.
-    ranked = sorted(series.items(),
-                    key=lambda item: item[1].get(years[-1], 0.0), reverse=True)
-    trimmed = max(0, len(ranked) - most)
-    ranked = ranked[:most]
+    entries.sort(key=lambda item: item[1][2])          # by mass, biggest at top
+    trimmed = max(0, len(entries) - most)
+    entries = entries[-most:]
+    scale, shown = scale_for(
+        np.array([v for _, now, _ in entries for v in now[:5]]), unit)
 
-    figure, panel, colours = chart(1150, 640, theme)
-    for index, (name, per_year) in enumerate(ranked):
-        colour = PALETTE[index % len(PALETTE)]
-        drawn = sorted(per_year)
-        panel.plot(drawn, [per_year[y] for y in drawn], color=colour, linewidth=2.0,
-                   marker='o', markersize=4,
-                   label=f'{name}   {per_year[drawn[-1]]:,.0f}% in {drawn[-1]}')
+    figure, panel, colours = chart(1080, 150 + 44 * len(entries), theme)
 
-    panel.set_title('How uncertain each result is, per year'
-                    + (f'   --  the {len(ranked)} widest of {len(ranked) + trimmed}'
-                       if trimmed else ''),
-                    color=colours['title'], fontsize=12, fontweight='bold', loc='left')
-    panel.set_xlabel('year', color=colours['meta'], fontsize=10)
-    panel.set_ylabel('95% interval, as % of the mean', color=colours['meta'], fontsize=10)
-    panel.set_xticks(years)
-    panel.set_ylim(bottom=0)
-    panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
-    # BELOW THE AXES, not inside them. Twelve entries in the upper left covered
-    # the two highest lines -- which are the widest spreads, the whole reason to
-    # look at the figure. A legend that hides the subject is worse than a taller
-    # image.
-    legend = panel.legend(fontsize=9, frameon=False, ncol=3,
-                          loc='upper center', bbox_to_anchor=(0.5, -0.10))
-    for text in legend.get_texts():
-        text.set_color(colours['meta'])
-    figure.tight_layout()
+    def bar(low, q1, median, q3, high, y, colour, hollow):
+        panel.plot([low, high], [y, y], color=colour, linewidth=1.4,
+                   alpha=0.45 if hollow else 0.6)
+        panel.plot([q1, q3], [y, y], color=colour,
+                   linewidth=7 if hollow else 10, solid_capstyle='butt',
+                   alpha=0.35 if hollow else 0.85)
+        panel.plot([median], [y], marker='|', markersize=11 if hollow else 14,
+                   color=colours['title'], markeredgewidth=1.5,
+                   alpha=0.55 if hollow else 1.0)
+
+    for position, (name, now, was) in enumerate(entries):
+        colour = PALETTE[position % len(PALETTE)]
+        if was is None:
+            bar(*[v * scale for v in now[:5]], position, colour, hollow=False)
+            panel.annotate(f'{now[2] * scale:,.3g}   \u00b1{now[5]:,.0f}%',
+                           (now[4] * scale, position), textcoords='offset points',
+                           xytext=(10, 0), va='center', fontsize=9.5,
+                           color=colours['meta'])
+        else:
+            bar(*[v * scale for v in was[:5]], position + 0.21, colour, hollow=True)
+            bar(*[v * scale for v in now[:5]], position - 0.21, colour, hollow=False)
+            for band_, offset, year in ((was, 0.21, first), (now, -0.21, last)):
+                panel.annotate(f'{year}   {band_[2] * scale:,.3g}   '
+                               f'\u00b1{band_[5]:,.0f}%',
+                               (band_[4] * scale, position + offset),
+                               textcoords='offset points', xytext=(10, 0),
+                               va='center', fontsize=9, color=colours['meta'])
+
+    changed = sum(1 for _, _, was in entries if was is not None)
+    # LOG, so position says how much and width says how uncertain, on one axis.
+    # These results span 0.02 kt to 232 kt and the same result grows a
+    # thousandfold across the years -- linear shows the big ones and nothing
+    # else. On a log axis a relative spread has the same width wherever it sits,
+    # so the bars are comparable to each other AND between the two years.
+    panel.set_xscale('log')
+
+    # LIMITS FROM THE DATA, not from margins(). A margin is a FRACTION OF THE
+    # AXIS RANGE, and on a log axis that range is in decades -- so 0.45 padded
+    # by nearly half a decade at each end and left the bars squeezed into the
+    # middle third with empty space out to 1e-3 and 1e4. Explicit limits: a
+    # little air on the left, and enough on the right for the labels, which are
+    # drawn in data coordinates and would otherwise fall off the figure.
+    drawn = [v for _, now, was in entries for band_ in (now, was)
+             if band_ is not None for v in band_[:5] if v > 0]
+    panel.set_xlim(min(drawn) * scale / 2.5, max(drawn) * scale * 12)
+    panel.xaxis.set_minor_locator(
+        __import__('matplotlib').ticker.LogLocator(base=10, subs=tuple(range(2, 10)),
+                                                   numticks=100))
+    panel.grid(True, axis='x', which='minor', color=colours['rule'],
+               linewidth=0.4, alpha=0.5)
+
+    panel.set_yticks(range(len(entries)))
+    panel.set_yticklabels([e[0] for e in entries], fontsize=9.5,
+                          color=colours['meta'])
+    panel.set_xlabel(f'mass ({shown}, log scale)   '
+                     f'(thick: 50% interval, thin: 95%, tick: median)',
+                     color=colours['meta'], fontsize=9.5)
+    panel.margins(y=0.05)
+    panel.grid(True, axis='x', color=colours['rule'], linewidth=0.7)
+    header(figure, f'How much, and how sure -- in {last}'
+           + (f'   --  the {len(entries)} widest of {len(entries) + trimmed}'
+              if trimmed else ''), colours,
+           (f'{changed} result(s) changed since {first} and carry both years, '
+            f'{first} above {last}. The rest are identical in every year.'
+            if changed else
+            f'every result, {last} only. Nothing here changed between {first} '
+            f'and {last}; spread.png carries the ones that did.'
+            if not both_years else
+            f'no result changed between {first} and {last}.'))
     return figure
 
 
@@ -675,6 +749,8 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
         ('over_time', figure_over_time(run, deterministic, theme, unit)),
         ('pdf_all', figure_pdf_grid(run, deterministic, theme, unit)),
         ('spread', figure_spread(run, theme, unit)),
+        ('spread_last_year',
+         figure_spread(run, theme, unit, both_years=False)),
         ('mode_vs_mean', figure_mode_vs_mean(run, deterministic, theme, unit)),
         ('convergence', figure_convergence(run, theme, unit)),
         ('sensitivity', figure_sensitivity(run, theme)),
