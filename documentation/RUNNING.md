@@ -81,14 +81,24 @@ figures/<case>/
     over_time.png                median per resource per year, with the 95% band
     pdf_<resource>.png           the distribution, one panel per year
     pdf_all.png                  those panels on one page, resources x years
-    spread.png                   the 30 widest intervals
-    mode_vs_mean.png             deterministic against the MC mean
+    spread.png                   how uncertain each result is, per year
+    mode_vs_mean.png             deterministic against the MC mean, years SUMMED
     convergence.png              is the draw count enough
     sensitivity.png              which coefficient drives the answer
 ```
 
 **A folder per case**, with the same names in both, so the two pipelines cannot
 overwrite each other and their figures compare directly.
+
+The first three come from `02_run_model.py` and the rest from
+`03_run_monte_carlo.py`, so a folder holding only the Monte Carlo figures means
+02 has not been run since the case was last renamed or created.
+
+**`mode_vs_mean.png` still sums the year axis** and is the last figure that
+does. `distribution.png` was deleted on 2026-09-02 for exactly that -- adding
+one year's kilotonnes to another's makes a quantity nobody has a use for. This
+one reports a PERCENTAGE gap, so the summing blends rather than nonsense, but it
+is unfinished business. See DECISIONS.md, *Figures*.
 
 ### The workbook, sheet by sheet
 

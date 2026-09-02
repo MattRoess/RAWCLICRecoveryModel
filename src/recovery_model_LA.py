@@ -23,7 +23,6 @@ from src.validate_inputs import InputDataError, validate
 OUTPUT_DATA_FOLDER_NAME = "output_data"
 INPUT_DATA_FOLDER_NAME = "input_data"
 
-TCS_FILENAME = "TCs.csv"
 INPUTS_FILENAME = "inputs.csv"
 COMPOSITION_FILENAME = "composition.csv"
 SOLUTION_FILENAME = "solution_LA_model.csv"

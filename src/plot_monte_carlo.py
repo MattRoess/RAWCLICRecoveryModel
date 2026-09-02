@@ -181,7 +181,7 @@ def _band(values: np.ndarray) -> tuple[float, float, float, float, float]:
 #  1b. How it moves over the years
 # ----------------------------------------------------------------------
 
-def figure_over_time(run, theme: str, unit: str):
+def figure_over_time(run, deterministic: pd.DataFrame | None, theme: str, unit: str):
     """
     Median recovered mass per year, per resource, with the 95% interval.
 
@@ -192,8 +192,14 @@ def figure_over_time(run, theme: str, unit: str):
     trajectory. Neither lets you see the trend, which is the first thing anyone
     asks of a projection.
 
-    A line for the median and a band for the 95% interval, per resource. The
-    band is computed per year across the draws and never by adding percentiles:
+    A line for the median, a band for the 95% interval, and a DASHED line for
+    the deterministic run -- every coefficient at its mode, the single-value
+    answer. Seeing it against the band is the point: on this case it sits high
+    in every year, so the one-number answer is not a central estimate of the
+    distribution around it.
+
+    The band is computed per year across the draws and never by adding
+    percentiles:
     summing a 97.5th percentile across years assumes every year hits its
     extreme in the same world, which is exactly the mistake the Monte Carlo
     exists to avoid.
@@ -221,8 +227,13 @@ def figure_over_time(run, theme: str, unit: str):
             low.append(np.percentile(totals, 2.5))
             high.append(np.percentile(totals, 97.5))
         if max(median) > 0:
-            series[element] = {'median': np.array(median),
-                               'low': np.array(low), 'high': np.array(high)}
+            point = []
+            for year in years:
+                value = (None if deterministic is None else
+                         _deterministic_recovered(deterministic, run, element, year, layer))
+                point.append(np.nan if value is None else value)
+            series[element] = {'median': np.array(median), 'low': np.array(low),
+                               'high': np.array(high), 'deterministic': np.array(point)}
     if not series:
         return None
 
@@ -240,8 +251,12 @@ def figure_over_time(run, theme: str, unit: str):
                    marker='o', markersize=4,
                    label=f"{element}   {s['median'][0] * scale:,.3g} "
                          f"\u2192 {s['median'][-1] * scale:,.3g} {shown}")
+        if np.isfinite(s['deterministic']).any():
+            panel.plot(years, s['deterministic'] * scale, color=colour,
+                       linewidth=1.4, linestyle='--', alpha=0.9)
 
-    panel.set_title('Recovered mass over time   (median, with the 95% interval)',
+    panel.set_title('Recovered mass over time   (solid: median, with the 95% '
+                    'interval.  dashed: the deterministic run)',
                     color=colours['title'], fontsize=12, fontweight='bold',
                     loc='left')
     panel.set_xlabel('year', color=colours['meta'], fontsize=9)
@@ -641,7 +656,7 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
     out_dir = folder_for(out_dir, case) if case else out_dir
 
     figures = [
-        ('over_time', figure_over_time(run, theme, unit)),
+        ('over_time', figure_over_time(run, deterministic, theme, unit)),
         ('pdf_all', figure_pdf_grid(run, deterministic, theme, unit)),
         ('spread', figure_spread(run, theme, unit)),
         ('mode_vs_mean', figure_mode_vs_mean(run, deterministic, theme, unit)),
