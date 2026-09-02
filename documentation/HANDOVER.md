@@ -101,6 +101,11 @@ looked unused are read through `getattr` and were left alone; §5 says which.
 **No coefficient became a measurement on any of it.** What the model does with
 numbers is finished; the numbers are not.
 
+**Read [DECISIONS.md](DECISIONS.md) before touching anything.** It is the list
+of what the user has settled, and it is short. Every item on it was decided
+once and then broken by an assistant who found a tidier way -- which is how a
+day gets spent on rework. Add to it the moment something is decided.
+
 **Read [RUNNING.md](RUNNING.md) first if you just want to run something.** This
 document is for picking the work back up.
 
@@ -730,6 +735,7 @@ Restarting the app cleared it. Nothing was lost and nothing needed repairing.
 
 | document | what is in it |
 |---|---|
+| [DECISIONS.md](DECISIONS.md) | **what the user has settled. Read it first, and add to it.** |
 | [RUNNING.md](RUNNING.md) | what to press, in what order, and what comes out |
 | [CASES.md](CASES.md) | how a case is configured and why |
 | [MODEL_MECHANICS.md](MODEL_MECHANICS.md) | how a result is actually computed. The nesting rule. **Read before reading any number.** |
