@@ -96,15 +96,67 @@ def deterministic_solution(params, folder) -> pd.DataFrame:
     return solution
 
 
+# The percentile grid written beside the summary statistics. Every fifth
+# percentile, with the tails at 1 and 99 and the reported interval's own 2.5 and
+# 97.5 among them, so the 95% figure quoted everywhere else is a column here
+# rather than something to interpolate.
+#
+# THIS IS THE DISTRIBUTION, IN A FORM SOMETHING ELSE CAN USE. The draws
+# themselves are 215 rows x 200,000 x 8 bytes -- 344 MB for one case -- so they
+# are not written. A percentile grid is the whole shape at 23 numbers a row:
+# read it back, and linear interpolation between the points reconstructs the
+# curve or draws from it.
+GRID = (1, 2.5, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80,
+        85, 90, 95, 97.5, 99)
+
+
+def _mode(values: np.ndarray, bins: int = 64) -> np.ndarray:
+    """
+    The peak of each row's distribution: the midpoint of its fullest bin.
+
+    NOT the same as the `deterministic` column beside it. That is the answer
+    with every COEFFICIENT at its mode, which is a different thing and usually
+    a different number -- a product of triangular variables does not put its
+    mode where its inputs put theirs. Having both is the point: the gap between
+    them is what the Monte Carlo is for.
+
+    A histogram peak rather than a kernel estimate, because it needs no extra
+    dependency and no bandwidth choice, and 64 bins over 200,000 draws locates
+    the peak far more precisely than the coefficients justify.
+    """
+    out = np.zeros(values.shape[0])
+    for row in range(values.shape[0]):
+        sample = values[row]
+        low, high = sample.min(), sample.max()
+        if not np.isfinite(low) or high <= low:
+            out[row] = low                     # a point mass: it is its own mode
+            continue
+        counts, edges = np.histogram(sample, bins=bins, range=(low, high))
+        peak = int(counts.argmax())
+        out[row] = 0.5 * (edges[peak] + edges[peak + 1])
+    return out
+
+
 def summarise(run) -> pd.DataFrame:
-    """Mean, spread and percentiles per result row."""
+    """
+    Mean, mode, median, spread and the percentile grid, per result row.
+
+    Everything a downstream user needs to take a result further without
+    re-running: the central values, how wide it is, and the shape itself.
+    """
     values = run.values
     summary = run.keys.copy()
     summary['mean'] = values.mean(axis=1)
+    summary['mode'] = _mode(values)
     summary['sd'] = values.std(axis=1, ddof=1) if run.draws > 1 else 0.0
     for percentile, column in zip(PERCENTILES,
                               ('p2_5', 'p25', 'p50', 'p75', 'p97_5')):
         summary[column] = np.percentile(values, percentile, axis=1)
+    # `p50` above is the median; it is repeated in the grid on purpose, so the
+    # grid is a complete curve on its own rather than one with a hole in it.
+    for percentile in GRID:
+        summary[f'q{percentile:g}'.replace('.', '_')] = \
+            np.percentile(values, percentile, axis=1)
     return summary
 
 

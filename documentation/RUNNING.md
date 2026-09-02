@@ -5,8 +5,9 @@
 At the top of the file, `run.data_folder`:
 
 ```python
-data_folder: str = 'data_folder/bev_electronics'          # 04_02, elements
-# data_folder: str = 'data_folder/carcomposition_mockup'  # 04_01, materials
+data_folder: str = 'data_folder/bev_electronics_wiring'  # 04_02, wiring + motors, materials
+# data_folder: str = 'data_folder/bev_electronics_boards' # 04_02, boards + sensors, elements
+# data_folder: str = 'data_folder/carcomposition_mockup'  # 04_01, whole cars, materials
 ```
 
 **One at a time.** They are different studies — different networks, different
@@ -53,7 +54,7 @@ There is **one model**. The two pipelines are two **cases**: two folders under
 
 | | 04_02 electronics | 04_01 car composition |
 |---|---|---|
-| folder | `data_folder/bev_electronics` | `data_folder/carcomposition_mockup` |
+| folder | `data_folder/bev_electronics_wiring` | `data_folder/carcomposition_mockup` |
 | covers | wiring and motors in BEVs | whole cars, five drivetrains |
 | finest resolution | **element** — Cu, Nd, Dy | **material** — calAHSS, battery |
 | years | 2030–2050 | 2040 |

@@ -52,11 +52,14 @@ class RunParams:
     #  WHICH PIPELINE RUNS.  Set it here, then press Run on the stages in
     #  order: 00, 01, 02, 03 -- or 99 to run the checks and the pipeline.
     #
-    #    'data_folder/bev_electronics'        04_02  electronics in BEVs,
-    #                                                resolved to ELEMENTS
-    #    'data_folder/carcomposition_mockup'  04_01  whole cars, five
-    #                                                drivetrains, resolved
-    #                                                to MATERIALS
+    #    'data_folder/bev_electronics_wiring'  04_02  the wiring and the
+    #                                                motors, as MATERIALS:
+    #                                                copper, alalloy, fealloy
+    #    'data_folder/bev_electronics_boards'  04_02  the boards and the
+    #                                                sensors, as ELEMENTS:
+    #                                                Au, Ag, Pd, Cu, Nd
+    #    'data_folder/carcomposition_mockup'   04_01  whole cars, five
+    #                                                drivetrains, as MATERIALS
     #
     #  ONE AT A TIME. They are different studies -- different networks,
     #  different coefficients, different layers -- and a result is reported
@@ -172,7 +175,7 @@ class DataParams:
     Running the other one is then naming it, with nothing here touched:
 
         ./.venv/bin/python 02_run_model.py data_folder/carcomposition_mockup
-        ./.venv/bin/python 03_run_monte_carlo.py data_folder/bev_electronics
+        ./.venv/bin/python 03_run_monte_carlo.py data_folder/bev_electronics_wiring
 
     The values here are what a case gets if it says nothing. Keeping them is
     what lets an older case with no source.csv keep working; relying on them

@@ -25,7 +25,7 @@ So every case carries its own `source.csv`:
 and running it is naming it:
 
     ./.venv/bin/python 02_run_model.py data_folder/car_composition
-    ./.venv/bin/python 02_run_model.py data_folder/bev_electronics
+    ./.venv/bin/python 02_run_model.py data_folder/bev_electronics_wiring
 
 Nothing in `src/params_schema.py` changes between those two.
 

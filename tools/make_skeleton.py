@@ -4,7 +4,7 @@ tools/make_skeleton.py
 
 Write a TCs.csv with every row that needs a number, and no numbers in it.
 
-    ./.venv/bin/python tools/make_skeleton.py data_folder/bev_electronics
+    ./.venv/bin/python tools/make_skeleton.py data_folder/bev_electronics_wiring
 
 The flow network is domain knowledge and this script does not invent it. It
 reads a small, editable list of processes and expands it against the resources
@@ -479,6 +479,18 @@ def main(case: str) -> int:
     return 0
 
 
+def _default_case() -> str:
+    """
+    The case the settings point at.
+
+    NOT a literal. This used to name one case outright, so running the tool
+    with no argument targeted whichever folder happened to be written here --
+    and once that folder was renamed, the default pointed at nothing. Every
+    other tool reads the setting; this one now does too.
+    """
+    from src.params_schema import current
+    return current().run.data_folder
+
+
 if __name__ == '__main__':
-    raise SystemExit(main(sys.argv[1] if len(sys.argv) > 1
-                          else 'data_folder/bev_electronics'))
+    raise SystemExit(main(sys.argv[1] if len(sys.argv) > 1 else _default_case()))

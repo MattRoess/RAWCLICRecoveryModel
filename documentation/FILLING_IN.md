@@ -13,7 +13,7 @@ measurements and literature.
 Each case has one Excel file:
 
 ```
-data_folder/bev_electronics/input_data/case.xlsx
+data_folder/bev_electronics_wiring/input_data/case.xlsx
 data_folder/carcomposition_mockup/input_data/case.xlsx
 ```
 

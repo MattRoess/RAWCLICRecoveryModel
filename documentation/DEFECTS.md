@@ -836,6 +836,34 @@ one did not.
 — a tight spike and a clear line — and it is the figure the whole Monte Carlo
 exists to produce. Same family as §3.9: a unit that is never wrong by a little.
 
+### 3.14 `SUM TO 1` printed `nan nan -> nan` rows — **FIXED 2026-09-02**
+
+Spotted by the user in `01_check_inputs.py` output. The section said *3 groups
+beyond 0.5 sd* and then listed eight lines, five of them blank:
+
+    3 group(s) beyond 0.5 sd -- ...
+      BEV Wiring -> F_collected: independent sum averages 0.9333, -0.86 sd from 1
+      Motors copper -> F_shredded: ...
+      Wiring copper -> F_shredded: ...
+      nan nan -> nan: independent sum averages nan, +nan sd from 1
+      nan nan -> nan: ...
+
+`worth_naming` holds only the groups over the threshold; `offset` covers all of
+them. Reindexing the first onto the index of the second inserted a NaN row for
+every group below the threshold, and `.head(8)` then took three real rows and
+five of those.
+
+**FIXED:** rank within `worth_naming`, using its own `offset` column.
+
+**Why it survived so long.** Sorting every group by offset puts the ones over
+the threshold first, so with eight or more of them `.head(8)` happened to take
+the right eight. `carcomposition_mockup` has 65 and never showed it in weeks of
+runs. It needed a case with **fewer than eight** — the 14-group wiring case —
+before the sorted index ran on into groups that were not in the frame at all.
+
+A reminder that a small case is not a weaker test than a large one; it is a
+different one.
+
 ---
 
 ## 4. Code quality notes

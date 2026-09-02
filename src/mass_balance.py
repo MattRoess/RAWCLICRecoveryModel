@@ -246,8 +246,19 @@ def report_sum_to_one(tcs: pd.DataFrame) -> None:
     print(f"  {len(worth_naming)} group(s) beyond {OFFSET_TO_REPORT} sd -- "
           f"drawn independently these do NOT\n  average to 1, so the "
           f"constraint moves them away from the values written:")
-    for _, row in worth_naming.reindex(offset.sort_values(ascending=False).index
-                                       ).head(8).iterrows():
+    # RANKED WITHIN `worth_naming`, not against every group. Reindexing the
+    # three rows above the threshold onto the index of all fourteen inserted a
+    # NaN row for each of the eleven below it, and `.head(8)` then printed three
+    # real lines and five `nan nan -> nan`.
+    #
+    # It only showed up on a small case. Sorting every group by offset puts the
+    # ones over the threshold first, so with eight or more of them `.head(8)`
+    # happened to take the right eight -- which is why 04_01, with 65 of them,
+    # never revealed it in weeks of runs. Fewer than eight, and the sorted index
+    # runs on into groups that are not in the frame at all.
+    ranked = worth_naming.loc[worth_naming['offset'].abs()
+                              .sort_values(ascending=False).index]
+    for _, row in ranked.head(8).iterrows():
         print(f"    {row['Input_layer_key']} {row['TC_target_key']} -> "
               f"{row['Input_FlowID']}: independent sum averages "
               f"{row['sum_mean']:.4f}, {row['offset']:+.2f} sd from 1")

@@ -212,9 +212,20 @@ def wanted_years(available: np.ndarray, setting: str) -> list[int]:
     Which of the exported years this run covers.
 
     Uses the same spelling as `run.years`: blank for all of them, '2040' for
-    one, '2030-2050' for a range, '2030-2050,5' for every fifth. Asking for a
-    year upstream did not export is an error naming what is there, rather than
-    a silently shorter answer.
+    one, '2030-2050' for a range, '2030-2050,5' for every fifth.
+
+    IT SAYS WHAT IT COULD NOT GIVE YOU. `chosen_years` selects FROM the years
+    that exist, so a request for years upstream never exported can only come
+    back shorter -- and it used to come back shorter in silence. Asking for
+    2020-2070 every fifth year returned 2030 to 2050, five years of the eleven
+    requested, with nothing but a line of ordinary run output to say so. This
+    docstring claimed the opposite, that a missing year was an error; it was
+    not, and that was the misleading part.
+
+    Now the request is expanded on its own terms first and compared against what
+    is there, so the caller can report the difference. Still not an error: a
+    range is the natural way to say "everything in this window", and refusing it
+    because the window is wider than the data would make the setting unusable.
     """
     from src.selection import chosen_years
 
@@ -226,6 +237,27 @@ def wanted_years(available: np.ndarray, setting: str) -> list[int]:
             f'Either change run.years, or add the year to\n'
             f'materials.bev_electronics_element_draws_years upstream and re-run 04_02.')
     return chosen
+
+
+def years_not_exported(available: np.ndarray, setting: str) -> list[int]:
+    """
+    Years `setting` asks for that upstream did not export.
+
+    The request is expanded against a span wide enough to hold any year anyone
+    would write, rather than against the data, so it reflects what was ASKED
+    rather than what could be answered. The parser is the same one, so the two
+    cannot drift on what '2020-2070, 5' means.
+    """
+    from src.selection import chosen_years
+
+    if not str(setting or '').strip():
+        return []                      # blank means "whatever is there"
+    span = pd.DataFrame({'Year': [str(y) for y in range(1900, 2201)]})
+    try:
+        asked = {int(y) for y in chosen_years(span, setting)}
+    except Exception:
+        return []                      # an unparseable setting is reported elsewhere
+    return sorted(asked - set(int(y) for y in available))
 
 
 def build(years, per_product: dict, keep_years: list[int],
@@ -512,6 +544,19 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
         print(f'Upstream  : {os.path.relpath(source)}')
         print(f'            {source_module.describe(described)}')
         print(f'            {span}, {draws:,} draws')
+        # SAY WHAT WAS ASKED FOR AND NOT DELIVERED. `run.years` selects from the
+        # years upstream exported, so a wider request comes back quietly shorter.
+        missing = years_not_exported(years, params.run.years)
+        if missing:
+            print(f'            run.years asks for {len(missing) + len(keep_years)} '
+                  f'years; upstream exported {len(keep_years)} of them.')
+            shown = ', '.join(str(y) for y in missing[:8])
+            if len(missing) > 8:
+                shown += f', ... and {len(missing) - 8} more'
+            print(f'            NOT IN THIS RUN: {shown}')
+            print(f'            To get them, add them to '
+                  f'materials.bev_electronics_element_draws_years')
+            print(f'            upstream and re-run that stage.')
         one = len(described['products']) == 1
         for year, by_product in report.items():
             whole = sum(v for totals in by_product.values() for v in totals.values())

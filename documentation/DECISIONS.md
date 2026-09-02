@@ -78,9 +78,36 @@ lives in a chat message is a decision that will be broken.
 12. **Boards and sensors left in the car keep no element.** Their mass reports
     to the general aluminium and iron alloy streams, or to trash.
 
+## Figures
+
+13. **Never rescale to make things look comparable.** An early version of the
+    density figure divided every curve by its own median so the three alloys
+    would overlay. It made copper's uncertainty — about ten times aluminium
+    alloy's in kilotonnes — look identical to it. *"This is how to lie with
+    statistics"*, and correctly. Absolute values, on axes that say what they
+    are; where scales differ, give each panel its own axis and state its
+    numbers on it.
+
+14. **A distribution is per year, never summed across years.** Adding 2030's
+    10 kt to 2050's 254 kt gives a quantity nobody has a use for, dominated by
+    the last year.
+
+15. **Say which years a figure covers**, on the figure.
+
+16. **The deterministic run belongs on every distribution figure.** The gap
+    between it and the spread around it is the reason to draw the distribution
+    at all.
+
+17. **A figure has to be readable at the size it is drawn.** A shape you have
+    to squint at is a shape nobody checks.
+
+18. **Do not invent a figure that already exists.** `pdf_<resource>` already
+    drew the per-year densities; five replacements were built before that was
+    noticed. Look at what is there first.
+
 ## Words
 
-13. **Disassembly** is taking a part out whole, with tools, on purpose.
+19. **Disassembly** is taking a part out whole, with tools, on purpose.
     **Shredding** is **crushing and tearing** — not cutting. A shredder is
     hammers, not blades. This is not pedantry: crushing and tearing is *why*
     brittle things shatter into unrecoverable dust while tough things survive as
@@ -88,23 +115,23 @@ lives in a chat message is a decision that will be broken.
 
 ## Working
 
-14. **Never delete, and never overwrite with different data.** Separate cases by
+20. **Never delete, and never overwrite with different data.** Separate cases by
     **folder**. "Bring the old one back" means restore it verbatim from git.
 
-15. **Never re-run an upstream stage to test.** Read what is on disk. Never
+21. **Never re-run an upstream stage to test.** Read what is on disk. Never
     200,000 draws for a test.
 
-16. **Never conda.** venv and a pinned `requirements.txt`.
+22. **Never conda.** venv and a pinned `requirements.txt`.
 
-17. **No command line.** Everything runs by pressing Run in Positron, with the
+23. **No command line.** Everything runs by pressing Run in Positron, with the
     case chosen in `src/params_schema.py`.
 
-18. **Verify it before showing it.** Open the figure, check the number. Do not
+24. **Verify it before showing it.** Open the figure, check the number. Do not
     hand over work for the user to find the bug in — and do not check a change
     in isolation when the question is what the whole thing produces.
 
-19. **Ask before adding anything.** No new file, tool, wrapper or intermediate
+25. **Ask before adding anything.** No new file, tool, wrapper or intermediate
     step that was not asked for. A question wants an answer, not a project.
 
-20. **Document in the same commit as the change**, and add any new decision
+26. **Document in the same commit as the change**, and add any new decision
     here.

@@ -50,9 +50,9 @@ Switching between 04_01 and 04_02 is naming the folder. **Nothing in
 ### 04_02 — BEV electronics
 
 ```bash
-./.venv/bin/python 01_check_inputs.py    data_folder/bev_electronics
-./.venv/bin/python 02_run_model.py       data_folder/bev_electronics
-./.venv/bin/python 03_run_monte_carlo.py data_folder/bev_electronics
+./.venv/bin/python 01_check_inputs.py    data_folder/bev_electronics_wiring
+./.venv/bin/python 02_run_model.py       data_folder/bev_electronics_wiring
+./.venv/bin/python 03_run_monte_carlo.py data_folder/bev_electronics_wiring
 ```
 
 ### 04_01 — car composition
@@ -124,7 +124,7 @@ resource left without coefficients.
 | 04_01 car composition | `tools/make_carcomposition_tcs.py` | the same rows **already filled with invented numbers** |
 
 ```bash
-./.venv/bin/python tools/make_skeleton.py data_folder/bev_electronics
+./.venv/bin/python tools/make_skeleton.py data_folder/bev_electronics_wiring
 ```
 
 ```bash

@@ -71,6 +71,22 @@ def header(figure, title: str, colours, subtitle: str = '') -> None:
     figure.tight_layout(rect=[0, 0, 1, fraction(46 if subtitle else 28)])
 
 
+def years_covered(run) -> str:
+    """
+    Which years a figure that sums over them is actually showing.
+
+    EVERY FIGURE HERE EXCEPT `figure_pdf` SUMS THE YEAR AXIS, and none of them
+    used to say so. A histogram headed "Recovered mass" over 2030-2050 looks
+    exactly like the same histogram for 2050 alone -- five times smaller and
+    equally plausible -- so the reader cannot tell what they are holding. It
+    was asked, in exactly those words: "which year is this?"
+    """
+    years = sorted(str(y) for y in run.keys['Year'].unique())
+    if len(years) == 1:
+        return years[0]
+    return f'{years[0]}\u2013{years[-1]}, all {len(years)} years summed'
+
+
 def finest_layer(frame) -> str:
     """
     The deepest layer this case actually resolves.
@@ -251,7 +267,7 @@ def figure_distribution(run, deterministic: pd.DataFrame | None, theme: str, uni
         # Named, so that a resource missing from the figure is a statement and
         # not an omission the reader has to notice for themselves.
         title += f"   ({', '.join(empty)}: never recovered, so not drawn)"
-    header(figure, title, colours)
+    header(figure, title, colours, f'total recovered mass, {years_covered(run)}')
     return figure
 
 
@@ -260,6 +276,272 @@ def _deterministic_total(deterministic: pd.DataFrame, flows: list[str],
     rows = deterministic[(deterministic['Stock/Flow ID'].isin(flows))
                          & (deterministic[layer] == element)]
     return float(rows['Value'].sum()) if len(rows) else None
+
+
+
+# ----------------------------------------------------------------------
+#  1b. How it moves over the years
+# ----------------------------------------------------------------------
+
+def figure_over_time(run, theme: str, unit: str):
+    """
+    Median recovered mass per year, per resource, with the 95% interval.
+
+    THE FIGURE THAT ANSWERS "IS IT GROWING". Every other figure here either
+    collapses the year axis into one number -- which for absolute masses adds
+    2030's 10 kt to 2050's 254 kt and means nothing -- or splits it into
+    separate histograms, one per year, which shows five shapes and no
+    trajectory. Neither lets you see the trend, which is the first thing anyone
+    asks of a projection.
+
+    A line for the median and a band for the 95% interval, per resource. The
+    band is computed per year across the draws and never by adding percentiles:
+    summing a 97.5th percentile across years assumes every year hits its
+    extreme in the same world, which is exactly the mistake the Monte Carlo
+    exists to avoid.
+    """
+    years = sorted(int(y) for y in run.keys['Year'].unique())
+    if len(years) < 2:
+        return None                     # a trend through one point is a dot
+    layer = finest_layer(run.keys)
+    recovered = recovered_flows(run, run.case)
+    if not recovered:
+        return None
+
+    keys = run.keys
+    series: dict[str, dict[str, np.ndarray]] = {}
+    for element in sorted({e for e in keys[layer].unique() if e}):
+        median, low, high = [], [], []
+        for year in years:
+            rows = np.flatnonzero(
+                keys['Stock/Flow ID'].isin(recovered).to_numpy()
+                & (keys[layer] == element).to_numpy()
+                & (keys['Year'].astype(str) == str(year)).to_numpy())
+            totals = (run.values[rows].sum(axis=0) if rows.size
+                      else np.zeros(run.draws))
+            median.append(np.percentile(totals, 50))
+            low.append(np.percentile(totals, 2.5))
+            high.append(np.percentile(totals, 97.5))
+        if max(median) > 0:
+            series[element] = {'median': np.array(median),
+                               'low': np.array(low), 'high': np.array(high)}
+    if not series:
+        return None
+
+    every = np.concatenate([s['high'] for s in series.values()])
+    scale, shown = scale_for(every, unit)
+
+    figure, axes, colours = chart(1100, 620, theme, 1, 1)
+    panel = axes if not hasattr(axes, 'ravel') else axes.ravel()[0]
+
+    for index, (element, s) in enumerate(series.items()):
+        colour = PALETTE[index % len(PALETTE)]
+        panel.fill_between(years, s['low'] * scale, s['high'] * scale,
+                           color=colour, alpha=0.18, linewidth=0)
+        panel.plot(years, s['median'] * scale, color=colour, linewidth=2.0,
+                   marker='o', markersize=4,
+                   label=f"{element}   {s['median'][0] * scale:,.3g} "
+                         f"\u2192 {s['median'][-1] * scale:,.3g} {shown}")
+
+    panel.set_title('Recovered mass over time   (median, with the 95% interval)',
+                    color=colours['title'], fontsize=12, fontweight='bold',
+                    loc='left')
+    panel.set_xlabel('year', color=colours['meta'], fontsize=9)
+    panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=9)
+    panel.set_xticks(years)
+    panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
+    legend = panel.legend(fontsize=9, frameon=False, loc='upper left')
+    for text in legend.get_texts():
+        text.set_color(colours['meta'])
+    figure.tight_layout()
+    return figure
+
+
+
+def figure_pdf_grid(run, deterministic: pd.DataFrame | None, theme: str,
+                    unit: str, bins: int = 120):
+    """
+    Every resource's density, on one page: one row per resource, one column
+    per year.
+
+    THE `pdf_<resource>` FIGURES SIDE BY SIDE. Those are one file each, so
+    comparing three alloys means opening three files and holding them in your
+    head. This is the same panels in one grid, so a comparison is a glance:
+    ACROSS a row is one resource through the years, DOWN a column is the
+    resources in one year.
+
+    THE DETERMINISTIC RUN IS ON IT, dashed, as it is on the `pdf_<resource>`
+    figures. Leaving it off was an omission: the distance between that line and
+    the distribution around it is the reason to draw a distribution at all, and
+    a page of shapes without it says only that the answer is uncertain, not that
+    the single-value answer sits anywhere in particular inside it.
+
+    Absolute mass on every axis and nothing rescaled. Each panel is scaled to
+    its own data, which is what makes every shape visible at full size -- at
+    2050 aluminium alloy is 27 kt beside copper's 254, and a shared axis makes
+    one of them a needle. Differing scales are safe here because every panel
+    states its own median and 95% interval: the numbers are read, not estimated
+    off an axis.
+
+    Two things were tried before this and both were wrong. Dividing each curve
+    by its own median made them overlay beautifully and made copper's
+    uncertainty -- ten times aluminium's in kilotonnes -- look identical to it.
+    Sharing one axis per year was honest and unreadable.
+    """
+    years = sorted(int(y) for y in run.keys['Year'].unique())
+    layer = finest_layer(run.keys)
+    recovered = recovered_flows(run, run.case)
+    if not recovered or not years:
+        return None
+
+    keys = run.keys
+    series: dict[str, dict[int, np.ndarray]] = {}
+    for element in sorted({e for e in keys[layer].unique() if e}):
+        per_year = {}
+        for year in years:
+            rows = np.flatnonzero(
+                keys['Stock/Flow ID'].isin(recovered).to_numpy()
+                & (keys[layer] == element).to_numpy()
+                & (keys['Year'].astype(str) == str(year)).to_numpy())
+            if rows.size:
+                per_year[year] = run.values[rows].sum(axis=0)
+        if per_year and max(v.max() for v in per_year.values()) > 0:
+            series[element] = per_year
+    if not series:
+        return None
+
+    figure, axes, colours = chart(430 * len(years), 300 * len(series), theme,
+                                  len(series), len(years))
+    grid = np.atleast_2d(axes) if hasattr(axes, 'shape') else np.array([[axes]])
+
+    for row, (element, per_year) in enumerate(series.items()):
+        colour = PALETTE[row % len(PALETTE)]
+        for column, year in enumerate(years):
+            panel = grid[row][column]
+            values = per_year.get(year)
+            if values is None or values.std() == 0:
+                panel.set_visible(False)
+                continue
+            scale, shown = scale_for(values, unit)
+            density, edges = np.histogram(values * scale, bins=bins, density=True)
+            centres = 0.5 * (edges[:-1] + edges[1:])
+            density = np.convolve(density, np.ones(5) / 5.0, mode='same')
+
+            median = float(np.median(values)) * scale
+            low = float(np.percentile(values, 2.5)) * scale
+            high = float(np.percentile(values, 97.5)) * scale
+            panel.axvspan(low, high, color=colours['meta'], alpha=0.10)
+            panel.fill_between(centres, density, color=colour, alpha=0.35, linewidth=0)
+            panel.plot(centres, density, color=colour, linewidth=1.8)
+            panel.axvline(median, color=colours['title'], linewidth=1.3)
+
+            point = (None if deterministic is None else
+                     _deterministic_recovered(deterministic, run, element, year, layer))
+            if point is not None:
+                panel.axvline(point * scale, color=PALETTE[3], linewidth=1.4,
+                              linestyle='--')
+
+            panel.set_title(f'{element}   {year}', color=colours['title'],
+                            fontsize=11, fontweight='bold', loc='left')
+            label = (f'median {median:,.3g} {shown}   '
+                     f'95% {low:,.3g}\u2013{high:,.3g}')
+            if point is not None:
+                label += f'   deterministic {point * scale:,.3g}'
+            panel.set_xlabel(label, color=colours['meta'], fontsize=9)
+            panel.set_ylabel('density' if column == 0 else '',
+                             color=colours['meta'], fontsize=9)
+            panel.set_yticks([])
+            panel.grid(True, axis='x', color=colours['rule'], linewidth=0.7)
+
+    header(figure, 'Probability density of recovered mass', colours,
+           'the pdf_<resource> figures on one page; absolute mass, each panel on '
+           'its own axis. Solid line: the median. Dashed: the deterministic run')
+    return figure
+
+
+def figure_flows_over_time(run, theme: str, unit: str):
+    """
+    Where the collected mass ends up, year by year: a stacked area of the
+    terminal flows.
+
+    THE SANKEY IS ONE YEAR. It shows the network in full for a single slice and
+    says nothing about the trajectory; this says how the split moves, and the
+    two together are the flow picture. Recovered flows are drawn first, losses
+    last, so the recovered share is the block against the axis and its growth
+    is read off directly.
+
+    MEANS, NOT MEDIANS, and that is not a detail. The stack has to add up to the
+    mass that entered, and means add: the mean of a sum is the sum of the means,
+    whatever the shapes. Medians do not -- stacking them gives a total that is
+    nobody's total and misses the real one by a few per cent, silently. Every
+    other figure here reports medians, so the difference is stated on the
+    figure rather than left for a reader to trip over.
+
+    Terminal flows only: a flow something leaves is counted again downstream,
+    and stacking both would double the mass. Which flows those are is read from
+    the coefficient table (`terminal_flows`), not from their names.
+    """
+    years = sorted(int(y) for y in run.keys['Year'].unique())
+    if len(years) < 2:
+        return None
+    ends = terminal_flows(run)
+    if not ends:
+        return None
+    recovered = set(recovered_flows(run, run.case))
+    # Recovered first so they sit against the axis, each group alphabetical.
+    ends = sorted(ends, key=lambda f: (f not in recovered, f))
+
+    keys, depth = run.keys, (run.keys[LAYERS] != '').sum(axis=1).to_numpy()
+    per_flow: dict[str, list[float]] = {}
+    for flow in ends:
+        is_flow = (keys['Stock/Flow ID'] == flow).to_numpy()
+        if not is_flow.any():
+            continue
+        shallowest = depth[is_flow].min()
+        totals = []
+        for year in years:
+            rows = np.flatnonzero(is_flow & (depth == shallowest)
+                                  & (keys['Year'].astype(str) == str(year)).to_numpy())
+            totals.append(float(run.values[rows].sum(axis=0).mean()) if rows.size else 0.0)
+        if max(totals) > 0:
+            per_flow[flow] = totals
+    if not per_flow:
+        return None
+
+    scale, shown = scale_for(np.array([v for t in per_flow.values() for v in t]), unit)
+    figure, axes, colours = chart(1150, 640, theme, 1, 1)
+    panel = axes if not hasattr(axes, 'ravel') else axes.ravel()[0]
+
+    stacked = np.array([np.array(t) * scale for t in per_flow.values()])
+    labels = [f'{flow}   {t[-1] * scale:,.3g} {shown} in {years[-1]}'
+              for flow, t in per_flow.items()]
+    colours_used = [PALETTE[i % len(PALETTE)] for i in range(len(per_flow))]
+    panel.stackplot(years, stacked, labels=labels, colors=colours_used, alpha=0.85,
+                    edgecolor='none')
+
+    total = stacked.sum(axis=0)
+    panel.plot(years, total, color=colours['title'], linewidth=1.6, linestyle=':')
+    panel.annotate(f'collected  {total[-1]:,.3g} {shown}', (years[-1], total[-1]),
+                   textcoords='offset points', xytext=(-6, 6), ha='right',
+                   fontsize=9, color=colours['title'])
+
+    share = 100.0 * sum(np.array(t) for f, t in per_flow.items() if f in recovered)[-1] \
+        / sum(np.array(t) for t in per_flow.values())[-1]
+    panel.set_title(f'Where the collected mass ends up   '
+                    f'({share:.0f}% recovered in {years[-1]})',
+                    color=colours['title'], fontsize=12, fontweight='bold', loc='left')
+    panel.set_xlabel('year', color=colours['meta'], fontsize=10)
+    panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=10)
+    panel.set_xticks(years)
+    panel.set_xlim(years[0], years[-1])
+    panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
+    legend = panel.legend(fontsize=9, frameon=False, loc='upper left')
+    for text in legend.get_texts():
+        text.set_color(colours['meta'])
+    header(figure, 'Material flow over time', colours,
+           'mean mass per terminal flow, stacked -- means because they add up to '
+           'the mass that entered, where medians would not')
+    return figure
 
 
 # ----------------------------------------------------------------------
@@ -308,7 +590,7 @@ def figure_spread(run, theme: str, unit: str):
                           color=colours['node'])
     panel.set_xlabel(f'mass ({shown})   —   bar is the 50% interval, line the 95%',
                      color=colours['meta'], fontsize=9)
-    panel.set_title('Spread of each result'
+    panel.set_title(f'Spread of each result   ({years_covered(run)})'
                     + (f'  --  the {len(entries)} widest of {len(entries) + trimmed}'
                        if trimmed else ''), color=colours['title'],
                     fontsize=12, fontweight='bold', loc='left')
@@ -381,7 +663,8 @@ def figure_mode_vs_mean(run, deterministic: pd.DataFrame, theme: str, unit: str)
                           color=colours['node'])
     panel.set_xlabel('deterministic run, as % away from the Monte Carlo mean',
                      color=colours['meta'], fontsize=9)
-    panel.set_title('Deterministic run against the Monte Carlo mean'
+    panel.set_title(f'Deterministic run against the Monte Carlo mean   '
+                    f'({years_covered(run)})'
                     + (f'  --  the {len(entries)} largest gaps of '
                        f'{len(entries) + trimmed}' if trimmed else ''),
                     color=colours['title'], fontsize=12, fontweight='bold', loc='left')
@@ -428,7 +711,8 @@ def figure_convergence(run, theme: str, unit: str):
     panel.set_xscale('log')
     panel.set_xlabel('draws used', color=colours['meta'], fontsize=9)
     panel.set_ylabel(f'{name[0]} · {name[1]}  ({shown})', color=colours['meta'], fontsize=9)
-    panel.set_title('Convergence with draw count', color=colours['title'],
+    panel.set_title(f'Convergence with draw count   ({years_covered(run)})',
+                    color=colours['title'],
                     fontsize=12, fontweight='bold', loc='left')
     legend = panel.legend(fontsize=8, frameon=False)
     for text in legend.get_texts():
@@ -488,7 +772,7 @@ def figure_sensitivity(run, theme: str):
     panel.set_xlim(-1, 1)
     panel.set_xlabel(f'rank correlation with {name[0]} · {name[1]}',
                      color=colours['meta'], fontsize=9)
-    panel.set_title('Sensitivity to each coefficient',
+    panel.set_title(f'Sensitivity to each coefficient   ({years_covered(run)})',
                     color=colours['title'], fontsize=12, fontweight='bold', loc='left')
     panel.grid(True, axis='x', color=colours['rule'], linewidth=0.7)
     panel.grid(False, axis='y')
@@ -515,6 +799,9 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
 
     figures = [
         ('distribution', figure_distribution(run, deterministic, theme, unit)),
+        ('over_time', figure_over_time(run, theme, unit)),
+        ('pdf_all', figure_pdf_grid(run, deterministic, theme, unit)),
+        ('flows_over_time', figure_flows_over_time(run, theme, unit)),
         ('spread', figure_spread(run, theme, unit)),
         ('mode_vs_mean', figure_mode_vs_mean(run, deterministic, theme, unit)),
         ('convergence', figure_convergence(run, theme, unit)),

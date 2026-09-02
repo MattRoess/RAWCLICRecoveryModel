@@ -19,7 +19,9 @@ THE SHEETS
                   95% interval and how far the deterministic run sits from it
     By flow       where the mass ended up, per flow and year
     Mass balance  what entered against what left, per year
-    Distribution  every result row: mean, sd and the five percentiles
+    Distribution  every result row: mean, mode, sd, the reported percentiles,
+                  and a 23-point percentile grid -- the shape itself, in a form
+                  something else can read back and sample from
     Coefficients  the TC table as used, including the `source` column
     Composition   what upstream handed over, for the years in this run
 
