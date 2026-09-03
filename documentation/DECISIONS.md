@@ -154,6 +154,17 @@ lives in a chat message is a decision that will be broken.
     mistake and the user caught it. Only the all-resources line divides by the
     whole, which is the one case where that IS the question.
 
+32. **The inflow draws are propagated.** Decided 2026-09-03. The Monte Carlo
+    pairs upstream draw i with coefficient draw i -- the same independent
+    pairing 04_01 uses upstream -- so an interval carries the fleet's
+    uncertainty as well as the coefficients'. It did not until that date, and
+    the intervals were too narrow: copper collected in 2070 is 516 kt spanning
+    388-670, against coefficient ranges that are narrower than that.
+
+    The shares are per draw too. Inflow per draw with a mean share would scale
+    copper by the fleet's variation while fixing copper's share OF that fleet,
+    which is neither the mean answer nor the draw's.
+
 ## Words
 
 19. **Disassembly** is taking a part out whole, with tools, on purpose.

@@ -280,9 +280,13 @@ def build(years, per_product: dict, keep_years: list[int],
     fleet's -- which is why the total is computed inside the product loop and
     not before it.
 
-    Means over draws. The model's arithmetic is linear in the inflow, so a
-    deterministic run built on means is the honest central case; the spread is
-    carried separately by the Monte Carlo.
+    Means over draws, for the DETERMINISTIC answer: the arithmetic is linear in
+    the inflow, so a run built on means is the honest central case.
+
+    The spread is carried separately, by `Draws` below -- which until
+    2026-09-03 it was not. This docstring claimed it was while `solve_draws`
+    broadcast the mean across every draw, so every interval in the project was
+    coefficient uncertainty only and too narrow by the inflow's own spread.
 
     `child_layer` says what the upstream child actually is, which differs by
     stage and cannot be guessed from the files (src/source.py):
@@ -566,4 +570,96 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
                 print(f'{label}  '
                       + '  '.join(f'{d} {v:,.4g}' for d, v in sorted(totals.items())))
 
-    return {'inputs': inflow, 'composition': composition}
+    return {'inputs': inflow, 'composition': composition,
+            'draws': Draws(per_product, years, described['child_layer'],
+                           described['inflow_flow_id'], draws)}
+
+
+class Draws:
+    """
+    The upstream arrays, kept so the Monte Carlo can use the DRAWS themselves.
+
+    WHY THIS EXISTS. `build` above reduces every array to its mean, and until
+    2026-09-03 that mean was all the model ever saw: `solve_draws` broadcast one
+    number across every draw, so every interval in every figure was coefficient
+    uncertainty ONLY. The inflow spread is not small beside it -- copper
+    collected in 2070 is 516 kt with a 95% interval of 388 to 670 -- so leaving
+    it out made every published interval too narrow.
+
+    Held rather than expanded: one year of one case at 200,000 draws is 100 MB,
+    and every year of the car-composition case at once would be 10 GB. The
+    arrays are memory-mapped and a block of draws for one year is cut from them
+    on demand, inside the loop that already walks blocks.
+
+    ONLY THE `material` SHAPE. All three cases are material-keyed, and there the
+    parent's mass and the child's are each one exported array. The `element`
+    shape resolves Layer 3 out of overlapping exports -- an element's total and
+    the parts of it inside named materials -- and reproducing that per draw
+    means reproducing `_material_and_element_rows` exactly. Until a case needs
+    it, that shape keeps the old behaviour and `propagates` says so, rather
+    than a second implementation drifting from the first.
+    """
+
+    def __init__(self, per_product, years, child_layer, flow_id, draws):
+        self.per_product = per_product
+        self.years = years
+        self.child_layer = child_layer
+        self.flow_id = flow_id
+        self.draws = draws
+        self._means: dict[tuple, float] = {}
+
+    @property
+    def propagates(self) -> bool:
+        return self.child_layer == 'material'
+
+    def _at(self, array, year, start, stop) -> np.ndarray:
+        index = int(np.searchsorted(self.years, int(year)))
+        return np.asarray(array[start:stop, index], dtype=np.float64)
+
+    def inflow(self, product: str, year, domains, start: int, stop: int) -> np.ndarray:
+        """
+        That product's collected mass, per draw, in the ARRAYS' unit.
+
+        OVER THE DOMAINS THE CASE ACTUALLY KEEPS, which the caller takes from
+        the composition frame. The export folder holds every domain 04_02
+        wrote -- Wiring, Motors, PCB and Sensors -- while a case keeps the ones
+        its `groups` setting names. Summing all four made the whole 1.3% too
+        big, so every component share came out too small and the two no longer
+        summed to 1.
+        """
+        domain_mass, _ = self.per_product[product]
+        total = None
+        for domain in domains:
+            array = domain_mass.get(domain)
+            if array is None:
+                continue
+            piece = self._at(array, year, start, stop)
+            total = piece if total is None else total + piece
+        return total
+
+    def mean_inflow(self, product: str, year, domains) -> float:
+        """
+        The same total over every draw -- what `build` wrote into the table.
+
+        Used to put the draws into the table's unit. The arrays are kilotonnes
+        and the model works in kilograms (`run.working_unit`), a factor of a
+        million, and the conversion happens on load where these arrays cannot
+        see it. Scaling by `stated / this` needs no unit knowledge at all and
+        makes the mean of the draws equal the number the deterministic run uses,
+        by construction rather than by coincidence.
+        """
+        key = (product, str(year), tuple(domains))
+        if key not in self._means:
+            self._means[key] = float(
+                self.inflow(product, year, domains, 0, self.draws).mean())
+        return self._means[key]
+
+    def mass(self, product: str, year, layer2: str, layer3: str,
+             start: int, stop: int) -> np.ndarray | None:
+        """One composition row's own mass per draw, or None if it is not exported."""
+        domain_mass, element_mass = self.per_product[product]
+        if not layer3:
+            array = domain_mass.get(layer2)
+            return None if array is None else self._at(array, year, start, stop)
+        array = element_mass.get(((layer3,), layer2))
+        return None if array is None else self._at(array, year, start, stop)

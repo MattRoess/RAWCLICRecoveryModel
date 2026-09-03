@@ -336,6 +336,101 @@ class MonteCarloRun:
         return self.values.shape[1]
 
 
+
+
+def upstream_values(draws_source, entry, structure, start: int, stop: int):
+    """
+    One year's inflow and composition, PER DRAW, for a block of draws.
+
+    Returns (inflow_values, composition_values) shaped as `Structure.evaluate`
+    wants them, or (None, None) when this case cannot supply them -- in which
+    case the caller broadcasts the means, exactly as it did before 2026-09-03.
+
+    THE SHARES ARE PER DRAW TOO, and they have to be. The cascade computes a
+    child's mass as inflow x share, so a per-draw inflow with a mean share would
+    scale copper's mass by the fleet's variation while holding copper's share of
+    that fleet fixed -- neither the mean answer nor the draw's. Taking both from
+    the same draw reproduces the exported child array exactly, which is the
+    check `test_monte_carlo.py` makes.
+
+    A `rest` row takes what its siblings leave, per draw: the same rule
+    src/rest.py applies to the means. It is derived rather than looked up
+    because upstream never exported it -- it IS the part nobody itemised.
+    """
+    if draws_source is None or not draws_source.propagates:
+        return None, None
+
+    width = stop - start
+    inflows, composition = entry['inflows_df'], entry['composition_df']
+    year = entry['Year']
+
+    # ---- the inflow, one row per product ---------------------------------
+    products = list(inflows['Substance_main_parent'])
+    stated = inflows['Value'].to_numpy(dtype=float)
+    # The domains this case keeps, read off the frame rather than assumed: the
+    # export folder holds every domain 04_02 wrote and `groups` narrows it.
+    kept = {product: sorted(composition.loc[(composition['Layer 1'] == product)
+                                            & (composition['Layer 3'] == ''),
+                                            'Layer 2'].unique())
+            for product in set(products)}
+
+    inflow_values = np.empty((len(inflows), width))
+    raw: dict[str, np.ndarray] = {}
+    for position, product in enumerate(products):
+        # EVERY SHARE IS A RATIO IN THE ARRAYS' OWN UNIT. The arrays are
+        # kilotonnes and the run is in kilograms, so `raw` keeps the unscaled
+        # total for the divisions below; only what the model receives is
+        # converted. Dividing a kilotonne parent into a kilogram whole gave
+        # every component a share of 1e-6 and a result of zero.
+        raw[product] = draws_source.inflow(
+            product, year, kept[product], start, stop)
+        average = draws_source.mean_inflow(product, year, kept[product])
+        scale = stated[position] / average if average > 0 else 0.0
+        inflow_values[position] = raw[product] * scale
+
+    layer1 = composition['Layer 1'].to_numpy()
+    layer2 = composition['Layer 2'].to_numpy()
+    layer3 = composition['Layer 3'].to_numpy()
+    composition_values = np.zeros((len(composition), width))
+    derived: list[int] = []
+
+    # ---- the parents, and their share of the product ----------------------
+    parent: dict[tuple, np.ndarray] = {}
+    for position in np.flatnonzero(layer3 == ''):
+        own = draws_source.mass(layer1[position], year, layer2[position], '',
+                                start, stop)
+        above = raw.get(layer1[position])
+        if own is None or above is None:
+            derived.append(int(position))
+            continue
+        parent[(layer1[position], layer2[position])] = own
+        composition_values[position] = np.divide(
+            own, above, out=np.zeros(width), where=above > 0)
+
+    # ---- the children, as a share of their own parent ---------------------
+    for position in np.flatnonzero(layer3 != ''):
+        own = draws_source.mass(layer1[position], year, layer2[position],
+                                layer3[position], start, stop)
+        above = parent.get((layer1[position], layer2[position]))
+        if own is None or above is None:
+            derived.append(int(position))         # `rest`, and anything unexported
+            continue
+        composition_values[position] = np.divide(
+            own, above, out=np.zeros(width), where=above > 0)
+
+    # ---- whatever is left of each parent ---------------------------------
+    for position in derived:
+        siblings = np.flatnonzero((layer1 == layer1[position])
+                                  & (layer2 == layer2[position])
+                                  & (layer3 != '')
+                                  & (np.arange(len(composition)) != position))
+        known = composition_values[siblings].sum(axis=0) if siblings.size \
+            else np.zeros(width)
+        composition_values[position] = np.clip(1.0 - known, 0.0, None)
+
+    return inflow_values, composition_values
+
+
 def solve_draws(data_folder: str, layer_names: list[str], draws: int,
                 start: int = 0, seed: int = 0, scenario: str | None = None,
                 years: str | None = None, tables: dict | None = None,
@@ -374,6 +469,12 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
     # Preallocated once and filled per year. Collecting per-year blocks and
     # stacking them at the end held every block AND the stacked copy live at the
     # same time -- two full-size arrays for no reason.
+    # The upstream arrays, when this case has them. Without this the inflow is
+    # one number broadcast across every draw and the intervals are coefficient
+    # uncertainty only -- which they were until 2026-09-03, and which made every
+    # published interval too narrow.
+    upstream_draws = (tables or {}).get('draws')
+
     key_frames, report = [], {}
     sampled_tcs, sampled_values = None, None
 
@@ -402,9 +503,17 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
         for offset in range(0, draws, block):
             width = min(block, draws - offset)
             target = values[written:written + rows, offset:offset + width]
-            structure.evaluate(
-                np.broadcast_to(inflow, (len(entry['inflows_df']), width)),
-                tc_values[:, offset:offset + width], out=target)
+            # The upstream draws, cut for this block. Falls back to the mean
+            # broadcast where the case cannot supply them (src/upstream.Draws).
+            per_draw_inflow, per_draw_shares = upstream_values(
+                upstream_draws, entry, structure, start + offset,
+                start + offset + width)
+            if per_draw_inflow is None:
+                per_draw_inflow = np.broadcast_to(
+                    inflow, (len(entry['inflows_df']), width))
+            structure.evaluate(per_draw_inflow,
+                               tc_values[:, offset:offset + width],
+                               composition_values=per_draw_shares, out=target)
 
         written += rows
         # The coefficients are kept at full width: the sensitivity figure
