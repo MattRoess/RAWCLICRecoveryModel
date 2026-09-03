@@ -1,265 +1,265 @@
 Input_FlowID,Input_layer,Input_layer_key,Output_FlowID,TC_target_layer,TC_target_key,value,value_min,value_max,process,technology,source,Year
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2020
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2020
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.65,0.4,0.85,disassembly,manual,,2020
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.35,0.2,0.5,disassembly,manual,,2020
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2020
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2020
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2020
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.9,0.75,0.98,disassembly,manual,,2020
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.1,0.05,0.25,disassembly,manual,,2020
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2020
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2020
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2020
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2020
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2020
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2020
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2020
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2020
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.846,0.75,0.944,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.945,0.93,0.97,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.154,0.05,0.3,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.055,0.03,0.2,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.846,0.75,0.944,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.154,0.05,0.3,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.846,0.75,0.944,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.154,0.05,0.3,own_recycling,dedicated,,2020
 F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2020
 F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2020
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2020
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2020
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2020
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2020
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.4,0.2,0.65,general_recycling,shredder,,2020
 F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2020
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2020
 F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2020
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2020
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2020
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2025
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2025
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.65,0.4,0.85,disassembly,manual,,2025
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.35,0.2,0.5,disassembly,manual,,2025
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2025
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2025
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2025
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.9,0.75,0.98,disassembly,manual,,2025
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.1,0.05,0.25,disassembly,manual,,2025
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2025
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2025
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2025
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2025
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2025
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2025
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2025
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2025
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.846,0.75,0.944,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.945,0.93,0.97,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.154,0.05,0.3,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.055,0.03,0.2,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.846,0.75,0.944,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.154,0.05,0.3,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.846,0.75,0.944,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.154,0.05,0.3,own_recycling,dedicated,,2025
 F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2025
 F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2025
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2025
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2025
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2025
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2025
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.4,0.2,0.65,general_recycling,shredder,,2025
 F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2025
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2025
 F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2025
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2025
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2025
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2030
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2030
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.65,0.4,0.85,disassembly,manual,,2030
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.35,0.2,0.5,disassembly,manual,,2030
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2030
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2030
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2030
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.9,0.75,0.98,disassembly,manual,,2030
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.1,0.05,0.25,disassembly,manual,,2030
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2030
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2030
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2030
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2030
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2030
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2030
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2030
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2030
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.846,0.75,0.944,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.945,0.93,0.97,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.154,0.05,0.3,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.055,0.03,0.2,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.846,0.75,0.944,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.154,0.05,0.3,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.846,0.75,0.944,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.154,0.05,0.3,own_recycling,dedicated,,2030
 F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2030
 F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2030
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2030
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2030
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2030
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2030
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.4,0.2,0.65,general_recycling,shredder,,2030
 F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2030
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2030
 F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2030
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2030
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2030
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2035
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2035
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.675,0.42500000000000004,0.8633333333333333,disassembly,manual,,2035
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.32499999999999996,0.17500000000000002,0.475,disassembly,manual,,2035
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2035
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2035
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2035
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.91,0.7716666666666667,0.9816666666666667,disassembly,manual,,2035
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.09000000000000001,0.043333333333333335,0.23333333333333334,disassembly,manual,,2035
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2035
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2035
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2035
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2035
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2035
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2035
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2035
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2035
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.8613333333333333,0.7666666666666666,0.95,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.9524999999999999,0.935,0.9741666666666666,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.13866666666666666,0.043333333333333335,0.2833333333333333,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.0475,0.025166666666666667,0.17500000000000002,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.8613333333333333,0.7666666666666666,0.95,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.13866666666666666,0.043333333333333335,0.2833333333333333,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.8613333333333333,0.7666666666666666,0.95,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.13866666666666666,0.043333333333333335,0.2833333333333333,own_recycling,dedicated,,2035
 F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2035
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2035
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2035
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2035
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2035
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2035
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2035
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2035
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2035
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.62,0.22333333333333336,0.9066666666666667,general_recycling,shredder,,2035
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.6416666666666666,0.27666666666666667,0.9066666666666667,general_recycling,shredder,,2035
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.38,0.18333333333333335,0.5833333333333333,general_recycling,shredder,,2035
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.35833333333333334,0.17500000000000002,0.6083333333333334,general_recycling,shredder,,2035
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5366666666666666,0.34833333333333333,0.74,general_recycling,shredder,,2035
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.4633333333333333,0.30833333333333335,0.6666666666666666,general_recycling,shredder,,2035
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5366666666666666,0.34833333333333333,0.74,general_recycling,shredder,,2035
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.4633333333333333,0.30833333333333335,0.6666666666666666,general_recycling,shredder,,2035
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2035
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2040
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2040
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.7000000000000001,0.45,0.8766666666666667,disassembly,manual,,2040
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.3,0.15000000000000002,0.45,disassembly,manual,,2040
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2040
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2040
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2040
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.92,0.7933333333333333,0.9833333333333333,disassembly,manual,,2040
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.08,0.03666666666666667,0.21666666666666667,disassembly,manual,,2040
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2040
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2040
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2040
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2040
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2040
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2040
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2040
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2040
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.8766666666666666,0.7833333333333333,0.956,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.96,0.9400000000000001,0.9783333333333333,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.12333333333333334,0.03666666666666667,0.26666666666666666,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.04,0.020333333333333335,0.15000000000000002,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.8766666666666666,0.7833333333333333,0.956,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.12333333333333334,0.03666666666666667,0.26666666666666666,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.8766666666666666,0.7833333333333333,0.956,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.12333333333333334,0.03666666666666667,0.26666666666666666,own_recycling,dedicated,,2040
 F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2040
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2040
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2040
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2040
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2040
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2040
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2040
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2040
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2040
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.64,0.24666666666666667,0.9133333333333333,general_recycling,shredder,,2040
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.6833333333333333,0.35333333333333333,0.9133333333333333,general_recycling,shredder,,2040
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.36000000000000004,0.16666666666666669,0.5666666666666667,general_recycling,shredder,,2040
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.3166666666666667,0.15000000000000002,0.5666666666666667,general_recycling,shredder,,2040
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5733333333333334,0.3466666666666667,0.7799999999999999,general_recycling,shredder,,2040
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.4266666666666667,0.26666666666666666,0.6333333333333333,general_recycling,shredder,,2040
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5733333333333334,0.3466666666666667,0.7799999999999999,general_recycling,shredder,,2040
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.4266666666666667,0.26666666666666666,0.6333333333333333,general_recycling,shredder,,2040
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2040
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2045
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2045
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.7250000000000001,0.47500000000000003,0.89,disassembly,manual,,2045
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.275,0.125,0.425,disassembly,manual,,2045
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2045
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2045
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2045
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.9299999999999999,0.815,0.985,disassembly,manual,,2045
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.07,0.030000000000000002,0.2,disassembly,manual,,2045
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2045
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2045
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2045
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2045
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2045
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2045
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2045
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2045
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.8919999999999999,0.8,0.962,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.9675,0.9450000000000001,0.9824999999999999,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.108,0.030000000000000002,0.25,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.0325,0.0155,0.125,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.8919999999999999,0.8,0.962,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.108,0.030000000000000002,0.25,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.8919999999999999,0.8,0.962,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.108,0.030000000000000002,0.25,own_recycling,dedicated,,2045
 F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2045
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2045
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2045
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2045
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2045
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2045
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2045
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2045
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2045
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6599999999999999,0.27,0.9199999999999999,general_recycling,shredder,,2045
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.725,0.43000000000000005,0.9199999999999999,general_recycling,shredder,,2045
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.34,0.15000000000000002,0.55,general_recycling,shredder,,2045
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.275,0.125,0.525,general_recycling,shredder,,2045
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.61,0.345,0.82,general_recycling,shredder,,2045
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.39,0.22499999999999998,0.6,general_recycling,shredder,,2045
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.61,0.345,0.82,general_recycling,shredder,,2045
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.39,0.22499999999999998,0.6,general_recycling,shredder,,2045
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2045
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2050
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2050
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.75,0.5,0.9033333333333333,disassembly,manual,,2050
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.25,0.1,0.4,disassembly,manual,,2050
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2050
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2050
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2050
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.94,0.8366666666666667,0.9866666666666667,disassembly,manual,,2050
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.060000000000000005,0.023333333333333338,0.18333333333333335,disassembly,manual,,2050
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2050
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2050
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2050
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2050
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2050
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2050
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2050
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2050
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.9073333333333333,0.8166666666666667,0.968,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.975,0.95,0.9866666666666667,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.09266666666666667,0.023333333333333338,0.23333333333333334,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.025,0.010666666666666668,0.1,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9073333333333333,0.8166666666666667,0.968,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.09266666666666667,0.023333333333333338,0.23333333333333334,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.9073333333333333,0.8166666666666667,0.968,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.09266666666666667,0.023333333333333338,0.23333333333333334,own_recycling,dedicated,,2050
 F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2050
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2050
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2050
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2050
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2050
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2050
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2050
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2050
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2050
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6799999999999999,0.29333333333333333,0.9266666666666666,general_recycling,shredder,,2050
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.7666666666666666,0.5066666666666666,0.9266666666666666,general_recycling,shredder,,2050
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.32000000000000006,0.13333333333333336,0.5333333333333333,general_recycling,shredder,,2050
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.23333333333333336,0.1,0.4833333333333334,general_recycling,shredder,,2050
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.6466666666666666,0.3433333333333333,0.8599999999999999,general_recycling,shredder,,2050
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.3533333333333334,0.18333333333333335,0.5666666666666667,general_recycling,shredder,,2050
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.6466666666666666,0.3433333333333333,0.8599999999999999,general_recycling,shredder,,2050
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.3533333333333334,0.18333333333333335,0.5666666666666667,general_recycling,shredder,,2050
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2050
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2055
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2055
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.775,0.525,0.9166666666666667,disassembly,manual,,2055
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.225,0.07499999999999998,0.375,disassembly,manual,,2055
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2055
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2055
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2055
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.95,0.8583333333333334,0.9883333333333333,disassembly,manual,,2055
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.05,0.01666666666666667,0.16666666666666666,disassembly,manual,,2055
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2055
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2055
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2055
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2055
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2055
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2055
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2055
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2055
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.9226666666666666,0.8333333333333333,0.974,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.9824999999999999,0.955,0.9908333333333333,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.07733333333333332,0.01666666666666667,0.21666666666666667,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.0175,0.005833333333333333,0.07499999999999998,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9226666666666666,0.8333333333333333,0.974,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.07733333333333332,0.01666666666666667,0.21666666666666667,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.9226666666666666,0.8333333333333333,0.974,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.07733333333333332,0.01666666666666667,0.21666666666666667,own_recycling,dedicated,,2055
 F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2055
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2055
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2055
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2055
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2055
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2055
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2055
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2055
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2055
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.7,0.3166666666666667,0.9333333333333333,general_recycling,shredder,,2055
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.8083333333333333,0.5833333333333334,0.9333333333333333,general_recycling,shredder,,2055
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.30000000000000004,0.11666666666666667,0.5166666666666666,general_recycling,shredder,,2055
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.19166666666666668,0.07499999999999998,0.44166666666666665,general_recycling,shredder,,2055
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.6833333333333333,0.3416666666666667,0.8999999999999999,general_recycling,shredder,,2055
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.31666666666666665,0.14166666666666666,0.5333333333333333,general_recycling,shredder,,2055
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.6833333333333333,0.3416666666666667,0.8999999999999999,general_recycling,shredder,,2055
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.31666666666666665,0.14166666666666666,0.5333333333333333,general_recycling,shredder,,2055
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2055
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2060
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2060
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.8,0.55,0.93,disassembly,manual,,2060
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.2,0.04999999999999999,0.35,disassembly,manual,,2060
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2060
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2060
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2060
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.96,0.88,0.99,disassembly,manual,,2060
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.04,0.010000000000000002,0.15,disassembly,manual,,2060
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2060
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2060
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2060
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2060
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2060
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2060
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2060
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2060
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.938,0.85,0.98,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.99,0.96,0.995,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.062,0.010000000000000002,0.2,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.010000000000000002,0.0010000000000000009,0.04999999999999999,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.938,0.85,0.98,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.062,0.010000000000000002,0.2,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.938,0.85,0.98,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.062,0.010000000000000002,0.2,own_recycling,dedicated,,2060
 F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2060
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2060
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2060
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2060
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2060
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2060
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2060
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2060
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2060
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.72,0.34,0.94,general_recycling,shredder,,2060
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.85,0.66,0.94,general_recycling,shredder,,2060
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.28,0.1,0.5,general_recycling,shredder,,2060
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.15000000000000002,0.04999999999999999,0.4,general_recycling,shredder,,2060
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.72,0.34,0.94,general_recycling,shredder,,2060
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.28,0.1,0.5,general_recycling,shredder,,2060
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.72,0.34,0.94,general_recycling,shredder,,2060
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.28,0.1,0.5,general_recycling,shredder,,2060
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2060
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2065
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2065
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.8,0.55,0.93,disassembly,manual,,2065
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.2,0.04999999999999999,0.35,disassembly,manual,,2065
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2065
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2065
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2065
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.96,0.88,0.99,disassembly,manual,,2065
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.04,0.010000000000000002,0.15,disassembly,manual,,2065
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2065
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2065
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2065
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2065
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2065
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2065
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2065
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2065
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.938,0.85,0.98,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.99,0.96,0.995,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.062,0.010000000000000002,0.2,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.010000000000000002,0.0010000000000000009,0.04999999999999999,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.938,0.85,0.98,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.062,0.010000000000000002,0.2,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.938,0.85,0.98,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.062,0.010000000000000002,0.2,own_recycling,dedicated,,2065
 F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2065
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2065
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2065
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2065
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2065
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2065
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2065
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2065
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2065
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.72,0.34,0.94,general_recycling,shredder,,2065
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.85,0.66,0.94,general_recycling,shredder,,2065
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.28,0.1,0.5,general_recycling,shredder,,2065
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.15000000000000002,0.04999999999999999,0.4,general_recycling,shredder,,2065
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.72,0.34,0.94,general_recycling,shredder,,2065
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.28,0.1,0.5,general_recycling,shredder,,2065
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.72,0.34,0.94,general_recycling,shredder,,2065
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.28,0.1,0.5,general_recycling,shredder,,2065
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2065
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2070
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2070
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.8,0.55,0.93,disassembly,manual,,2070
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.2,0.04999999999999999,0.35,disassembly,manual,,2070
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2070
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2070
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2070
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.96,0.88,0.99,disassembly,manual,,2070
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.04,0.010000000000000002,0.15,disassembly,manual,,2070
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2070
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2070
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2070
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2070
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2070
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2070
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2070
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2070
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.938,0.85,0.98,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.99,0.96,0.995,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.062,0.010000000000000002,0.2,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.010000000000000002,0.0010000000000000009,0.04999999999999999,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.938,0.85,0.98,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.062,0.010000000000000002,0.2,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.938,0.85,0.98,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.062,0.010000000000000002,0.2,own_recycling,dedicated,,2070
 F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2070
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2070
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2070
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2070
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2070
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2070
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2070
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2070
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2070
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.72,0.34,0.94,general_recycling,shredder,,2070
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.85,0.66,0.94,general_recycling,shredder,,2070
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.28,0.1,0.5,general_recycling,shredder,,2070
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.15000000000000002,0.04999999999999999,0.4,general_recycling,shredder,,2070
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.72,0.34,0.94,general_recycling,shredder,,2070
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.28,0.1,0.5,general_recycling,shredder,,2070
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.72,0.34,0.94,general_recycling,shredder,,2070
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.28,0.1,0.5,general_recycling,shredder,,2070
 F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2070

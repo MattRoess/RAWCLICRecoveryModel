@@ -146,6 +146,14 @@ lives in a chat message is a decision that will be broken.
     drew the per-year densities; five replacements were built before that was
     noticed. Look at what is there first.
 
+31. **A rate divides by ITS OWN inflow.** Recovered copper over TOTAL collected
+    mass is a composition figure wearing a recovery figure's label: on the
+    wiring case it fell 57% to 44% while copper's actual recovery held at
+    77-78%, because copper's share of the inflow dropped as motors grew against
+    harnesses. The first version of `recovery_rate.png` made exactly that
+    mistake and the user caught it. Only the all-resources line divides by the
+    whole, which is the one case where that IS the question.
+
 ## Words
 
 19. **Disassembly** is taking a part out whole, with tools, on purpose.

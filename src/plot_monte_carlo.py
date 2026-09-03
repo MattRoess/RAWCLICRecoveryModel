@@ -52,6 +52,14 @@ LAYERS = ['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
 # tall. The full table is in the workbook; a chart is for seeing the shape.
 MAX_BARS = 30
 
+# The whole inflow, as against one resource's own. Named rather than repeated,
+# because which denominator a line uses is the thing this figure got wrong once.
+EVERYTHING = 'every resource'
+
+# Cycled so coincident lines stay tellable apart. Two resources measured the
+# same way produce the same curve, and a reader has to see two, not one.
+DASHES = ['-', (0, (5, 2)), (0, (1, 1.6)), (0, (7, 2, 1.5, 2))]
+
 
 def header(figure, title: str, colours, subtitle: str = '') -> None:
     """
@@ -94,6 +102,21 @@ def years_covered(run) -> str:
     if len(years) == 1:
         return years[0]
     return f'{years[0]}\u2013{years[-1]}, all {len(years)} years summed'
+
+
+def years_listed(run) -> str:
+    """
+    The span a PER-YEAR figure covers.
+
+    Not `years_covered`, which ends "all N years summed" -- true of the figures
+    that collapse the axis, and a plain falsehood on one that plots a point per
+    year. Saying "summed" on a trajectory is worse than saying nothing, and
+    DECISIONS 14 and 15 want the years named either way.
+    """
+    years = sorted(str(y) for y in run.keys['Year'].unique())
+    if len(years) == 1:
+        return years[0]
+    return f'{years[0]}\u2013{years[-1]}, {len(years)} years, one point each'
 
 
 def every_other(years: list) -> list:
@@ -285,6 +308,229 @@ def figure_over_time(run, deterministic: pd.DataFrame | None, theme: str, unit: 
     figure.tight_layout()
     return figure
 
+
+
+
+def routes(run) -> dict[str, list[str]]:
+    """
+    The recovered flows, grouped by the flow each one leaves.
+
+    THE ROUTE IS THE FLOW IT CAME OUT OF, which is general: nothing here knows
+    the words "disassembly" or "shredder". In the wiring case it separates
+    F_disassembled's three recovered streams from F_shredded's three, which is
+    the two roads DECISIONS 10 says the case exists to compare. In the boards
+    case only one flow feeds a recovered stream, so there is nothing to compare
+    and the figure that uses this returns None.
+    """
+    recovered = set(recovered_flows(run, run.case))
+    if not recovered:
+        return {}
+    pairs = run.tcs[run.tcs['Output_FlowID'].isin(recovered)]
+    grouped: dict[str, list[str]] = {}
+    for source, flows in pairs.groupby('Input_FlowID')['Output_FlowID']:
+        grouped[str(source)] = sorted(set(flows))
+    return grouped
+
+
+def figure_routes(run, theme: str, unit: str):
+    """
+    Recovered mass by ROUTE, per year -- which road the material came back on.
+
+    DECISIONS 10 and 11: the two roads are the point of the wiring case, and
+    they are reported apart and also combined. `over_time.png` gives the
+    combined trajectory; this one splits it, because the reason to disassemble
+    at all is that the dedicated route returns more than the general shredder.
+
+    One panel per resource, each with its own axis (DECISIONS 13): copper's
+    tonnage is an order of magnitude above aluminium's, and a shared axis would
+    make aluminium's road split unreadable while looking tidy.
+
+    Solid line and band per route, 95% as everywhere. No stacking: a stack
+    shows the total and hides the smaller road, which is the one under
+    question.
+    """
+    years = sorted(int(y) for y in run.keys['Year'].unique())
+    by_route = routes(run)
+    if len(years) < 2 or len(by_route) < 2:
+        return None                # one road is not a comparison
+
+    layer = finest_layer(run.keys)
+    keys = run.keys
+    resources = sorted({e for e in keys[layer].unique() if e})
+
+    series: dict[str, dict[str, dict]] = {}
+    for resource in resources:
+        per_route = {}
+        for route, flows in sorted(by_route.items()):
+            median, low, high = [], [], []
+            for year in years:
+                rows = np.flatnonzero(
+                    keys['Stock/Flow ID'].isin(flows).to_numpy()
+                    & (keys[layer] == resource).to_numpy()
+                    & (keys['Year'].astype(str) == str(year)).to_numpy())
+                totals = (run.values[rows].sum(axis=0) if rows.size
+                          else np.zeros(run.draws))
+                median.append(np.percentile(totals, 50))
+                low.append(np.percentile(totals, 2.5))
+                high.append(np.percentile(totals, 97.5))
+            if max(median) > 0:
+                per_route[route] = {'median': np.array(median),
+                                    'low': np.array(low), 'high': np.array(high)}
+        if len(per_route) > 1:
+            series[resource] = per_route
+    if not series:
+        return None
+
+    every = np.concatenate([r['high'] for res in series.values()
+                            for r in res.values()])
+    scale, shown = scale_for(every, unit)
+
+    columns = min(3, len(series))
+    rows_of = -(-len(series) // columns)
+    figure, axes, colours = chart(460 * columns, 360 * rows_of, theme,
+                                  rows_of, columns)
+    panels = list(axes.ravel()) if hasattr(axes, 'ravel') else [axes]
+    for spare in panels[len(series):]:
+        spare.set_visible(False)
+
+    for panel, (resource, per_route) in zip(panels, sorted(series.items())):
+        for index, (route, s) in enumerate(sorted(per_route.items())):
+            colour = PALETTE[index % len(PALETTE)]
+            panel.fill_between(years, s['low'] * scale, s['high'] * scale,
+                               color=colour, alpha=0.18, linewidth=0)
+            panel.plot(years, s['median'] * scale, color=colour, linewidth=2.0,
+                       marker='o', markersize=3, label=route)
+        last = {route: s['median'][-1] for route, s in per_route.items()}
+        share = 100 * max(last.values()) / sum(last.values()) if sum(last.values()) else 0
+        biggest = max(last, key=last.get)
+        panel.set_title(f'{resource}   {biggest} returns {share:.0f}% of it in {years[-1]}',
+                        color=colours['title'], fontsize=10, fontweight='bold')
+        panel.set_xlabel('year', color=colours['meta'], fontsize=8.5)
+        panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=8.5)
+        panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
+        legend = panel.legend(fontsize=8, frameon=False, loc='upper left')
+        for text in legend.get_texts():
+            text.set_color(colours['meta'])
+
+    header(figure, 'Recovered mass by route', colours,
+           f'which road it came back on, {years_listed(run)}.  '
+           f'solid: median, band: 95%.  each panel has its own axis')
+    return figure
+
+
+def figure_recovery_rate(run, deterministic: pd.DataFrame | None,
+                         theme: str, unit: str):
+    """
+    Recovered as a SHARE of what was collected, per year.
+
+    Every other figure here reports a mass, and a mass grows with the fleet
+    whatever recycling does -- 2070 recovers more than 2030 because there are
+    more cars, not because anything improved. This is the one number that
+    separates the two, and until now it could only be got by dividing two
+    columns of the workbook by hand.
+
+    It is also what an improvement scenario moves. A ramped coefficient barely
+    shows in the absolute trajectory, which is dominated by inflow growth; it
+    shows here.
+
+    The band is honest: the rate is computed PER DRAW, recovered mass in that
+    draw over the inflow of that year, so the interval is the interval of the
+    ratio and not two percentiles divided by each other.
+    """
+    years = sorted(int(y) for y in run.keys['Year'].unique())
+    if len(years) < 2:
+        return None
+    recovered = recovered_flows(run, run.case)
+    if not recovered:
+        return None
+
+    from src.report import start_flows
+    starts = start_flows(run.tcs)
+    keys, layer = run.keys, finest_layer(run.keys)
+
+    def collected_in(year, resource: str | None) -> float:
+        """
+        What was collected, of the thing being asked about.
+
+        EACH RESOURCE IS DIVIDED BY ITS OWN INFLOW. Dividing copper recovered by
+        the TOTAL collected mass answers a different question, and the answer
+        looks like a recovery rate falling when nothing about recovery moved:
+        on the wiring case copper's own recovery holds at 77-78% while its share
+        of the inflow drops 36% to 28% as motors grow against harnesses. The
+        first version of this figure made that mistake and reported it as
+        copper being recovered worse.
+
+        The total line still divides by the whole inflow, which is the one case
+        where that IS the question.
+        """
+        wanted = (keys['Stock/Flow ID'].isin(starts)
+                  & (keys['Year'].astype(str) == str(year)))
+        if resource is not None:
+            wanted &= (keys[layer] == resource)
+        rows = keys[wanted]
+        if rows.empty:
+            return 0.0
+        if resource is None:
+            # Nesting: a resource row is part of its parent's, so the inflow is
+            # totalled at its own shallowest depth (MODEL_MECHANICS.md 1).
+            depth = (rows[[c for c in LAYERS if c in rows.columns]] != '').sum(axis=1)
+            rows = rows[depth == depth.min()]
+        return float(run.values[keys.index.get_indexer(rows.index)].sum(axis=0).mean())
+
+    lines: dict[str, dict[str, np.ndarray]] = {}
+    for resource in [EVERYTHING] + sorted({e for e in keys[layer].unique() if e}):
+        median, low, high = [], [], []
+        for year in years:
+            wanted = keys['Stock/Flow ID'].isin(recovered).to_numpy() & \
+                     (keys['Year'].astype(str) == str(year)).to_numpy()
+            if resource != 'every resource':
+                wanted &= (keys[layer] == resource).to_numpy()
+            rows = np.flatnonzero(wanted)
+            total = (run.values[rows].sum(axis=0) if rows.size
+                     else np.zeros(run.draws))
+            inflow = collected_in(year, None if resource == EVERYTHING else resource)
+            rate = 100 * total / inflow if inflow else np.zeros(run.draws)
+            median.append(np.percentile(rate, 50))
+            low.append(np.percentile(rate, 2.5))
+            high.append(np.percentile(rate, 97.5))
+        if max(median) > 0:
+            lines[resource] = {'median': np.array(median), 'low': np.array(low),
+                               'high': np.array(high)}
+    if not lines:
+        return None
+
+    figure, axes, colours = chart(1100, 620, theme, 1, 1)
+    panel = axes if not hasattr(axes, 'ravel') else axes.ravel()[0]
+    for index, (resource, s) in enumerate(lines.items()):
+        colour = colours['title'] if resource == EVERYTHING \
+            else PALETTE[(index - 1) % len(PALETTE)]
+        width = 2.6 if resource == EVERYTHING else 1.8
+        # A DASH PATTERN PER RESOURCE. Two resources given the same coefficients
+        # have the same rate exactly, and one solid line then sits invisibly
+        # under another -- which reads as a missing resource rather than as two
+        # that agree. On the wiring case alalloy and fealloy do exactly this.
+        style = '-' if resource == EVERYTHING else DASHES[(index - 1) % len(DASHES)]
+        panel.fill_between(years, s['low'], s['high'], color=colour,
+                           alpha=0.10 if resource == EVERYTHING else 0.16,
+                           linewidth=0)
+        panel.plot(years, s['median'], color=colour, linewidth=width,
+                   linestyle=style, marker='o', markersize=4,
+                   label=f"{resource}   {s['median'][0]:.1f} \u2192 "
+                         f"{s['median'][-1]:.1f}%")
+
+    panel.set_xlabel('year', color=colours['meta'], fontsize=9)
+    panel.set_ylabel('recovered, % of that resource collected',
+                     color=colours['meta'], fontsize=9)
+    panel.set_xticks(years)
+    panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
+    legend = panel.legend(fontsize=9, frameon=False, loc='best')
+    for text in legend.get_texts():
+        text.set_color(colours['meta'])
+
+    header(figure, 'Recovery rate over time', colours,
+           f'{years_listed(run)}.  each resource against ITS OWN inflow, '
+           f'the black line against the whole.  median and 95%, ratio per draw')
+    return figure
 
 
 def figure_pdf_grid(run, deterministic: pd.DataFrame | None, theme: str,
@@ -789,6 +1035,9 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
     # like enough right up until a case had more than a handful of resources.
     figures = [
         ('over_time', lambda: figure_over_time(run, deterministic, theme, unit)),
+        ('recovery_rate',
+         lambda: figure_recovery_rate(run, deterministic, theme, unit)),
+        ('routes', lambda: figure_routes(run, theme, unit)),
         ('pdf_all', lambda: figure_pdf_grid(run, deterministic, theme, unit)),
         ('spread', lambda: figure_spread(run, theme, unit)),
         ('spread_last_year',
