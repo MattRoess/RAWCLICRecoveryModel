@@ -82,6 +82,8 @@ figures/<case>/
     over_time.png                median per resource per year, with the 95% band
     recovery_rate.png            recovered as a SHARE of what came in, per year
     routes.png                   which road it came back on, one panel per resource
+    fate.png                     what becomes of it once it leaves the fleet:
+                                 recovered / lost in recycling / never collected
     pdf_<resource>.png           the distribution, one panel per year
     pdf_all.png                  those panels on one page, resources x years
     spread.png                   how much and how sure, with both years on the

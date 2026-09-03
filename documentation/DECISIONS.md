@@ -165,6 +165,13 @@ lives in a chat message is a decision that will be broken.
     copper by the fleet's variation while fixing copper's share OF that fleet,
     which is neither the mean answer nor the draw's.
 
+33. **A figure names things in the modeller's words, never in the model's.**
+    `routes.png` titled its panels `F_disassembled` -- an internal flow id
+    standing where a reader expects the name of a thing, and misleading because
+    a flow is a place in the network while the road is the PROCESS that happens
+    there. Routes are named from the `process` column: `own recycling`,
+    `general recycling`. Decided 2026-09-03, after the user had to point it out.
+
 ## Words
 
 19. **Disassembly** is taking a part out whole, with tools, on purpose.

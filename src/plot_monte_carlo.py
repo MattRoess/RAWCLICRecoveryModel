@@ -315,24 +315,49 @@ def routes(run) -> dict[str, list[str]]:
     """
     The recovered flows, grouped by the flow each one leaves.
 
-    THE ROUTE IS THE FLOW IT CAME OUT OF, which is general: nothing here knows
-    the words "disassembly" or "shredder". In the wiring case it separates
-    F_disassembled's three recovered streams from F_shredded's three, which is
-    the two roads DECISIONS 10 says the case exists to compare. In the boards
-    case only one flow feeds a recovered stream, so there is nothing to compare
-    and the figure that uses this returns None.
+    THE ROUTE IS ITS PROCESS, from the `process` column of the processes table.
+    In the wiring case that is `own_recycling` and `general_recycling` -- the
+    words the modeller chose, in the modeller's language.
+
+    NOT the flow it leaves. That was the first version and it put
+    `F_disassembled` in a panel title, which is an internal identifier standing
+    where a reader expects the name of a thing. It is also the wrong level: a
+    flow is a place in the network, a process is what happens there, and it is
+    the process that distinguishes one road from the other.
+
+    Still general: any case's processes table names its own processes, and a
+    case whose recovered streams come from one process has nothing to compare,
+    so the figure that uses this returns None.
     """
     recovered = set(recovered_flows(run, run.case))
     if not recovered:
         return {}
     pairs = run.tcs[run.tcs['Output_FlowID'].isin(recovered)]
+    if 'process' not in pairs.columns:
+        return {}
     grouped: dict[str, list[str]] = {}
-    for source, flows in pairs.groupby('Input_FlowID')['Output_FlowID']:
-        grouped[str(source)] = sorted(set(flows))
+    for process, flows in pairs.groupby('process')['Output_FlowID']:
+        grouped[str(process).replace('_', ' ')] = sorted(set(flows))
     return grouped
 
 
-def figure_routes(run, theme: str, unit: str):
+def chosen(run, wanted) -> list[str]:
+    """
+    The resources a figure should cover: `figures.resources`, or all of them.
+
+    A case can resolve twenty-odd elements, and a reader usually wants two. The
+    setting narrows what is DRAWN and never what is solved -- every resource is
+    still in the workbook and the summary.
+    """
+    layer = finest_layer(run.keys)
+    every = sorted({e for e in run.keys[layer].unique() if e})
+    if not wanted:
+        return every
+    asked = [r.strip() for r in wanted if r.strip()]
+    return [r for r in every if r in asked] or every
+
+
+def figure_routes(run, theme: str, unit: str, resources=()):
     """
     Recovered mass by ROUTE, per year -- which road the material came back on.
 
@@ -356,10 +381,9 @@ def figure_routes(run, theme: str, unit: str):
 
     layer = finest_layer(run.keys)
     keys = run.keys
-    resources = sorted({e for e in keys[layer].unique() if e})
 
     series: dict[str, dict[str, dict]] = {}
-    for resource in resources:
+    for resource in chosen(run, resources):
         per_route = {}
         for route, flows in sorted(by_route.items()):
             median, low, high = [], [], []
@@ -530,6 +554,135 @@ def figure_recovery_rate(run, deterministic: pd.DataFrame | None,
     header(figure, 'Recovery rate over time', colours,
            f'{years_listed(run)}.  each resource against ITS OWN inflow, '
            f'the black line against the whole.  median and 95%, ratio per draw')
+    return figure
+
+
+
+def figure_fate(run, theme: str, unit: str, resources=()):
+    """
+    What becomes of the resource that LEAVES THE FLEET, per year.
+
+    The model starts at what a recycler receives, so until now nothing said how
+    much never got there. On the wiring case in 2070 that is the larger number
+    by far: 71 kt of copper is never collected against 20 kt lost inside
+    recycling, three and a half times as much. A figure that begins at
+    `F_collected` cannot show it, and it is arguably the case's headline.
+
+    Three parts, stacked, and they ARE the whole -- recovered, lost in the
+    recycling process, and never collected sum to the outflow. Stacking is
+    honest only when that holds, which is why the parts are MEANS: a mean is
+    additive, so the stack is exact, where three medians would not add up to
+    the median of their total.
+
+    The 95% interval of the outflow is drawn as a pair of thin lines rather
+    than a band per layer -- stacked bands would overlap into mud and imply an
+    uncertainty on each slice that the stack cannot honestly show. Inflow is
+    dashed, for context: by 2070 it has roughly met the outflow, which is what
+    a fleet reaching steady state looks like.
+
+    `inflow`, `outflow` and never-collected are UPSTREAM quantities, read for
+    reporting only (src.upstream.Draws.other_flow). Nothing about the solve
+    changes, and the scale between the arrays and the table is taken from the
+    model's own collected mass rather than assumed.
+    """
+    source = getattr(run, 'upstream', None)
+    if source is None or not getattr(source, 'propagates', False):
+        return None
+    years = sorted(int(y) for y in run.keys['Year'].unique())
+    if len(years) < 2:
+        return None
+
+    from src.report import start_flows
+    starts, keys = start_flows(run.tcs), run.keys
+    layer = finest_layer(keys)
+    recovered = recovered_flows(run, run.case)
+    if not recovered:
+        return None
+
+    panels_for = chosen(run, resources)
+    series: dict[str, dict[str, np.ndarray]] = {}
+    for resource in panels_for:
+        domains = sorted({d for d in keys.loc[keys[layer] == resource, 'Layer 2'].unique() if d})
+        got = {name: [] for name in ('recovered', 'lost', 'uncollected',
+                                     'outflow_low', 'outflow_high', 'inflow')}
+        usable = True
+        for year in years:
+            def rows_of(flows):
+                return np.flatnonzero(
+                    keys['Stock/Flow ID'].isin(flows).to_numpy()
+                    & (keys[layer] == resource).to_numpy()
+                    & (keys['Year'].astype(str) == str(year)).to_numpy())
+
+            collected = run.values[rows_of(starts)].sum(axis=0)
+            back = run.values[rows_of(recovered)].sum(axis=0)
+            if collected.mean() <= 0:
+                usable = False
+                break
+            raw = source.other_flow('collected', resource, domains, year, 0, run.draws)
+            out = source.other_flow('outflow', resource, domains, year, 0, run.draws)
+            into = source.other_flow('inflow', resource, domains, year, 0, run.draws)
+            if raw is None or out is None or raw.mean() <= 0:
+                usable = False
+                break
+            # The table's unit, from the model's own collected mass against the
+            # array it came from. No unit constant appears here on purpose.
+            scale = collected.mean() / raw.mean()
+            out = out * scale
+            got['recovered'].append(back.mean())
+            got['lost'].append((collected - back).mean())
+            got['uncollected'].append(max((out - collected).mean(), 0.0))
+            got['outflow_low'].append(np.percentile(out, 2.5))
+            got['outflow_high'].append(np.percentile(out, 97.5))
+            got['inflow'].append(np.nan if into is None else (into * scale).mean())
+        if usable and max(got['recovered']) > 0:
+            series[resource] = {k: np.array(v) for k, v in got.items()}
+    if not series:
+        return None
+
+    every = np.concatenate([s['outflow_high'] for s in series.values()])
+    scale_to, shown = scale_for(every, unit)
+
+    columns = min(3, len(series))
+    rows_of_panels = -(-len(series) // columns)
+    figure, axes, colours = chart(470 * columns, 380 * rows_of_panels, theme,
+                                  rows_of_panels, columns)
+    panels = list(axes.ravel()) if hasattr(axes, 'ravel') else [axes]
+    for spare in panels[len(series):]:
+        spare.set_visible(False)
+
+    for panel, (resource, s) in zip(panels, sorted(series.items())):
+        parts = [('recovered', s['recovered'], PALETTE[1]),
+                 ('lost in recycling', s['lost'], PALETTE[3]),
+                 ('never collected', s['uncollected'], PALETTE[0])]
+        panel.stackplot(years, *[part * scale_to for _, part, _ in parts],
+                        labels=[name for name, _, _ in parts],
+                        colors=[colour for _, _, colour in parts], alpha=0.85)
+        # Labelled and dotted. Unlabelled thin lines crossing a stack read as
+        # a boundary of the stack rather than as the interval of its total,
+        # which is what they are -- the lower one passes THROUGH the coloured
+        # area, so it has to say what it is.
+        for position, edge in enumerate(('outflow_low', 'outflow_high')):
+            panel.plot(years, s[edge] * scale_to, color=colours['title'],
+                       linewidth=1.1, linestyle=(0, (2, 2)), alpha=0.8,
+                       label='leaving the fleet, 95%' if position == 0 else None)
+        if np.isfinite(s['inflow']).any():
+            panel.plot(years, s['inflow'] * scale_to, color=colours['meta'],
+                       linewidth=1.4, linestyle='--', label='entering the fleet')
+
+        total = s['recovered'][-1] + s['lost'][-1] + s['uncollected'][-1]
+        share = 100 * s['uncollected'][-1] / total if total else 0
+        panel.set_title(f'{resource}   {share:.0f}% never collected in {years[-1]}',
+                        color=colours['title'], fontsize=10, fontweight='bold')
+        panel.set_xlabel('year', color=colours['meta'], fontsize=8.5)
+        panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=8.5)
+        panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
+        legend = panel.legend(fontsize=8, frameon=False, loc='upper left')
+        for text in legend.get_texts():
+            text.set_color(colours['meta'])
+
+    header(figure, 'What becomes of it, once it leaves the fleet', colours,
+           f'{years_listed(run)}.  the three parts are MEANS and sum to the '
+           f'outflow.  thin lines: the outflow 95%.  dashed: entering the fleet')
     return figure
 
 
@@ -1014,7 +1167,8 @@ def figure_sensitivity(run, theme: str):
 # ----------------------------------------------------------------------
 
 def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
-             dpi: int, theme: str, unit: str = 'Mg', case: str = '') -> list[str]:
+             dpi: int, theme: str, unit: str = 'Mg', case: str = '',
+             resources=()) -> list[str]:
     """
     Draw every Monte Carlo figure. Returns the paths written.
 
@@ -1037,7 +1191,8 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
         ('over_time', lambda: figure_over_time(run, deterministic, theme, unit)),
         ('recovery_rate',
          lambda: figure_recovery_rate(run, deterministic, theme, unit)),
-        ('routes', lambda: figure_routes(run, theme, unit)),
+        ('routes', lambda: figure_routes(run, theme, unit, resources)),
+        ('fate', lambda: figure_fate(run, theme, unit, resources)),
         ('pdf_all', lambda: figure_pdf_grid(run, deterministic, theme, unit)),
         ('spread', lambda: figure_spread(run, theme, unit)),
         ('spread_last_year',

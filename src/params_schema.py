@@ -416,6 +416,18 @@ class FigureParams:
     # format, which multiplies quickly -- set to False for the total only.
     element_figures: bool = True
 
+    # WHICH RESOURCES THE FIGURES COVER.  Empty means every one the case
+    # resolves. Name a few to focus: ('copper',) draws only copper on
+    # routes.png, fate.png and the per-resource densities.
+    #
+    # It narrows what is DRAWN and never what is solved. Every resource stays
+    # in recovery_results.xlsx and monte_carlo_summary.csv whatever this says,
+    # so nothing is lost by focusing -- which is the point: the boards case
+    # resolves twenty-odd elements and a reader usually wants two.
+    # SAFE TO CHANGE: yes. A name that no case has is ignored rather than
+    # silently producing an empty figure.
+    resources: tuple[str, ...] = ()
+
     def enabled(self) -> list[str]:
         """The formats switched on above, in a fixed order. Not a setting."""
         return [name for name in FORMATS if getattr(self, name)]

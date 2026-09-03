@@ -247,7 +247,7 @@ def run_case(folder, params, draws: int) -> int:
     written = draw_all(run, determined, params.figures.out_dir,
                        params.figures.enabled(), params.figures.dpi,
                        params.figures.theme, params.run.working_unit,
-                       case=folder)
+                       case=folder, resources=params.figures.resources)
     for figure_path in written:
         print(f'{figure_path}')
 

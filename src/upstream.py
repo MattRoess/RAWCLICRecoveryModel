@@ -572,7 +572,7 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
 
     return {'inputs': inflow, 'composition': composition,
             'draws': Draws(per_product, years, described['child_layer'],
-                           described['inflow_flow_id'], draws)}
+                           described['inflow_flow_id'], draws, source=source)}
 
 
 class Draws:
@@ -600,7 +600,9 @@ class Draws:
     than a second implementation drifting from the first.
     """
 
-    def __init__(self, per_product, years, child_layer, flow_id, draws):
+    def __init__(self, per_product, years, child_layer, flow_id, draws,
+                 source: str = ''):
+        self.source = source
         self.per_product = per_product
         self.years = years
         self.child_layer = child_layer
@@ -653,6 +655,32 @@ class Draws:
             self._means[key] = float(
                 self.inflow(product, year, domains, 0, self.draws).mean())
         return self._means[key]
+
+    def other_flow(self, flow: str, resource: str, domains, year,
+                   start: int, stop: int) -> np.ndarray | None:
+        """
+        One resource's mass in ANOTHER of the upstream flows, per draw.
+
+        The export writes `inflow`, `outflow` and `collected` side by side, all
+        with the same file names. The model solves only the flow its case names
+        -- what reaches a recycler -- but `inflow` and `outflow` answer what
+        entered and left the fleet, and outflow minus collected is the part
+        nobody collected at all. Read here FOR REPORTING; nothing about the
+        solve changes.
+
+        In the arrays' own unit. The caller scales, the same way it does for the
+        inflow, because only the caller knows what the table was written in.
+        """
+        if not self.source:
+            return None
+        total = None
+        for domain in domains:
+            path = os.path.join(self.source, flow, f'{resource}__{domain}.npy')
+            if not os.path.exists(path):
+                continue
+            piece = self._at(np.load(path, mmap_mode='r'), year, start, stop)
+            total = piece if total is None else total + piece
+        return total
 
     def mass(self, product: str, year, layer2: str, layer3: str,
              start: int, stop: int) -> np.ndarray | None:

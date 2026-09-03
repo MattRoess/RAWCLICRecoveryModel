@@ -329,6 +329,8 @@ class MonteCarloRun:
     report: dict                # what the sampler clamped and constrained
     tcs: pd.DataFrame           # the coefficient table actually sampled
     tc_values: np.ndarray       # (n_coefficients, draws), as drawn
+    upstream: object = None     # src.upstream.Draws, for the flows the
+                                # case does not solve: inflow, outflow
     case: str = ''              # the folder it was solved from
 
     @property
@@ -534,4 +536,4 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
     return MonteCarloRun(keys=pd.concat(key_frames, ignore_index=True),
                          values=values, report=report,
                          tcs=sampled_tcs, tc_values=sampled_values,
-                         case=data_folder)
+                         case=data_folder, upstream=upstream_draws)
