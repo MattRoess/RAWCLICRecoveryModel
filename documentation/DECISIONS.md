@@ -52,6 +52,15 @@ lives in a chat message is a decision that will be broken.
     rather than a fresh guess per year. This is why `_stream_key` excludes the
     year, and it must stay excluded.
 
+30. **A warning in a run means something is WRONG.** Not "worth thinking
+    about", not "a question somebody should answer" -- wrong. Decided
+    2026-09-03 after the run warned about a complementary pair of coefficients
+    that may be two perfectly good measurements. A warning that fires on a
+    correct table teaches its reader to scroll past warnings, which costs more
+    than it saves. Advisory findings go in a tool the reader opens on purpose:
+    `tools/tc_worklist.py` for measurement questions, `tools/filling_sheet.py`
+    for what to measure next.
+
 ## The layers
 
 5. **The metal route is materials only. No element layer under an alloy.**

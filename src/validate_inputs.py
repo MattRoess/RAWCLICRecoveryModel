@@ -402,51 +402,6 @@ def _check_residual_headroom(tcs: pd.DataFrame) -> list[Problem]:
     return problems
 
 
-def _check_reflected(tcs: pd.DataFrame) -> list[Problem]:
-    """
-    A range that merely restates what the rest of its group already implies.
-
-    Writing `1 - the rest of the group` into a row looks like a second
-    measurement and is not: it counts the first one twice, so the target
-    becomes f(x)*f(x) rather than f(x) and the answer narrows by about a fifth
-    for no reason. Arithmetic cannot tell it from a genuine second opinion --
-    only the `source` column can -- so this is a warning, not a refusal.
-    """
-    if not {'value_min', 'value_max'}.issubset(tcs.columns):
-        return []
-    import numpy as np
-    from src.sampling import SAME_AS_IMPLIED, implied
-
-    low, mode, high = _numeric(tcs)
-    residual = _is_residual(tcs)
-    problems = []
-    for name, rows in tcs.groupby(RESOURCE, dropna=False).groups.items():
-        rows = pd.Index(rows)
-        if residual[rows].any() or abs(float(mode[rows].sum()) - 1.0) > 1e-9:
-            continue                       # derived on purpose, or unconstrained
-        l, m, h = low[rows].to_numpy(), mode[rows].to_numpy(), high[rows].to_numpy()
-        free = np.flatnonzero(h - l > 0)
-        if len(free) < 2:
-            continue                       # handled by src/sampling.py itself
-        for position in free:
-            others = np.setdiff1d(np.arange(len(rows)), position)
-            want = implied(l, m, h, others)
-            got = (l[position], m[position], h[position])
-            if all(abs(a - b) <= SAME_AS_IMPLIED for a, b in zip(want, got)):
-                flow = tcs.loc[rows[position], 'Output_FlowID']
-                problems.append(Problem(
-                    'WARNING', '-',
-                    f"TCs: {name[4]!r} -> {flow} states the range its own group "
-                    f"already implies ({want[0]:.3g}, {want[1]:.3g}, {want[2]:.3g}).\n"
-                    f"          That is one measurement counted twice, not a second "
-                    f"opinion: the target becomes f(x)*f(x) and the answer narrows "
-                    f"by roughly a fifth.\n"
-                    f"          If it was not measured independently, mark it "
-                    f"`is_residual` instead -- which says plainly that it is derived."))
-                break
-    return problems
-
-
 def check(folder: str, tables: dict | None = None) -> list[Problem]:
     """Every problem with a case's three tables. Empty means clean."""
     inputs, composition, tcs = _load(folder, tables)
@@ -483,16 +438,24 @@ def check(folder: str, tables: dict | None = None) -> list[Problem]:
     if blank:
         return blank
 
-    # The three traps that used to be documented and unguarded: a `child_layer`
-    # that balances while being wrong, a residual that can go negative, and a
-    # range that restates its own group. HANDOVER.md section 5.
+    # A WARNING HERE MEANS SOMETHING IS WRONG. Two of section 5's traps are
+    # defects and are checked: a `child_layer` that balances while being wrong,
+    # and a residual that can be driven negative.
+    #
+    # The third -- a range that restates what its group already implies -- is
+    # NOT a defect and was removed from the run on 2026-09-03. Two real
+    # measurements of one split look exactly like one counted twice, and
+    # multiplying their densities is then correct. It is a question about
+    # measurement, and it belongs in tools/tc_worklist.py, which asks it better:
+    # it names the group, says which rows, and has columns for the answer.
+    # Warning about a table that may be perfectly correct is how a reader learns
+    # to ignore warnings.
     from src import case_tables
     processes = (case_tables.read(folder, 'processes')
                  if case_tables.exists(folder, 'processes') else None)
     problems += _check_keyed_layers(processes, composition_with_rest)
     problems += _check_nothing_strands(processes, composition_with_rest, tcs)
     problems += _check_residual_headroom(tcs)
-    problems += _check_reflected(tcs)
 
     # ---- 2.7  every key in inputs.csv has to name something -----------------
     # Checked as a (flow, product) PAIR, because composition is defined per flow

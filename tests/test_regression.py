@@ -354,34 +354,6 @@ def test_a_residual_that_could_go_negative_is_refused() -> None:
         'handles them: ' + str(quiet[0]))
 
 
-def test_a_range_restating_its_own_group_is_flagged() -> None:
-    """
-    HANDOVER.md section 5 -- one measurement counted twice.
-
-    `1 - the rest of the group` looks like a second opinion and is not: the
-    target becomes f(x)*f(x) and the answer narrows for no reason.
-
-    Checked against `reference/template`, whose loss rows are exactly this --
-    a real, documented instance rather than a fixture built to be caught. It
-    must stay a WARNING: arithmetic cannot tell it from a genuine second
-    measurement, only the `source` column can, so an error here would refuse
-    tables that are merely unproven.
-    """
-    from src.validate_inputs import check
-
-    flagged = [p for p in check('data_folder/reference/template')
-               if 'already implies' in p.message]
-    assert flagged, ("reference/template's loss rows restate their own groups, "
-                     'and nothing said so')
-    assert all(p.severity == 'WARNING' for p in flagged), (
-        'this must warn, not refuse -- only the source column can tell it from '
-        'a real second measurement')
-
-    # And it must not fire where the ranges are genuinely independent.
-    assert not [p for p in check(CASE) if 'already implies' in p.message], \
-        'basic_test was flagged, so the check does not distinguish anything'
-
-
 
 def _two_tables(improved_by: float = 0.2):
     """A two-row group and an improved version of it, for the ramp tests."""
@@ -488,6 +460,44 @@ def test_one_draw_is_one_world_across_the_ramp() -> None:
         'the same coefficient drew different uniforms in two years -- one draw '
         f'is no longer one world. Shift ranged {shift.min():.4f} to '
         f'{shift.max():.4f}, expected 0.2 throughout.')
+
+
+def test_a_range_restating_its_own_group_is_reported_by_the_worklist() -> None:
+    """
+    Not by the RUN. Moved there 2026-09-03, at the user's insistence.
+
+    `1 - the rest of the group` counts one measurement twice -- but two REAL
+    measurements of one split look exactly the same, and multiplying their
+    densities is then correct. So it is a question about measurement, not a
+    defect, and a run that warns about a table which may be perfectly correct
+    teaches its reader to ignore warnings.
+
+    `tools/tc_worklist.py` asks it properly: it names the group, says which
+    rows, and has columns for the answer. This pins that it still does, and
+    that the run stays quiet.
+    """
+    import importlib.util
+    import os
+
+    from src.validate_inputs import check
+
+    template = 'data_folder/reference/template'
+    assert not [p for p in check(template) if 'already implies' in p.message], \
+        'the run is warning about a reflected pair again'
+
+    spec = importlib.util.spec_from_file_location(
+        'worklist', os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), 'tools', 'tc_worklist.py'))
+    worklist = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(worklist)
+
+    # reference/template's loss rows ARE the reflected case -- it is what the
+    # handover has cited as the real instance since 2026-08-26.
+    found = worklist.worklist(template)
+    flagged = found[found['status'] == worklist.REFLECTED]
+    assert len(flagged), (
+        "the worklist no longer reports reference/template's reflected rows, "
+        'so nothing does')
 
 
 def test_validation_rejects_unknown_keys() -> None:

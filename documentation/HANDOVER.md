@@ -867,6 +867,13 @@ started without saying so first.
   a measured case -- the deleted `bev_electronics_all_measured` summed to 1.34
   out of `F_collected` and was correct, which is what the test now pins with a
   fixture instead.
+- **A complementary pair is not a defect.** Two REAL measurements of one split
+  -- 0.85 recovered and 0.15 lost -- look exactly like one measurement counted
+  twice, and multiplying their densities is CORRECT in the first case: two
+  observations should narrow the answer. Arithmetic cannot separate them, only
+  the `source` column can. The run stopped warning about it on 2026-09-03
+  (DECISIONS 30); `tools/tc_worklist.py` reports it, names the group and has
+  columns for the answer.
 - **Do not manufacture a second measurement.** Conditioning is worth having
   only where the extra range was measured *without going through* the rest of
   the group. Both shortcuts were tried and measured:
