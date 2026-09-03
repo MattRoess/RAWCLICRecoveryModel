@@ -160,16 +160,18 @@ For the reasoning behind any of it, see [CASES.md](CASES.md).
 
 ## Filling in the improved situation
 
-The wiring case has a **`TCs_improved`** sheet beside `TCs`, seeded 2026-09-03
-as an exact copy, and an improvement window in its `source` sheet:
+**Both electronics cases** have a **`TCs_improved`** sheet beside `TCs`, seeded
+2026-09-03 as an exact copy — 24 rows for wiring, 52 for boards — and an
+improvement window in the `source` sheet:
 
     improvement_start   2030
     improvement_end     2060
 
-**As seeded it changes nothing.** Every value equals its current one, so the
+**As seeded they change nothing.** Every value equals its current one, so a
 case ramps from a number to itself and every year is identical -- verified
-against the run before the sheet existed, row for row, to zero difference. It
-is a place to type into, not a scenario.
+against the run before the sheet existed, row for row, to zero difference on
+both cases (517 rows wiring, 1,650 boards). They are places to type into, not
+scenarios.
 
 Every row's `source` says so:
 
