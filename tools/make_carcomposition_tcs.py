@@ -279,6 +279,26 @@ def main() -> int:
           f'{composition["Layer 2"].nunique()} components, '
           f'{composition[composition["Layer 3"] != ""]["Layer 3"].nunique()} materials')
     print('  EVERY NUMBER IS INVENTED -- see the source column.')
+
+    # This tool writes TCs and knows nothing about TCs_improved, so a rebuild
+    # leaves the improved sheet describing the table that used to be here. The
+    # ramp refuses a mismatch rather than interpolating towards the wrong
+    # coefficient, so this cannot go unnoticed -- but it is better said at the
+    # moment it happens than discovered on the next run.
+    if case_tables.exists(folder, case_tables.IMPROVED):
+        improved = case_tables.read(folder, case_tables.IMPROVED)
+        left = set(tcs[case_tables.COEFFICIENT].astype(str).agg('|'.join, axis=1))
+        right = set(improved[case_tables.COEFFICIENT].astype(str).agg('|'.join, axis=1))
+        if left == right:
+            print(f'\n  NOTE: {case_tables.IMPROVED} still names the same '
+                  f'coefficients, so the case still runs. Its VALUES are the ones '
+                  f'you left there, now paired with rebuilt current ones.')
+        else:
+            print(f'\n  {case_tables.IMPROVED} NO LONGER MATCHES: '
+                  f'{len(left - right)} coefficient(s) here are missing from it and '
+                  f'{len(right - left)} of its rows no longer exist.\n'
+                  f'  The run will refuse until they agree. Re-seed it from this '
+                  f'table, or edit it to match.')
     return 0
 
 
