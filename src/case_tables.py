@@ -43,7 +43,141 @@ import pandas as pd
 WORKBOOK = 'case.xlsx'
 
 # Sheet name and CSV name are the same word, so a case reads the same either way.
-TABLES = ('source', 'processes', 'TCs')
+TABLES = ('source', 'processes', 'TCs', 'TCs_improved')
+
+# The coefficients an improved case ends at. Optional: a case without it does
+# not change over time, which is every case built before 2026-09-03.
+IMPROVED = 'TCs_improved'
+
+# What identifies one coefficient, so the two tables can be lined up row for
+# row. Not src.mass_balance.RESOURCE: that leaves out Output_FlowID, because a
+# resource is the thing split ACROSS the flows. Here a ROW is being matched.
+COEFFICIENT = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
+               'Output_FlowID', 'TC_target_layer', 'TC_target_key']
+
+# The three numbers that ramp. Everything else -- process, technology,
+# is_residual -- is taken from the current table, because a coefficient that
+# changed those would be a different coefficient rather than an improved one.
+RAMPED = ['value_min', 'value', 'value_max']
+
+
+class ImprovementError(ValueError):
+    """Raised when a case's two coefficient tables do not describe one case."""
+
+
+def _weight(year: int, start: int, end: int) -> float:
+    """How far along the improvement this year sits: 0 before it, 1 after."""
+    if year <= start:
+        return 0.0
+    if year >= end:
+        return 1.0
+    return (year - start) / (end - start)
+
+
+def ramp(current, improved, start: int, end: int, years) -> "pd.DataFrame":
+    """
+    One coefficient table per year, on a straight line from current to improved.
+
+    Before `start` the current numbers hold; after `end` the improved ones do;
+    between, each of value_min, value and value_max moves linearly. The result
+    carries a `Year` column, which is all the rest of the model needs: both
+    engines already select their rows by year
+    (`select_df_by_year_scenario_location`), so nothing downstream changes.
+
+    ONE DRAW STAYS ONE WORLD. A coefficient's random stream is keyed on which
+    resource moves from where to where and NOT on the year
+    (`src/sampling._stream_key`), so every year of one coefficient draws the
+    same uniform. Draw 7 is therefore the same optimism about that process in
+    2030 and in 2060, ramped -- not two unrelated guesses. Independent draws per
+    year would invent a year-to-year wobble nobody measured.
+
+    SUM-TO-1 SURVIVES BY CONSTRUCTION. Each year is a convex combination of two
+    tables whose groups each sum to 1, and a convex combination of two vectors
+    summing to 1 sums to 1. Nothing has to be renormalised, and the groups are
+    formed within a year, never across them.
+    """
+    missing = [column for column in COEFFICIENT if column not in current.columns]
+    if missing:
+        raise ImprovementError(f'the coefficient table has no {missing} column(s).')
+
+    current = current.reset_index(drop=True)
+    improved = improved.reset_index(drop=True)
+
+    left = current[COEFFICIENT].astype(str).agg('|'.join, axis=1)
+    right = improved[COEFFICIENT].astype(str).agg('|'.join, axis=1)
+    only_current = sorted(set(left) - set(right))
+    only_improved = sorted(set(right) - set(left))
+    if only_current or only_improved:
+        raise ImprovementError(
+            f'{IMPROVED} must name exactly the coefficients {TABLES[2]} names.\n'
+            + (f'  missing from {IMPROVED}: {len(only_current)}, first '
+               f'{only_current[0]}\n' if only_current else '')
+            + (f'  not in {TABLES[2]}: {len(only_improved)}, first '
+               f'{only_improved[0]}\n' if only_improved else '')
+            + '  Every coefficient appears in both, so that one edited in one\n'
+              '  and not the other cannot become an unintended improvement.')
+
+    for name, keys in ((TABLES[2], left), (IMPROVED, right)):
+        repeated = keys[keys.duplicated()].unique()
+        if len(repeated):
+            raise ImprovementError(
+                f'{name} names the same coefficient more than once, so the two '
+                f'tables cannot be lined up row for row: {repeated[0]}')
+
+    # Line the improved rows up with the current ones by identity, not by
+    # position: the two sheets are edited by hand and a row moved in one of
+    # them would otherwise ramp a coefficient towards a different coefficient.
+    improved = improved.set_index(right).loc[left].reset_index(drop=True)
+
+    blocks = []
+    for year in years:
+        block = current.copy()
+        weight = _weight(int(year), start, end)
+        for column in RAMPED:
+            if column not in current.columns or column not in improved.columns:
+                continue
+            a = pd.to_numeric(current[column], errors='coerce')
+            b = pd.to_numeric(improved[column], errors='coerce')
+            mixed = a + (b - a) * weight
+            # A blank bound is a definitional row with no range. Blank in either
+            # table stays blank rather than becoming a number out of nowhere.
+            block[column] = mixed.where(a.notna() & b.notna(), current[column])
+        block['Year'] = str(year)
+        blocks.append(block)
+    return pd.concat(blocks, ignore_index=True)
+
+
+def coefficients(case: str, years, params=None) -> "pd.DataFrame":
+    """
+    The coefficient table this run should use: ramped if the case improves.
+
+    A case with no TCs_improved sheet and no window gets exactly what it always
+    got, unchanged and with no Year column.
+    """
+    from src import source as source_module
+
+    current = read(case, 'TCs')
+    has_improved = exists(case, IMPROVED)
+    if params is None:
+        from src.params_schema import current as settings
+        params = settings()
+    described = source_module.read(case, params)
+    start, end = described.get('improvement_start'), described.get('improvement_end')
+
+    if not has_improved and start is None:
+        return current
+    if has_improved and start is None:
+        raise ImprovementError(
+            f'{case} has a {IMPROVED} table but no improvement_start and '
+            f'improvement_end in its source table, so nothing says WHEN it '
+            f'improves.')
+    if start is not None and not has_improved:
+        raise ImprovementError(
+            f'{case} sets improvement_start {start} and improvement_end {end} '
+            f'but has no {IMPROVED} table, so nothing says WHAT improves.')
+
+    return ramp(current, read(case, IMPROVED), start, end, years)
+
 
 CSV_OPTIONS = dict(keep_default_na=False, na_values=[])
 

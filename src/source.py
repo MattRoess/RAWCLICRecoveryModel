@@ -111,6 +111,18 @@ FALLBACK = {
     'groups': 'groups',
     'flow': 'upstream_flow',
     'draws': 'draws',
+    'improvement_start': None,
+    'improvement_end': None,
+}
+
+# What a key means when the case does not say and there is no setting behind it.
+# Kept beside FALLBACK rather than written into the loop: the loop used to
+# default every fallback-less key to 'element', which was right for the only one
+# there was and silently wrong for the next.
+DEFAULTS = {
+    'child_layer': 'element',
+    'improvement_start': '',      # blank: this case does not improve over time
+    'improvement_end': '',
 }
 
 
@@ -168,7 +180,7 @@ def read(case: str, params) -> dict:
         elif fallback is not None:
             out[key] = getattr(params.data, fallback)
         else:
-            out[key] = 'element'
+            out[key] = DEFAULTS[key]
 
     # `groups` is a list either way: 'Wiring;Motors' from a file, a tuple from
     # settings. Semicolon-separated because a comma would need quoting in CSV.
@@ -204,6 +216,33 @@ def read(case: str, params) -> dict:
 
     # Absent means the 04_02 shape; present-but-blank means somebody meant to
     # say something and did not, so say so rather than picking for them.
+    # The improvement window: either both years or neither, and start before
+    # end. A window without a TCs_improved table, or that table without a
+    # window, is refused in src/case_tables.py -- which is where both are in
+    # view. Here it is only the pair of numbers that has to make sense.
+    window = []
+    for key in ('improvement_start', 'improvement_end'):
+        text = str(out[key]).strip()
+        if not text:
+            out[key] = None
+            continue
+        try:
+            out[key] = int(float(text))
+        except ValueError:
+            raise SourceError(
+                f'{path_for(case)}: {key} is {text!r}, which is not a year.')
+        window.append(key)
+    if len(window) == 1:
+        raise SourceError(
+            f'{path_for(case)}: {window[0]} is set and the other is not. An '
+            f'improvement needs a year to start and a year to finish.')
+    if (out['improvement_start'] is not None
+            and out['improvement_start'] >= out['improvement_end']):
+        raise SourceError(
+            f"{path_for(case)}: improvement_start {out['improvement_start']} is "
+            f"not before improvement_end {out['improvement_end']}. A ramp needs "
+            f"somewhere to go.")
+
     if out['child_layer'] not in CHILD_LAYERS:
         raise SourceError(
             f"{path_for(case)}: child_layer is {out['child_layer']!r}, "

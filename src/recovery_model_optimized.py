@@ -155,7 +155,14 @@ class RecoveryModelOptimized:
             # Wherever this case keeps them: the TCs sheet of case.xlsx, or
             # TCs.csv for a hand-built folder (src/case_tables.py).
             from src import case_tables
-            tcs_df = case_tables.read(self.data_folder, 'TCs')
+            # Not read(..., 'TCs'): a case may improve over time, in which case
+            # this returns one table per year, on a line from the TCs sheet to
+            # the TCs_improved one. A case without that sheet gets exactly what
+            # it always got. Both engines already select their rows by year, so
+            # nothing below this line knows the difference.
+            tcs_df = case_tables.coefficients(
+                self.data_folder,
+                sorted(inflows_df['Year'].dropna().unique()))
         tcs_df = tcs_df.copy()
 
         # Real composition data is incomplete: the copper in a wire is often

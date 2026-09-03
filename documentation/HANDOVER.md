@@ -48,6 +48,30 @@ follows says what they became so that neither is reopened by accident.
   run that was aborted. `carcomposition_mockup` therefore still reports 2040
   only. The user runs that stage, not the assistant (§6).
 
+### Built 2026-09-03: a case can improve over time
+
+A case may carry a second coefficient table, `TCs_improved`, and an
+`improvement_start` / `improvement_end` window in its `source` sheet. Before the
+window the current numbers hold, across it every coefficient moves on a straight
+line, after it the improved ones hold. CASES.md, *A case that improves over
+time*, has the shape and the three properties it rests on.
+
+**Almost nothing had to change.** Both engines already select coefficient rows
+by year and the Monte Carlo already samples once per year, so a table with a
+`Year` column simply works. The feature is one function that produces that
+table, `src/case_tables.ramp`, plus two keys in the source sheet.
+
+**One thing this makes true that the documentation already predicted.**
+RUNNING.md says `convergence.png` and `sensitivity.png` pool the years, and that
+"if that ever stops being true -- a case whose coefficients vary by year -- they
+have to be split per year like the rest." An improving case is exactly that.
+Neither figure is wrong for a case that does not improve, and no case improves
+yet, but the first one that does needs them split. Related, and in the same
+place: `solve_draws` keeps only the LAST year's coefficient draws for the
+sensitivity figure (`all_tc_values[:] = tc_values`), which for a ramped case is
+the improved end rather than a mixture. **Not yet done, and it is the first
+thing to do when a real improvement table is filled in.**
+
 ### Done 2026-09-03: a case writes only the layers it reaches
 
 All three cases are material-keyed, so `Layer 4` was empty in every row of every

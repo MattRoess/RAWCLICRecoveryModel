@@ -382,6 +382,114 @@ def test_a_range_restating_its_own_group_is_flagged() -> None:
         'basic_test was flagged, so the check does not distinguish anything'
 
 
+
+def _two_tables(improved_by: float = 0.2):
+    """A two-row group and an improved version of it, for the ramp tests."""
+    current = pd.DataFrame({
+        'Input_FlowID': ['F1', 'F1'], 'Input_layer': ['product', 'product'],
+        'Input_layer_key': ['BEV', 'BEV'],
+        'Output_FlowID': ['F_recovered', 'F_loss'],
+        'TC_target_layer': ['component', 'component'],
+        'TC_target_key': ['Wiring', 'Wiring'],
+        'value_min': [0.50, 0.20], 'value': [0.60, 0.40],
+        'value_max': [0.70, 0.50]})
+    improved = current.copy()
+    improved[['value_min', 'value', 'value_max']] = [
+        [0.50 + improved_by, 0.60 + improved_by, 0.70 + improved_by],
+        [0.20 - improved_by, 0.40 - improved_by, 0.50 - improved_by]]
+    return current, improved
+
+
+def test_an_improvement_ramps_between_the_two_tables() -> None:
+    """
+    Current before the window, improved after it, a straight line between.
+
+    The user's shape, 2026-09-03: 2020 and 2070 are the data, 2030 and 2060 the
+    window. Before 2030 nothing has changed; by 2060 the improvement is fully
+    in; after that it holds.
+    """
+    from src.case_tables import ramp
+
+    current, improved = _two_tables()
+    out = ramp(current, improved, start=2030, end=2060,
+               years=[2020, 2030, 2045, 2060, 2070])
+    recovered = out[out['Output_FlowID'] == 'F_recovered'].set_index('Year')
+
+    for year, expected in (('2020', 0.60), ('2030', 0.60), ('2045', 0.70),
+                           ('2060', 0.80), ('2070', 0.80)):
+        got = float(recovered.loc[year, 'value'])
+        assert abs(got - expected) < 1e-12, \
+            f'{year}: value {got}, expected {expected}'
+
+    # The bounds ramp too, or the improved situation would carry the current
+    # one's uncertainty.
+    assert abs(float(recovered.loc['2045', 'value_min']) - 0.60) < 1e-12
+    assert abs(float(recovered.loc['2045', 'value_max']) - 0.80) < 1e-12
+
+
+def test_a_ramped_group_still_sums_to_one_every_year() -> None:
+    """
+    Closure survives the ramp by construction, and is checked anyway.
+
+    Each year is a convex combination of two tables whose groups sum to 1, and
+    a convex combination of two such vectors sums to 1. Nothing renormalises,
+    so if this ever failed it would mean the two tables did not close.
+    """
+    from src.case_tables import ramp
+
+    current, improved = _two_tables()
+    years = list(range(2020, 2075, 5))
+    out = ramp(current, improved, start=2030, end=2060, years=years)
+    totals = out.groupby('Year')['value'].sum()
+    worst = float((totals - 1.0).abs().max())
+    assert worst < 1e-12, f'a year does not close to 1: worst {worst:g}'
+    assert len(totals) == len(years), 'a year went missing'
+
+
+def test_one_draw_is_one_world_across_the_ramp() -> None:
+    """
+    THE PROPERTY THAT WOULD BREAK SILENTLY.
+
+    Draw 7 has to be the same optimism about a process in 2030 and in 2060 --
+    the improvement ramped, not two unrelated guesses. Independent draws per
+    year would invent a year-to-year wobble nobody measured, and the answer
+    would look plausible.
+
+    It holds because `src/sampling._stream_key` is built from which resource
+    moves from where to where and NOT from the year, so both years draw the
+    same uniform. Checked by shifting the whole triangle by a constant: with
+    one uniform, every draw must move by exactly the ramped shift.
+
+    The group is deliberately left UNCONSTRAINED -- its modes sum to 0.8 -- so
+    conditioning does not touch the values and the arithmetic is exact.
+    """
+    import numpy as np
+
+    from src.case_tables import ramp
+    from src.sampling import sample
+
+    current, improved = _two_tables(improved_by=0.2)
+    current['value'] = [0.60, 0.20]          # sums to 0.8: nothing to constrain
+    improved['value'] = [0.80, 0.00]
+    out = ramp(current, improved, start=2030, end=2060, years=[2030, 2060])
+
+    early = out[out['Year'] == '2030'].reset_index(drop=True)
+    late = out[out['Year'] == '2060'].reset_index(drop=True)
+    assert not sample(early, draws=500)[1]['groups'], \
+        'the fixture became constrained; conditioning would move the values'
+
+    first, _ = sample(early, draws=2000, seed=0)
+    second, _ = sample(late, draws=2000, seed=0)
+
+    # Row 0's triangle moves +0.2 wholesale between the two years, so with one
+    # uniform behind both, every single draw moves by exactly that.
+    shift = second[0] - first[0]
+    assert np.allclose(shift, 0.2, atol=1e-9), (
+        'the same coefficient drew different uniforms in two years -- one draw '
+        f'is no longer one world. Shift ranged {shift.min():.4f} to '
+        f'{shift.max():.4f}, expected 0.2 throughout.')
+
+
 def test_validation_rejects_unknown_keys() -> None:
     """DEFECTS.md §2.7 -- the phantom-mass and unreadable-TypeError case."""
     from src.validate_inputs import InputDataError, validate

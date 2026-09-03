@@ -624,3 +624,63 @@ third case before either of them is written.
 `run.working_unit`. Where the sibling repository is checked out, and how much of
 it to read, are facts about this machine and this run — not about the study. A
 case that pinned them would fight the next machine it was opened on.
+
+
+---
+
+## A case that improves over time
+
+Added 2026-09-03. A case may hold **two** coefficient tables and move from one
+to the other over a stated period.
+
+```
+input_data/case.xlsx
+    source          ... improvement_start = 2030
+                        improvement_end   = 2060
+    processes
+    TCs             the current situation
+    TCs_improved    the improved situation
+```
+
+With `run.years` covering 2020–2070 that gives the four years that matter:
+
+| | |
+|---|---|
+| 2020 → 2030 | the current numbers, unchanged |
+| 2030 → 2060 | a straight line from current to improved |
+| 2060 → 2070 | the improved numbers, held |
+
+`value_min`, `value` and `value_max` all ramp, so the improved situation carries
+its own uncertainty rather than inheriting today's.
+
+**A case with no `TCs_improved` sheet and no window behaves exactly as before**,
+and gets a coefficient table with no `Year` column at all.
+
+### Three things this rests on
+
+**`TCs_improved` names every coefficient `TCs` names** — the user's decision, so
+that a value edited in one sheet and not the other cannot quietly become an
+improvement or a regression. The two are lined up by identity, not by row
+position, so moving a row in one sheet is safe. A mismatch is refused, naming
+how many rows and the first of them.
+
+**One draw is one world.** A coefficient's random stream is keyed on which
+resource moves from where to where and **not** on the year
+(`src/sampling._stream_key`), so every year of one coefficient draws the same
+uniform. Draw 7 is the same optimism about that process in 2030 and in 2060,
+ramped — not two unrelated guesses. Independent draws per year would invent a
+year-to-year wobble nobody measured, and the answer would look plausible.
+`tests/test_regression.py` pins this by shifting a whole triangle by a constant
+and insisting every draw moves by exactly that.
+
+**Closure survives by construction.** Each year is a convex combination of two
+tables whose groups each sum to 1, and a convex combination of two such vectors
+sums to 1. Nothing is renormalised, and groups are formed within a year, never
+across years.
+
+### What it did NOT need
+
+Nothing downstream changed. Both engines already select their coefficient rows
+by year (`select_df_by_year_scenario_location`), and the Monte Carlo already
+samples once per year, so a table with a `Year` column simply works. The whole
+feature is producing that table — `src/case_tables.ramp`.

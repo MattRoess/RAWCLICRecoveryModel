@@ -36,6 +36,22 @@ lives in a chat message is a decision that will be broken.
 4. **A number that restates another is not a second measurement** and its
    `source` must say so.
 
+27. **An improving case carries two complete tables, not a diff.**
+    `TCs_improved` repeats every coefficient `TCs` has. Decided 2026-09-03
+    against listing only what changes: an implicit "unchanged" is invisible,
+    and a full copy can be read side by side. The cost is that a value edited
+    in one sheet and not the other becomes an unintended improvement, which is
+    why the two are matched by identity and any mismatch is refused.
+
+28. **One improvement window for the whole case**, `improvement_start` and
+    `improvement_end` in the `source` sheet. Not per coefficient: a scenario
+    should be sayable in a sentence -- "the programme runs 2030 to 2060".
+
+29. **A draw is one world across the years.** The same coefficient must draw
+    the same uniform in every year, so an improvement is one ramped belief
+    rather than a fresh guess per year. This is why `_stream_key` excludes the
+    year, and it must stay excluded.
+
 ## The layers
 
 5. **The metal route is materials only. No element layer under an alloy.**
