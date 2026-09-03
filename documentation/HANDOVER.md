@@ -43,13 +43,34 @@ follows says what they became so that neither is reopened by accident.
 
 **Open, and small:**
 
-- **The wiring case writes an empty `Layer 4` column** into every CSV and
-  workbook sheet. It is material-keyed, so the column is dead in every row.
-  Drop unused layer columns from what is WRITTEN; the arithmetic does not move.
 - **04_01 has not been re-run.** `carcomposition_draws_years` is set to 11
   years, 2020-2070 step 5, and the export folder holds a PARTIAL result from a
   run that was aborted. `carcomposition_mockup` therefore still reports 2040
   only. The user runs that stage, not the assistant (§6).
+
+### Done 2026-09-03: a case writes only the layers it reaches
+
+All three cases are material-keyed, so `Layer 4` was empty in every row of every
+one of them, and each wrote a dead column into its solution, its Monte Carlo
+summary and two sheets of its workbook. `src/rest.drop_unused_layers` drops it
+**at the moment of writing** -- the arithmetic reads the layers positionally and
+never sees the change, and the wiring case's mass balance is the same 2.67e-16
+it was.
+
+Two things the fix had to get right, both pinned by tests:
+
+- **The FRAME returned by an engine keeps every layer.**
+  `03_run_monte_carlo.py` merges the deterministic answer onto the Monte Carlo
+  one using all four, so dropping before returning breaks the join rather than
+  tidying a file.
+- **Only TRAILING layers go.** An empty layer with a filled one beneath it is a
+  gap in the nesting, which `validate_inputs` refuses at input; dropping it here
+  would quietly restate the nesting as something else.
+
+`99_check_all.py` read the summary back and asked for all four columns, which
+stopped it with a `KeyError` the first time a case was written this way. It now
+takes the depth from the columns the file has. **Any consumer of a written file
+has to do the same** -- the depth is a property of the case, not a constant.
 
 ### What the figures became, 2026-09-02
 

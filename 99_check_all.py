@@ -112,7 +112,13 @@ def mass_balance(params) -> tuple[bool, str]:
 
     summary = pd.read_csv(path, keep_default_na=False, na_values=[])
     summary['mean'] = pd.to_numeric(summary['mean'])
-    summary['depth'] = (summary[LAYERS] != '').sum(axis=1)
+    # Depth from the layers the FILE has, not from all four. A case resolves to
+    # whatever depth its data reaches, and the writer drops the layer columns
+    # nothing fills (src/rest.drop_unused_layers) -- so a material-keyed case
+    # has three. Asking for a column that is not there stopped this check with a
+    # KeyError the first time a case was written that way.
+    layers = [column for column in LAYERS if column in summary.columns]
+    summary['depth'] = (summary[layers] != '').sum(axis=1)
 
     from src import case_tables
     tcs = case_tables.read(params.run.data_folder, 'TCs')

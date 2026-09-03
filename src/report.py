@@ -91,6 +91,9 @@ def overview(params, run) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=['setting', 'value'])
 
 
+from src.rest import drop_unused_layers
+
+
 def finest_layer(summary: pd.DataFrame) -> str:
     """
     The deepest layer this case actually resolves.
@@ -178,9 +181,9 @@ def write(path: str, params, run, summary: pd.DataFrame, tcs: pd.DataFrame,
         'Recovered': recovered(summary, tcs, case or params.run.data_folder),
         'By flow': by_flow(summary),
         'Mass balance': mass_balance(summary, tcs),
-        'Distribution': summary,
+        'Distribution': drop_unused_layers(summary),
         'Coefficients': tcs,
-        'Composition': composition,
+        'Composition': drop_unused_layers(composition),
     }
 
     with pd.ExcelWriter(path, engine='openpyxl') as writer:

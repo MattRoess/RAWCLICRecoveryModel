@@ -13,7 +13,7 @@ from typing import List
 from dataclasses import dataclass
 from itertools import product
 
-from src.rest import add_rest
+from src.rest import add_rest, drop_unused_layers
 from src.selection import chosen_scenario, chosen_years, is_year_match, select
 from src.tc_precedence import apply_precedence
 from src.validate_inputs import InputDataError, validate
@@ -467,7 +467,13 @@ class RecoveryModelLA:
         empty_cols = [col for col in ["Scenario", "Location", "additionalSpecification", "Year"] if full_solution[col].isna().all()]
         full_solution = full_solution.drop(columns=empty_cols)
 
-        full_solution.to_csv(self.output_path(SOLUTION_FILENAME), index=False)
+        # Written without the layer columns nothing in this case reaches --
+        # the same treatment the empty dimension columns get just above. The
+        # frame RETURNED keeps them: callers merge on all four (KEYS in
+        # 03_run_monte_carlo.py), so dropping before returning would break the
+        # join rather than tidy a file.
+        drop_unused_layers(full_solution).to_csv(
+            self.output_path(SOLUTION_FILENAME), index=False)
         return full_solution
 
 

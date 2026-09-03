@@ -714,6 +714,70 @@ def test_a_workbook_case_solves_the_same_as_a_csv_case() -> None:
         shutil.rmtree(case, ignore_errors=True)
 
 
+
+def test_a_dead_layer_column_is_not_written() -> None:
+    """
+    A case writes only the layers it actually reaches.
+
+    All three real cases are material-keyed, so Layer 4 is empty in every row of
+    every one of them, and each was writing a dead column into its solution, its
+    summary and two workbook sheets. Dropped at the moment of WRITING only.
+
+    Both halves matter, so both are checked here:
+      - the file loses the column when nothing fills it;
+      - the FRAME returned keeps it, because 03_run_monte_carlo.py merges the
+        deterministic answer onto the Monte Carlo one using all four layers.
+        Dropping before returning would break that join rather than tidy a file.
+    """
+    from src.upstream import load
+
+    for child_layer, expected in (('material', False), ('element', True)):
+        params, case, root = build_everything(child_layer=child_layer)
+        try:
+            tables = load(params, params.run.data_folder, quiet=True)
+            coefficients(case, tables['composition'])
+            solution = RecoveryModelOptimized(
+                data_folder=case, layer_names=NAMES, tables=tables,
+                working_unit=params.run.working_unit, years='',
+            ).solve_models_and_write_to_output()
+
+            assert 'Layer 4' in solution.columns, (
+                f'{child_layer}: the returned frame lost Layer 4, which the '
+                f'Monte Carlo merges on')
+
+            written = pd.read_csv(f'{case}/output_data/solution_optimized_model.csv',
+                                  keep_default_na=False, na_values=[])
+            has = 'Layer 4' in written.columns
+            assert has == expected, (
+                f"{child_layer}: solution_optimized_model.csv "
+                f"{'has' if has else 'lacks'} a Layer 4 column, expected "
+                f"{'one' if expected else 'none'}")
+            if expected:
+                assert (written['Layer 4'] != '').any(), (
+                    'Layer 4 was written but is empty in every row')
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+            shutil.rmtree(case, ignore_errors=True)
+
+
+def test_a_layer_with_a_gap_below_it_is_kept() -> None:
+    """
+    Only TRAILING layers are dropped.
+
+    An empty layer with a filled one beneath it is a gap in the nesting, which
+    `validate_inputs` refuses at input. If one ever reached the writer, dropping
+    it would quietly restate the nesting as something it is not -- so the rule
+    is "keep everything up to the deepest filled layer", not "drop every empty
+    column".
+    """
+    from src.rest import drop_unused_layers
+
+    gap = pd.DataFrame({'Layer 1': ['P'], 'Layer 2': ['C'], 'Layer 3': [''],
+                        'Layer 4': ['E'], 'Value': [1.0]})
+    assert list(drop_unused_layers(gap).columns) == list(gap.columns), \
+        'a gap in the nesting was silently closed up'
+
+
 def test_the_monte_carlo_runs_on_a_different_item() -> None:
     """Sampling, the sum-to-1 groups and the spread all work off vehicle data."""
     from src.upstream import load

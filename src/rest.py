@@ -58,6 +58,34 @@ import pandas as pd
 
 LAYERS = ['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
 
+
+def drop_unused_layers(frame: "pd.DataFrame") -> "pd.DataFrame":
+    """
+    Drop layer columns nothing in this case reaches, for WRITING only.
+
+    A case resolves to whatever depth its data has. All three current cases are
+    material-keyed, so Layer 4 is empty in every row of every one of them, and
+    each was writing a dead column into its solution, its summary and two sheets
+    of its workbook -- a column that means nothing and invites a reader to
+    wonder what is missing from it.
+
+    ONLY TRAILING LAYERS. An empty layer with a filled one below it is a gap in
+    the nesting, which `validate_inputs` refuses at input; if one ever reached
+    here, dropping it would quietly restate the nesting as something else. So
+    this keeps everything up to the deepest layer that is filled.
+
+    NEVER BEFORE SOLVING. The arithmetic reads the layers positionally and a
+    missing column would change it. This runs at the moment of writing, so the
+    numbers are identical either way.
+    """
+    present = [column for column in LAYERS if column in frame.columns]
+    deepest = 0
+    for position, column in enumerate(present, start=1):
+        if (frame[column].astype(str).str.strip() != '').any():
+            deepest = position
+    dead = present[deepest:]
+    return frame.drop(columns=dead) if dead else frame
+
 # The name given to the derived child. Chosen to read as what it is in an
 # output table. `validate_rest_name` refuses a dataset that already uses it for
 # something real, rather than quietly merging the two.

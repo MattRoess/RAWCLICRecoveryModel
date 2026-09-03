@@ -231,7 +231,8 @@ def run_case(folder, params, draws: int) -> int:
                                    layer_names=LAYER_NAMES,
                                    tables=_tables(params, folder))
     path = model.output_path('monte_carlo_summary.csv')
-    merged.to_csv(path, index=False)
+    from src.rest import drop_unused_layers
+    drop_unused_layers(merged).to_csv(path, index=False)
     print(f'\n{path}: {len(merged):,} rows')
 
     # Everything in one workbook: the headline totals, where the mass went, the
