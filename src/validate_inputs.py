@@ -662,14 +662,23 @@ def check(folder: str, tables: dict | None = None) -> list[Problem]:
     return problems
 
 
+# What has already been said this run. A warning is about the TABLE, so saying
+# it again tells the reader nothing -- and validate() runs once per engine, of
+# which 03_run_monte_carlo.py builds four. The same block appeared four times in
+# one run, which teaches people to scroll past warnings.
+_ALREADY_SAID: set[tuple[str, str]] = set()
+
+
 def report(folder: str, problems: list[Problem]) -> None:
     """Print the warnings, and raise on the errors."""
     warnings = [p for p in problems if p.severity == 'WARNING']
     errors = [p for p in problems if p.severity == 'ERROR']
 
-    if warnings:
-        print(f'\n{len(warnings)} warning(s) about {folder}:')
-        for problem in warnings:
+    fresh = [p for p in warnings if (folder, p.message) not in _ALREADY_SAID]
+    if fresh:
+        _ALREADY_SAID.update((folder, p.message) for p in fresh)
+        print(f'\n{len(fresh)} warning(s) about {folder}:')
+        for problem in fresh:
             print(problem)
         print('  These are open method questions, not mistakes -- see '
               'documentation/DEFECTS.md. The run continues.')

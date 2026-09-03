@@ -48,6 +48,38 @@ follows says what they became so that neither is reopened by accident.
   run that was aborted. `carcomposition_mockup` therefore still reports 2040
   only. The user runs that stage, not the assistant (§6).
 
+### Done 2026-09-03: two kinds of repeated noise, and a spreadsheet hazard
+
+A Monte Carlo run printed openpyxl's data-validation warning **nine times** and
+the case's own warning block **four times**, interleaved with the output that
+matters -- which is how people learn to scroll past warnings.
+
+- openpyxl cannot round-trip the extension the workbook dropdowns use and says
+  so on every open. Filtered at the three places `src/case_tables.py` opens a
+  workbook, by that one message from that one library. Not a blanket filter:
+  pandas and numpy warnings have twice been the first sign of a real defect here.
+- `validate()` runs once per engine, and `03_run_monte_carlo.py` builds four.
+  A warning is about the TABLE, so saying it again tells nobody anything.
+  `src/validate_inputs.py` now says each one once per run.
+
+Nine plus four became zero plus one.
+
+**A SPREADSHEET TURNS A BLANK CELL INTO 0.** A definitional row -- the hulk
+transfer, `rest` to loss -- carried blank bounds meaning "no range". Opening
+`case.xlsx` and saving it wrote `0` into those cells, which reads as "the
+minimum is zero" and, beside a value of 1, is an impossible triangle. The
+validator refused and computed nothing, which is the system working; the cause
+was not obvious from the message.
+
+Every definitional row in all three cases now states `value_min = value_max =
+value` explicitly. It means exactly what blank meant, and there is no empty cell
+left for a spreadsheet to fill in. 4 repaired in wiring, 6 and 76 made explicit
+in boards and car composition; boards verified byte-identical afterwards.
+
+**Why those rows are 1 and cannot carry a range**: each is the only edge leaving
+its flow. A one-member group has no freedom, so a range there is not uncertainty,
+it is a leak. Uncertainty needs a second destination for the remainder.
+
 ### Built 2026-09-03: a case can improve over time
 
 A case may carry a second coefficient table, `TCs_improved`, and an

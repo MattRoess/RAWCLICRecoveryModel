@@ -36,7 +36,9 @@ every caller.
 """
 from __future__ import annotations
 
+import contextlib
 import os
+import warnings
 
 import pandas as pd
 
@@ -48,6 +50,27 @@ TABLES = ('source', 'processes', 'TCs', 'TCs_improved')
 # The coefficients an improved case ends at. Optional: a case without it does
 # not change over time, which is every case built before 2026-09-03.
 IMPROVED = 'TCs_improved'
+
+
+@contextlib.contextmanager
+def _quiet_workbook():
+    """
+    Open a workbook without openpyxl's data-validation warning.
+
+    The case workbooks carry dropdowns on `source` and `processes` (added
+    2026-08-26 so the vocabulary is offered rather than remembered). openpyxl
+    cannot round-trip the extension those use and says so on EVERY open -- nine
+    times in one Monte Carlo run, interleaved with the output that matters.
+
+    Narrow on purpose: this filters that one message from that one library. A
+    blanket filter here would also hide the pandas and numpy warnings that have
+    twice been the first sign of a real defect in this project.
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            'ignore', category=UserWarning, module='openpyxl',
+            message='Data Validation extension is not supported.*')
+        yield
 
 # What identifies one coefficient, so the two tables can be lined up row for
 # row. Not src.mass_balance.RESOURCE: that leaves out Output_FlowID, because a
@@ -197,7 +220,8 @@ def csv_path(case: str, table: str) -> str:
 
 def _sheet_names(path: str) -> list[str]:
     from openpyxl import load_workbook
-    book = load_workbook(path, read_only=True)
+    with _quiet_workbook():
+        book = load_workbook(path, read_only=True)
     try:
         return list(book.sheetnames)
     finally:
@@ -246,7 +270,8 @@ def read(case: str, table: str, dtype=None) -> pd.DataFrame:
     if kind == 'csv':
         return pd.read_csv(path, dtype=dtype, **CSV_OPTIONS)
 
-    frame = pd.read_excel(path, sheet_name=table, dtype=dtype)
+    with _quiet_workbook():
+        frame = pd.read_excel(path, sheet_name=table, dtype=dtype)
     return normalise(frame)
 
 
@@ -348,7 +373,8 @@ def write_sheet(case: str, table: str, frame: pd.DataFrame, *,
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
     if os.path.exists(path):
-        book = load_workbook(path)
+        with _quiet_workbook():
+            book = load_workbook(path)
         position = book.sheetnames.index(table) if table in book.sheetnames else None
         if position is not None:
             del book[table]

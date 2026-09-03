@@ -1,265 +1,265 @@
 Input_FlowID,Input_layer,Input_layer_key,Output_FlowID,TC_target_layer,TC_target_key,value,value_min,value_max,process,technology,source,Year
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.85,0.7,0.95,disassembly,manual,"PLACEHOLDER (Claude, not data) -- a motor is a heavy, valuable, discrete part and a worker goes for it.",2020
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.15,0.105,0.32,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2020
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2020
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.3,0.15,0.4,disassembly,manual,"PLACEHOLDER (Claude, not data) -- pulling a harness out is slow manual work, so most of it stays in the car.",2020
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.7,0.49,0.76,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2020
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2020
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2020
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2020
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2020
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2020
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9,0.7,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2020
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.1,0.07,0.28,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2020
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2020
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2020
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,,,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2020
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2020
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2020
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2020
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2020
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.7,0.5,0.8,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for aluminium alloy.",2020
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.3,0.21,0.44,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2020
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.9,0.7,1.0,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for steel alloy.",2020
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.1,0.07,0.28,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2020
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,,,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2020
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.85,0.7,0.95,disassembly,manual,"PLACEHOLDER (Claude, not data) -- a motor is a heavy, valuable, discrete part and a worker goes for it.",2025
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.15,0.105,0.32,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2025
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2025
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.3,0.15,0.4,disassembly,manual,"PLACEHOLDER (Claude, not data) -- pulling a harness out is slow manual work, so most of it stays in the car.",2025
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.7,0.49,0.76,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2025
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2025
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2025
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2025
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2025
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2025
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9,0.7,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2025
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.1,0.07,0.28,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2025
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2025
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2025
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,,,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2025
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2025
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2025
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2025
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2025
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.7,0.5,0.8,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for aluminium alloy.",2025
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.3,0.21,0.44,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2025
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.9,0.7,1.0,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for steel alloy.",2025
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.1,0.07,0.28,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2025
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,,,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2025
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.85,0.7,0.95,disassembly,manual,"PLACEHOLDER (Claude, not data) -- a motor is a heavy, valuable, discrete part and a worker goes for it.",2030
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.15,0.105,0.32,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2030
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2030
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.3,0.15,0.4,disassembly,manual,"PLACEHOLDER (Claude, not data) -- pulling a harness out is slow manual work, so most of it stays in the car.",2030
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.7,0.49,0.76,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2030
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2030
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2030
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2030
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2030
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2030
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9,0.7,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2030
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.1,0.07,0.28,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2030
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2030
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2030
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,,,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2030
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2030
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2030
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2030
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2030
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.7,0.5,0.8,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for aluminium alloy.",2030
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.3,0.21,0.44,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2030
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.9,0.7,1.0,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for steel alloy.",2030
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.1,0.07,0.28,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2030
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,,,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2030
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.85,0.7,0.95,disassembly,manual,"PLACEHOLDER (Claude, not data) -- a motor is a heavy, valuable, discrete part and a worker goes for it.",2035
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.15,0.105,0.32,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2035
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2035
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.3,0.15,0.4,disassembly,manual,"PLACEHOLDER (Claude, not data) -- pulling a harness out is slow manual work, so most of it stays in the car.",2035
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.7,0.49,0.76,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2035
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2035
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2035
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2035
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2035
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2035
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9,0.7,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2035
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.1,0.07,0.28,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2035
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2035
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2035
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,,,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2035
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2035
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2035
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2035
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2035
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.7,0.5,0.8,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for aluminium alloy.",2035
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.3,0.21,0.44,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2035
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.9,0.7,1.0,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for steel alloy.",2035
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.1,0.07,0.28,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2035
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,,,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2035
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.85,0.7,0.95,disassembly,manual,"PLACEHOLDER (Claude, not data) -- a motor is a heavy, valuable, discrete part and a worker goes for it.",2040
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.15,0.105,0.32,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2040
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2040
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.3,0.15,0.4,disassembly,manual,"PLACEHOLDER (Claude, not data) -- pulling a harness out is slow manual work, so most of it stays in the car.",2040
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.7,0.49,0.76,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2040
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2040
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2040
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2040
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2040
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2040
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9,0.7,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2040
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.1,0.07,0.28,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2040
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2040
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2040
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,,,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2040
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2040
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2040
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2040
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2040
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.7,0.5,0.8,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for aluminium alloy.",2040
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.3,0.21,0.44,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2040
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.9,0.7,1.0,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for steel alloy.",2040
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.1,0.07,0.28,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2040
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,,,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2040
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.85,0.7,0.95,disassembly,manual,"PLACEHOLDER (Claude, not data) -- a motor is a heavy, valuable, discrete part and a worker goes for it.",2045
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.15,0.105,0.32,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2045
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2045
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.3,0.15,0.4,disassembly,manual,"PLACEHOLDER (Claude, not data) -- pulling a harness out is slow manual work, so most of it stays in the car.",2045
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.7,0.49,0.76,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2045
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2045
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2045
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2045
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2045
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2045
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9,0.7,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2045
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.1,0.07,0.28,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2045
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2045
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2045
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,,,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2045
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2045
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2045
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2045
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2045
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.7,0.5,0.8,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for aluminium alloy.",2045
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.3,0.21,0.44,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2045
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.9,0.7,1.0,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for steel alloy.",2045
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.1,0.07,0.28,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2045
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,,,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2045
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.85,0.7,0.95,disassembly,manual,"PLACEHOLDER (Claude, not data) -- a motor is a heavy, valuable, discrete part and a worker goes for it.",2050
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.15,0.105,0.32,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2050
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2050
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.3,0.15,0.4,disassembly,manual,"PLACEHOLDER (Claude, not data) -- pulling a harness out is slow manual work, so most of it stays in the car.",2050
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.7,0.49,0.76,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2050
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2050
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2050
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2050
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2050
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2050
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9,0.7,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2050
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.1,0.07,0.28,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2050
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2050
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2050
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,,,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2050
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2050
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2050
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2050
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2050
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.7,0.5,0.8,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for aluminium alloy.",2050
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.3,0.21,0.44,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2050
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.9,0.7,1.0,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for steel alloy.",2050
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.1,0.07,0.28,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2050
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,,,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2050
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.85,0.7,0.95,disassembly,manual,"PLACEHOLDER (Claude, not data) -- a motor is a heavy, valuable, discrete part and a worker goes for it.",2055
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.15,0.105,0.32,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2055
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2055
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.3,0.15,0.4,disassembly,manual,"PLACEHOLDER (Claude, not data) -- pulling a harness out is slow manual work, so most of it stays in the car.",2055
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.7,0.49,0.76,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2055
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2055
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2055
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2055
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2055
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2055
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9,0.7,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2055
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.1,0.07,0.28,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2055
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2055
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2055
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,,,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2055
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2055
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2055
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2055
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2055
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.7,0.5,0.8,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for aluminium alloy.",2055
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.3,0.21,0.44,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2055
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.9,0.7,1.0,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for steel alloy.",2055
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.1,0.07,0.28,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2055
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,,,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2055
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.85,0.7,0.95,disassembly,manual,"PLACEHOLDER (Claude, not data) -- a motor is a heavy, valuable, discrete part and a worker goes for it.",2060
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.15,0.105,0.32,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2060
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2060
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.3,0.15,0.4,disassembly,manual,"PLACEHOLDER (Claude, not data) -- pulling a harness out is slow manual work, so most of it stays in the car.",2060
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.7,0.49,0.76,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2060
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2060
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2060
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2060
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2060
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2060
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9,0.7,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2060
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.1,0.07,0.28,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2060
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2060
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2060
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,,,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2060
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2060
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2060
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2060
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2060
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.7,0.5,0.8,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for aluminium alloy.",2060
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.3,0.21,0.44,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2060
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.9,0.7,1.0,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for steel alloy.",2060
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.1,0.07,0.28,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2060
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,,,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2060
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.85,0.7,0.95,disassembly,manual,"PLACEHOLDER (Claude, not data) -- a motor is a heavy, valuable, discrete part and a worker goes for it.",2065
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.15,0.105,0.32,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2065
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2065
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.3,0.15,0.4,disassembly,manual,"PLACEHOLDER (Claude, not data) -- pulling a harness out is slow manual work, so most of it stays in the car.",2065
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.7,0.49,0.76,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2065
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2065
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2065
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2065
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2065
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2065
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9,0.7,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2065
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.1,0.07,0.28,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2065
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2065
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2065
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,,,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2065
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2065
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2065
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2065
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2065
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.7,0.5,0.8,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for aluminium alloy.",2065
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.3,0.21,0.44,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2065
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.9,0.7,1.0,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for steel alloy.",2065
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.1,0.07,0.28,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2065
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,,,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2065
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.85,0.7,0.95,disassembly,manual,"PLACEHOLDER (Claude, not data) -- a motor is a heavy, valuable, discrete part and a worker goes for it.",2070
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.15,0.105,0.32,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2070
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2070
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.3,0.15,0.4,disassembly,manual,"PLACEHOLDER (Claude, not data) -- pulling a harness out is slow manual work, so most of it stays in the car.",2070
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.7,0.49,0.76,disassembly,manual,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2070
-F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,,,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2070
-F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2070
-F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2070
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2070
-F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2070
-F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.9,0.7,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2070
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.1,0.07,0.28,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2070
-F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.95,0.75,1.0,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- recovered on its own line, from a part that came out whole. This is the reason to disassemble at all.",2070
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.05,0.035,0.24,own_recycling,dedicated,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2070
-F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,,,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2070
-F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2070
-F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.35,0.65,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for copper.",2070
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2070
-F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.315,0.56,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2070
-F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.7,0.5,0.8,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for aluminium alloy.",2070
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.3,0.21,0.44,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2070
-F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.9,0.7,1.0,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- recovered from a shredded car. Crushing and tearing mixes everything, so less comes back -- most of all for steel alloy.",2070
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.1,0.07,0.28,general_recycling,shredder,"PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is 1 minus what left in the stream, given its own range. Replace it with a number measured on this side.",2070
-F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,,,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2070
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2020
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2020
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2020
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2020
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2020
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2020
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2020
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2020
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2020
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2020
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2020
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2020
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2020
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2020
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2020
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2020
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2020
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2025
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2025
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2025
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2025
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2025
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2025
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2025
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2025
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2025
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2025
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2025
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2025
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2025
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2025
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2025
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2025
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2025
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2030
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2030
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2030
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2030
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2030
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2030
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2030
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2030
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2030
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2030
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2030
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2030
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2030
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2030
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2030
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2030
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2030
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2035
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2035
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2035
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2035
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2035
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2035
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2035
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2035
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2035
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2035
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2035
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2035
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2035
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2035
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2035
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2035
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2035
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2040
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2040
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2040
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2040
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2040
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2040
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2040
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2040
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2040
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2040
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2040
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2040
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2040
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2040
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2040
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2040
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2040
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2045
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2045
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2045
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2045
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2045
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2045
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2045
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2045
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2045
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2045
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2045
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2045
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2045
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2045
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2045
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2045
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2045
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2050
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2050
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2050
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2050
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2050
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2050
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2050
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2050
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2050
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2050
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2050
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2050
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2050
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2050
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2050
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2050
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2050
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2055
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2055
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2055
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2055
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2055
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2055
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2055
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2055
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2055
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2055
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2055
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2055
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2055
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2055
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2055
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2055
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2055
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2060
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2060
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2060
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2060
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2060
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2060
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2060
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2060
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2060
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2060
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2060
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2060
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2060
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2060
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2060
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2060
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2060
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2065
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2065
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2065
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2065
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2065
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2065
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2065
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2065
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2065
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2065
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2065
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2065
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2065
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2065
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2065
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2065
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2065
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Motors,0.3,0.1,0.45,disassembly,manual,,2070
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Motors,0.7,0.5,0.85,disassembly,manual,,2070
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Motors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2070
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Wiring,0.85,0.7,0.95,disassembly,manual,,2070
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Wiring,0.15,0.05,0.25,disassembly,manual,,2070
+F_in_car,Layer 1,BEV,F_shredded,Layer 2,Wiring,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too. Not a measurement and not uncertain.",2070
+F_disassembled,Layer 2,Motors,F_cu_own,Layer 3,copper,0.7,0.5,0.85,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Wiring,F_cu_own,Layer 3,copper,0.85,0.7,0.95,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,copper,0.3,0.15,0.65,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Wiring,F_loss_own,Layer 3,copper,0.15,0.05,0.3,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Motors,F_alalloy_own,Layer 3,alalloy,0.7,0.5,0.85,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,alalloy,0.3,0.15,0.65,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Motors,F_fealloy_own,Layer 3,fealloy,0.7,0.5,0.85,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,fealloy,0.3,0.15,0.65,own_recycling,dedicated,,2070
+F_disassembled,Layer 2,Motors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,own_recycling,dedicated,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2070
+F_shredded,Layer 2,Motors,F_cu_general,Layer 3,copper,0.6,0.2,0.9,general_recycling,shredder,,2070
+F_shredded,Layer 2,Wiring,F_cu_general,Layer 3,copper,0.55,0.3,0.75,general_recycling,shredder,,2070
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,copper,0.4,0.2,0.6,general_recycling,shredder,,2070
+F_shredded,Layer 2,Wiring,F_loss_general,Layer 3,copper,0.45,0.3,0.65,general_recycling,shredder,,2070
+F_shredded,Layer 2,Motors,F_alalloy_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2070
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,alalloy,0.5,0.35,0.7,general_recycling,shredder,,2070
+F_shredded,Layer 2,Motors,F_fealloy_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2070
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,fealloy,0.5,0.35,0.7,general_recycling,shredder,,2070
+F_shredded,Layer 2,Motors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"Unspecified material -- plastics and the like. Not recovered, which is what makes every recovery figure here a lower bound.",2070
