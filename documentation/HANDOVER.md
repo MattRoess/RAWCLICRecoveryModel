@@ -3,7 +3,11 @@
 Current as of **2026-09-02**. Rewritten from the ground up on 2026-08-21 and
 updated since; git has the older text.
 
-**Read this first: what happened on 2026-09-01.** The upstream draw folder had
+**What is left to do is in NEXT, immediately below: the coefficients, and
+nothing else.** The rest of this document is why things are the way they are,
+and section 6 is how to work with this user -- read that before doing anything.
+
+**Then read this: what happened on 2026-09-01.** The upstream draw folder had
 been rewritten on 08-31 and held **four runs at once**, because upstream writes
 it file by file and never clears it — Motors' elements came to 1.81 of Motors.
 `src/upstream.py` read the union of them without a word; it now refuses, naming
@@ -22,39 +26,62 @@ Three things followed from that day, all built and all tested:
    had left the composition while being documented as merging, and took 32 of
    them, every rare earth included. DEFECTS.md §3.12.
 
-## NEXT: THE BOARDS CASE.
+## NEXT: THE NUMBERS. THE MODEL IS FINISHED.
 
-**The user's instruction, 2026-09-02, after the figures were done: the boards
-structure is not what is needed. The shredded road is not split -- nobody is
-interested in it -- and the elements recovered by the specialist route are what
-the case is for.** Built the same day; see *the boards case* below.
+**Both cases are built, both run end to end, and not one coefficient in either
+of them is real.** 20 of the wiring case's 24 rows and 47 of the boards case's
+52 say `PLACEHOLDER (Claude, not data)` in their `source` column. Everything
+else -- the network, the layers, the sampling, the figures, the workbook -- is
+correct arithmetic on invented numbers. §4 is how to replace them and in what
+order, and `tools/filling_sheet.py` ranks them by what measuring each one would
+actually buy. **Five rows carry 80% of the wiring case's spread. Three carry
+80% of the boards case's.** That is the whole of what is left here.
 
-**Open:**
+**Nothing else is open.** The two things that were on this list at the start of
+2026-09-02 -- the figures, and the boards structure -- are done, and what
+follows says what they became so that neither is reopened by accident.
 
-`monte_carlo.memory_budget_gb` went 4.0 -> 8.0 the same day, at the user's
-choice, because the boards case needs 4.5 GB: 1,661 rows x 200,000 draws is
-2.66 GB of result on its own. The budget is a guard, not a model parameter --
-no number in any result moves -- and the machine has 32 GB. Stage 03 refused
-before allocating anything and named its levers, which is what it is for; the
-other two levers, fewer draws and fewer years, both change the answer and were
-turned down.
+**Open, and small:**
 
 - **The wiring case writes an empty `Layer 4` column** into every CSV and
   workbook sheet. It is material-keyed, so the column is dead in every row.
   Drop unused layer columns from what is WRITTEN; the arithmetic does not move.
+- **04_01 has not been re-run.** `carcomposition_draws_years` is set to 11
+  years, 2020-2070 step 5, and the export folder holds a PARTIAL result from a
+  run that was aborted. `carcomposition_mockup` therefore still reports 2040
+  only. The user runs that stage, not the assistant (§6).
 
-**The figures are done.** `spread.png` and `mode_vs_mean.png` both used to sum
-the year axis; both now show one year and say, from a measurement rather than a
-hope, how much the answer would differ in another. `spread.png` carries the
-results that genuinely change between the first year and the last, side by side;
-`spread_last_year.png` is the same at twice the width for the last year only.
-Read [DECISIONS.md](DECISIONS.md) section *Figures* before touching any of them
--- every rule there was written after a figure was rejected.
+### What the figures became, 2026-09-02
 
-**Do not invent a figure.** `pdf_<resource>.png` and `pdf_all.png` already show
-the per-year densities with the deterministic run on them. `over_time.png`
-already shows the median trajectory with the 95% band. Look at what is there
-before adding anything.
+Every rule in [DECISIONS.md](DECISIONS.md) section *Figures* was written after a
+figure was rejected, several of them more than once. Read it before touching any
+of these.
+
+| figure | what it is |
+|---|---|
+| `over_time.png` | the median per resource per year with the 95% band, deterministic run dashed |
+| `pdf_<resource>.png` | the density, one panel per year, every other year |
+| `pdf_all.png` | those panels on one page, resources x years, each panel its own axis |
+| `spread.png` | how much and how sure on one log axis, with BOTH years on the rows whose certainty changed |
+| `spread_last_year.png` | the same, last year only, at twice the width |
+| `mode_vs_mean.png` | how far the single-value answer sits from the mean, in ONE year, with the drift across the others measured in the subtitle |
+| `structure.png` | the network, each endpoint's ROLE, and every coefficient behind every arrow |
+
+`distribution.png` and `flows_over_time.png` were deleted. The first summed an
+absolute mass across years; the second was unreadable. `spread.png` and
+`mode_vs_mean.png` had the same summing defect and were fixed rather than
+deleted -- both now show one year and state, from a measurement, how much
+another year would differ.
+
+**Do not invent a figure.** Five replacements for a density figure were built
+before somebody noticed `pdf_<resource>` already did the job.
+
+### What the boards case became, 2026-09-02
+
+The user's instruction: *the shredded road is not split -- nobody is interested
+in it -- and the elements recovered by the specialist route are what the case is
+for.* Three general-recycling flows and their six coefficients came out;
+`F_shredded` is terminal with the role `handoff`. See *the boards case* in §1.
 
 ---
 
@@ -196,56 +223,67 @@ document is for picking the work back up.
 
 ## 1. Where things stand
 
-**Both pipelines run end to end on real upstream data. All 117 checks pass.**
+**Three cases run end to end on real upstream data. All 118 checks pass.**
 
-| | 04_02 electronics | 04_01 car composition |
-|---|---|---|
-| case folder | `data_folder/bev_electronics_wiring` | `data_folder/carcomposition_mockup` |
-| covers | wiring and motors in BEVs | whole cars, five drivetrains |
-| finest resolution | **material** — copper, alalloy, fealloy | **material** — calAHSS, battery |
-| element layer | **none at all** | none |
-| years | 2030–2050 | 2040 |
-| draws | 200,000 | 50,000 |
-| mass in | 640.8 kt (2050) | 13,863 kt (2040) |
-| mass balance | 1.9e-16 | 4.7e-11 |
-| recovered | 76.2% of collected (2050) | 82.8% of collected (2040) |
-| coefficient rows | 24, of which 10 are chosen | 632 |
+| | wiring | boards | car composition |
+|---|---|---|---|
+| case folder | `bev_electronics_wiring` | `bev_electronics_boards` | `carcomposition_mockup` |
+| from | 04_02 | 04_02 | 04_01 |
+| covers | wiring and motors in BEVs | boards and sensors in BEVs | whole cars, five drivetrains |
+| finest resolution | **material** — copper, alalloy, fealloy | **element** — Ag, Au, Cu, Pd, Nd, ... | **material** — calAHSS, battery |
+| element layer | none at all | Layer 3 IS the elements | none |
+| years | 2020–2070, step 5 | 2020–2070, step 5 | 2040 |
+| draws | 200,000 | 200,000 | 50,000 |
+| mass in | 906.1 kt (2070) | 11.9 kt (2070) | 13,863 kt (2040) |
+| mass balance | 0.0 | 1.6e-16 | 4.7e-11 |
+| recovered | 76.5% of collected (2070) | 25.6%, with 49.9% handed on | 82.8% (2040) |
+| coefficient rows | 24 | 52 | 632 |
+| of those, invented | **20** | **47** | **556** |
 
-PCB and Sensors are exported by 04_02 and read by nothing. They are not in this
-case's `groups`, and the case that covered them was deleted on 2026-09-02.
+The boards case's three-way split is the case: a quarter of the mass comes back
+as named elements, a quarter is lost inside the specialist route, and **half
+never reaches it at all** because the board stayed in the car. That last half is
+`F_shredded`, a `handoff` -- what becomes of it is another model's question.
 
 To verify, set `run.data_folder` and press Run on `99_check_all.py`: six test
-suites on fixed fixtures (117 checks), then the pipeline and a mass balance.
+suites on fixed fixtures (118 checks), then the pipeline and a mass balance.
 
-**`run.data_folder` points at `bev_electronics_wiring`.** Its loss rows ARE
-residual -- computed as `1 - what reached a pile` -- at the user's instruction on
-2026-09-02, so that a person types a yield and nothing else. That reverses the
-2026-08-28 decision below; simplicity won over having a measured range on both
-sides of every pair.
+**No `is_residual` anywhere, and there must not be** (DECISIONS.md 1). Every
+coefficient is a value with its own range. The loss rows in both electronics
+cases were nevertheless WRITTEN as `1 minus the yield beside them`, and each
+says exactly that in its `source`:
+
+    PLACEHOLDER (Claude, not data) -- NOT AN INDEPENDENT MEASUREMENT: it is
+    1 minus what left in the stream, given its own range. Replace it with a
+    number measured on this side.
+
+That is the honest form of it -- a real row carrying a real range, and a
+sentence saying nobody measured it -- as against a derived row, which hides the
+same fact in machinery. §4 has what to do when one side of such a pair is
+measured.
 
 Both case tables are **structurally finished**. `tools/tc_worklist.py` reports
-all 26 groups in the electronics case as *measured on every row*, and 278 of 278
-in the car composition one as correct as they stand, with no warnings on either.
-Nothing in the tables needs converting, rearranging or repairing. What they need
-is numbers — see §4.
+every group as measured on every row, with no warnings. Nothing in the tables
+needs converting, rearranging or repairing. What they need is numbers — see §4.
 
 ### The one thing that matters most
 
 **Every transfer coefficient in this project is a placeholder I invented.**
 Not one is measured.
 
-| case | rows | invented outright | derived or definitional |
+| case | rows | invented outright | definitional or stated |
 |---|---|---|---|
-| `bev_electronics` | 68 | 60 `PLACEHOLDER (Claude, not data)` | 8 routing decisions and the hulk transfer |
-| `carcomposition_mockup` | 632 | 532 `MADE UP (Claude)` | 100 definitional hulk transfers |
+| `bev_electronics_wiring` | 24 | 20 `PLACEHOLDER (Claude, not data)` | 2 hulk transfers at 1, 2 `rest` rows |
+| `bev_electronics_boards` | 52 | 47 `PLACEHOLDER (Claude, not data)` | 2 hulk transfers, 2 `rest` rows, 1 boron |
+| `carcomposition_mockup` | 632 | 556 `MADE UP (Claude)` | 76 definitional hulk transfers |
 
-**Neither table has a residual row left.** What remains beside the placeholders
-states a definition (a hulk that was not dismantled goes to the shredder, at 1)
-or a routing decision (a flow that does not apply here, at 0). A residual is
-`parent − Σ known children`, so it is arithmetic on the invented numbers beside
-it — which is why the headline above says every coefficient and means it. The
-split is worth stating only because the `source` column distinguishes them, and
-a reader comparing this table against the file should find them agreeing.
+**No table has a residual row.** What remains beside the placeholders states a
+definition (a hulk that was not dismantled goes to the shredder, at 1), routes
+the unspecified `rest` to loss, or records a fact -- boron is not recovered,
+because no process at this scale separates it. None of those is a measurement
+either; they are simply not guesses. The split is worth stating only because
+the `source` column distinguishes them, and a reader comparing this table
+against the file should find them agreeing.
 
 The `source` column says so on every row, and it is carried into the workbook's
 Coefficients sheet. The uncertainty ranges are invented too, so **the 95%
@@ -279,11 +317,17 @@ with another stage's coefficients and no check anywhere notices.
 
 Three things `source.csv` says that nothing could infer:
 
-- **`child_layer`** — `element` (04_02: the child is Cu within Wiring, with a
-  placeholder material between) or `material` (04_01: the child is calAHSS
-  within elvBIW, at Layer 3, no Layer 4). Getting this wrong **does not fail**:
-  it files materials where elements belong, every element-keyed coefficient
-  matches nothing, and the run still balances while being wrong.
+- **`child_layer`** — `material`, meaning the child sits at Layer 3 and there is
+  no Layer 4, or `element`, meaning Layer 3 holds whatever material the file
+  names resolve and the children go below it. **All three current cases are
+  `material`**: `calAHSS` within `elvBIW`, `copper` within `Wiring`, and `Ag`
+  within `PCB` -- the last of these an ELEMENT sitting in the layer the setting
+  calls material, which is right, because the boards route really does separate
+  gold from palladium and there is nothing between the board and them. If that
+  ever reads wrong, the fix is what the layers are NAMED, not where the numbers
+  sit. Getting this setting wrong **does not fail**: it files children at the
+  wrong depth, every coefficient keyed at the other one matches nothing, and the
+  run still balances while being wrong.
 - **`product`** — one name, or several separated by `;`. 04_01's five
   drivetrains are one case, because they are one study: the same shredder and
   the same coefficient table, with only the dismantling rows keyed per
@@ -437,22 +481,17 @@ flow -- there are two.** So 11 export years is ~29 minutes and every year is
 ~2 hours. Measured, not estimated. The user chose the step of 5 after watching
 the every-year version reach 1h 50m.
 
-### What 04_02 has to change for the metals case
+### What 04_02 was changed to export, and why — **DONE 2026-09-02**
 
-**It must write the material's own mass, and not go down to the elements** for
-the metal domains. 04_01 already exports exactly this shape --
-`calAHSS__elvBIW.npy` -- and this model reads it with `child_layer = material`
-and no element layer at all. 04_02 writes elements instead, which is why Layer 3
-here can only ever be a by-product of element names.
-
-Four files, and they are the whole ask:
+**It writes the material's own mass and does not go down to the elements**, for
+the metal domains only. Four files, and they were the whole ask:
 
     copper__Wiring.npy      the harness
     copper__Motors.npy      the windings -- the motor copper IS wiring
     alalloy__Motors.npy
     fealloy__Motors.npy     steel + cast iron + the ferrite magnets, one stream
 
-**The numbers are already there, and no approximation is involved.**
+**No approximation was involved.**
 `RAWCLICVehicleElectronics/Composition/element_draws/motors_<segment>_elements.txt`
 names every column of the fractions array, and each is either a bare element or
 `<element>__<material>`:
@@ -463,35 +502,40 @@ names every column of the fractions array, and each is either a bare element or
     Fe__cfsteel C__cfsteel Mn__cfsteel P__cfsteel S__cfsteel
     Al__bulk  Plastic  Unspecified
 
-and `motors_<segment>_esteel_elements.txt` names `Fe Si C Mn Al P S` -- the same
-seven. So **every element of every alloy is in the main list**, and an alloy's
-mass is the exact sum of its `__<material>` columns. Nothing is missing and
-nothing has to be invented:
+Every element of every alloy is in that list, so an alloy's mass is the exact
+sum of its `__<material>` columns:
 
     copper   = Cu + every X__copper        (the bare `Cu` IS the copper metal,
                                             which is why no Cu__copper exists)
     alalloy  = every X__bulk
     fealloy  = every X__esteel + X__cfsteel + X__magnet
 
-The change is in `code/04_02_BEVelectronics.py`, in the export block that calls
-`_write_element_draws` -- 04_02's own figures and tables do not move.
+**Half of that change is stopping the old one.** `ALLOY_DOMAINS = ('Wiring',
+'Motors')`, and the element export is skipped for a domain in that tuple --
+otherwise the folder holds both shapes and `src/upstream.py` reads Cu twice,
+once as an element and once inside `copper`. Adding the alloy files without
+removing the element files was the first attempt and it was wrong.
+`code/test_stage04_02_export.py` calls `element_flows` for real with `export`
+set and asserts on **the file names produced**, which is the only thing that
+catches this: five checks.
 
-**This will not work off the current export.** The 09-01 re-run resolved 24
-elements and dropped `Fe` entirely, so summing today gives 0.06% of Motors
-rather than the steel. `bev_electronics_elements` has to be empty (= all) when
-it runs.
+PCB and Sensors are NOT alloy domains, so they still export
+`<element>__<group>` -- which is what the boards case reads, and why its
+Layer 3 holds element names.
 
-### Why the metals case is not built yet
+Verified against the previous 5-year run: worst relative difference **3.0e-05**,
+Motors alloys 92.51-92.54% of the domain on every year,
+`copper__Wiring` / domain exactly 100%, no negatives and no NaN.
 
-Two attempts were made on 2026-09-01 and both were wrong, in the same way:
-keying the recovery at the material layer while `child_layer` stayed `element`
-leaves `Al`, `Mn` and `Sr` sitting underneath `bulk`, `cfsteel` and `magnet`.
-The user's instruction is that there is no element layer there at all. There is
-no way to that shape from an elemental export, so the case waits for the four
-files. Nothing half-built was left behind -- `case.xlsx` was reverted.
+### Why two earlier attempts at the metals case were wrong
 
-The branch itself is **20 commits ahead of `main`** — the other 17 are earlier
-work that had not been merged. Merging it brings all twenty, not three.
+Both, on 2026-09-01, in the same way: keying the recovery at the material layer
+while `child_layer` stayed `element`, which leaves `Al`, `Mn` and `Sr` sitting
+underneath `bulk`, `cfsteel` and `magnet`. The user's instruction is that there
+is no element layer there at all -- *"NO NO NO Fe is the steel and cast iron
+alloy and the magnets. No elements. Just the material."* There was no way to
+that shape from an elemental export, which is what the four files above fixed.
+Both attempts were reverted rather than left half-built.
 
 ### The one honest approximation
 
@@ -531,34 +575,47 @@ existing figure and saved table there is keyed on it.
 
 ## 4. What to do next, in order
 
-0. **The four new materials are filled in, and three of them do not matter.**
-   `bulk/Al`, `cfsteel/Mn`, `esteel/Mn` and `magnet/Sr`, across refining and
-   shredding, recovered and lost — placeholders written on 2026-09-01, each
-   saying so in `source`. `filling_sheet.py` ranks `bulk/Al` **7th of 60** at
-   0.74% of the spread and the other three at **0.00%**, because cfsteel is
-   0.09% of Motors, esteel 0.05% and magnet 1.6%. So look up `bulk/Al` when
-   convenient and leave the rest; measuring them would buy nothing.
+1. **Replace the coefficients. This is the whole of what is left.** The model
+   side is finished; nothing else is in the way. The rankings below were
+   measured on 2026-09-02 against the cases as they now stand, with
+   `tools/filling_sheet.py`.
 
-   Two of the eight carry a judgement worth revisiting rather than a number
-   worth measuring. `bulk/Al` at shredding was carried over unchanged from the
-   `Motors_mixed/Al` row it replaces, so moving to a real material key changed
-   no value — but a bulk aluminium part should separate better than aluminium
-   dispersed through a motor. And `esteel/Mn` was given the same number as
-   `cfsteel/Mn` deliberately: nothing points to a difference, so inventing one
-   would be worse, yet laminated stator steel inside a copper winding plausibly
-   does worse than a pressed housing.
+   **Wiring — 20 waiting, and 5 carry 80% of the spread:**
 
-1. **Replace the coefficients. This is the whole of what is left.** The user
-   asked on 2026-08-26 to have the case ready for real use; the model side is
-   finished and nothing else is in the way. For electronics,
-   `tools/make_skeleton.py` writes the rows and **merges, deleting nothing**,
-   so you can do it a domain at a time without losing what you filled in — a
-   row whose resource has left the composition is kept as inert rather than
-   dropped, which it was not until 2026-09-01 (DEFECTS.md §3.12). For car
-   composition,
-   `tools/make_carcomposition_tcs.py` generated the current invented table and
-   **overwrites** — but it now refuses to, once any row's `source` says
-   something it did not write. `--overwrite` forces a deliberate rebuild.
+   | # | share | coefficient | guess |
+   |---|---|---|---|
+   | 1 | 45.7% | `Wiring/copper  F_shredded -> F_cu_general` | 0.35 – **0.55** – 0.65 |
+   | 2 | 45.7% | `Wiring/copper  F_shredded -> F_loss_general` | 0.315 – **0.45** – 0.56 |
+   | 3 | 30.7% | `Motors/fealloy  F_disassembled -> F_fealloy_own` | 0.75 – **0.95** – 1 |
+   | 4 | 30.7% | `Motors/fealloy  F_disassembled -> F_loss_own` | 0.035 – **0.05** – 0.24 |
+   | 5 | 10.0% | `Wiring/copper  F_disassembled -> F_cu_own` | 0.75 – **0.95** – 1 |
+
+   Rows 1 and 2 are ONE measurement seen from both sides, and so are 3 and 4.
+   So the real list is three questions: **how much copper a general shredder
+   yields from a harness**, **how much steel a dedicated motor process yields**,
+   and **how much copper the dedicated process yields.** The remaining 15 rows
+   are together worth 18%.
+
+   **Boards — 47 waiting, and 3 carry 80%:**
+
+   | # | share | coefficient | guess |
+   |---|---|---|---|
+   | 1 | 65.0% | `BEV/PCB  F_collected -> F_in_car` | 0.28 – **0.40** – 0.52 |
+   | 2 | 65.0% | `BEV/PCB  F_collected -> F_disassembled` | 0.45 – **0.60** – 0.70 |
+   | 3 | 30.4% | `PCB/Cu  F_disassembled -> F_loss_own` | 0.07 – **0.10** – 0.28 |
+
+   Again 1 and 2 are one measurement: **what fraction of main boards is
+   actually taken out of the car.** Nothing about gold or palladium appears
+   until far down the list, because the recovery coefficients for those are
+   tight (0.95, narrow) while the disassembly fraction is wide and sits
+   upstream of everything. The other 44 rows are worth 20% between them.
+
+   `tools/make_skeleton.py` writes the rows and **merges, deleting nothing** --
+   a row whose resource has left the composition is kept and reported as inert
+   rather than dropped, which it was not until 2026-09-01 (DEFECTS.md §3.12).
+   For car composition, `tools/make_carcomposition_tcs.py` generated the current
+   invented table and **overwrites**, but refuses once any row's `source` says
+   something it did not write; `--overwrite` forces a deliberate rebuild.
 
    **Start with [FILLING_IN.md](FILLING_IN.md)** — five steps, written for
    doing rather than studying — and with `tools/filling_sheet.py`, which ranks
@@ -568,27 +625,25 @@ existing figure and saved table there is keyed on it.
    it is not the same as how closely a coefficient tracks the answer, which is
    reported beside it as `influence`.
 
-   The difference decides what to do first. On the electronics case **3 rows of
-   60** carry 80% of the spread (remeasured 2026-09-01), and two of those three
-   are the same measurement — copper out of the shredder, seen from the
-   recovered side and the loss side. The third is the fraction of wiring that
-   is not dismantled. On car composition, **12 of 354** rather than the 88 the
-   influence ranking suggested.
+   The difference between the two decides the order. On car composition it is
+   **12 rows of 354** rather than the 88 the influence ranking suggested.
 
    Fill in `value`, `value_min` and `value_max`.
 
-   **A caution that follows from having no residual rows.** 22 of the 26
-   electronics groups have exactly two members, and with no residual the
-   constraint leaves such a group ONE degree of freedom: both rows carry the
-   same information. Two consequences, one harmless and one not.
+   **A caution that follows from having no residual rows.** 10 of the wiring
+   case's 14 sum-to-1 groups have exactly two members, and 24 of the boards
+   case's 28. With no residual, the constraint leaves such a group ONE degree of
+   freedom: both rows carry the same information. Two consequences, one harmless
+   and one not.
 
-   - Harmless: `filling_sheet.py` reports shares that sum past 100% — "measuring
-     all 44 would remove 200% of the spread" — because each row is credited with
-     the same variance. Read the ranking as an ordering, not as an accounting.
-   - Not harmless: **the second range in each of those pairs is not a
-     measurement.** It was written on 2026-08-28 by widening around the derived
-     value when the residual rows were converted, and it says so in `source`.
-     Until a real, independently measured range replaces it, the pair's width is
+   - Harmless: `filling_sheet.py` reports shares that sum past 100% —
+     "measuring all 20 exactly would remove 198% of that spread" — because each
+     row of a pair is credited with the same variance. Read the ranking as an
+     ordering, not as an accounting. It is also why the tables above list the
+     same measurement twice, at ranks 1 and 2.
+   - Not harmless: **the second range in each pair is not a measurement.** It is
+     `1 minus the row beside it`, widened, and it says so in `source`. Until a
+     real, independently measured range replaces it, the pair's width is
      something nobody measured. §5 has why arithmetic cannot detect this and
      only the `source` column can.
 
@@ -597,7 +652,10 @@ existing figure and saved table there is keyed on it.
    blank columns for an independent number and its source.
 2. **More years for 04_01**, if wanted — but check the memory arithmetic first:
    five drivetrains over five years is roughly 20,000 result rows, which at
-   200,000 draws exceeds the 4 GB budget and would be refused.
+   200,000 draws is about 32 GB and would be refused even at the raised budget.
+   `monte_carlo.memory_budget_gb` went 4.0 -> 8.0 on 2026-09-02 so the boards
+   case could run (4.5 GB); it is a guard, not a model parameter, and no result
+   number moves when it changes.
 
 ### Built 2026-08-28: the dismantling loss was not a loss, in either case
 
@@ -632,10 +690,13 @@ Both generators wrote the old network, so a rebuild would have resurrected it:
 builders. Both write the corrected one now, with the argument beside it, and
 neither emits a residual row.
 
-**`F_separated_electronics` stays**, at the user's decision on 2026-08-28: it is
-a real handoff to a separate recovery stream with its own coefficients, and it
-carries 0 here only because nobody has measured it yet. It is not a candidate
-for removal.
+`F_separated_electronics` was that case's handoff to a separate recovery
+stream. **The two cases that replaced it are that stream**, split in two because
+they are two different processes: the boards and sensors go to a specialist
+route that really does separate elements, the wiring and motors to shredders
+that produce alloys. The handoff role survives in both -- `F_shredded` in the
+boards case is one -- and the argument for keeping it is unchanged: a flow
+handed to a process this case does not model is neither recovered nor lost.
 
 ### Not in this repository
 
@@ -644,22 +705,19 @@ flow is done for the moment — but **five commits landed there on 2026-08-31**
 (§3), so it is being worked on again. These still need it and should not be
 started without saying so first.
 
-- **Empty `element_draws/<scenario>/` and re-run 04_02 once.** This is what
-  unblocks the electronics case here, and it is the only thing that does. The
-  folder is written file by file and never cleared, so it now holds four runs;
-  emptying it first is what makes one run's export stand alone. Two things to
-  settle while doing it:
+- **DONE 2026-09-01/02: the folder was emptied and 04_02 re-run**, then changed
+  to export the alloys and re-run again over all 51 years. It holds one run, one
+  draw count, and no `_ppm` files. `src/upstream.py` refuses a mixed folder now
+  rather than reading the union of it, so this cannot recur silently. What is
+  still worth settling upstream, whenever 04_02 is next touched:
+  - **`_ppm` names have no level.** None are being exported today. If they come
+    back, `Fe_ppm` reads as an element and double-counts, because `__` is what
+    says how deep a name goes and a single underscore says nothing. Give them a
+    `__` level or leave them out.
   - The plain Motors elements sum to **3.7% more than the Motors domain mass**
-    within their own run. That is a fact about the export, not about the mix,
-    and nothing here can compute a share around it.
-  - `Fe_ppm` restates `Fe` under a name whose level is invisible. `Fe__esteel`
-    is read correctly now, because `__` says how deep the name goes; a single
-    underscore says nothing, so `Fe_ppm` reads as an element and double-counts.
-    Either stop exporting them or give them a `__` level.
-
-  After the re-run, press Run on `tools/make_skeleton.py` for the electronics
-  case. Layer 3 will hold real materials, so the TC table needs rows for them —
-  it **merges**, so nothing already filled in is lost.
+    within their own run. It no longer affects either case -- both read the
+    alloys, and the alloys sum to 92.5% of Motors -- but it is a fact about the
+    export that nothing here can compute a share around.
 - **Widen 03_02's per-year export** to all five drivetrains, next time it runs
   anyway. Removes the approximation in §3.
 - **04_03 and 04_04.** Each needs its own year-sliced export upstream, then a
