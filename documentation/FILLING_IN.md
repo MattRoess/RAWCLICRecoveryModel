@@ -154,3 +154,50 @@ holding it open is the one thing that stops that working.
 5. `03_run_monte_carlo.py` — run
 
 For the reasoning behind any of it, see [CASES.md](CASES.md).
+
+
+---
+
+## Filling in the improved situation
+
+The wiring case has a **`TCs_improved`** sheet beside `TCs`, seeded 2026-09-03
+as an exact copy, and an improvement window in its `source` sheet:
+
+    improvement_start   2030
+    improvement_end     2060
+
+**As seeded it changes nothing.** Every value equals its current one, so the
+case ramps from a number to itself and every year is identical -- verified
+against the run before the sheet existed, row for row, to zero difference. It
+is a place to type into, not a scenario.
+
+Every row's `source` says so:
+
+    SEEDED COPY of the current value -- NOT an improvement. Replace with the
+    number this process reaches once improved, and its range.
+
+**What to type.** For each process you expect to get better, put the value and
+range it reaches **once the improvement is complete** -- that is, the 2060
+number, not an average over the period. The model draws the line between here
+and there. Leave a row alone if that process does not improve; a copy is the
+honest way of saying "unchanged", which is why the sheet holds every coefficient
+rather than only the changed ones (DECISIONS.md 27).
+
+**Change the window** by editing those two years in the `source` sheet. It
+applies to the whole case (DECISIONS.md 28).
+
+**Start with the same three questions §4 of HANDOVER.md ranks**, because a
+coefficient that carries little of today's spread carries little of the
+improvement either.
+
+Two things to know before reading the result of an improving case:
+
+- **`convergence.png` and `sensitivity.png` pool the years** and would need
+  splitting once coefficients really vary by year. So would
+  `solve_draws`, which keeps only the last year's coefficient draws for the
+  sensitivity figure. Neither matters while the seed is a copy; both matter the
+  moment you type a different number. HANDOVER.md §4.
+- **The uncertainty is drawn once and ramped**, not redrawn per year: draw 7 is
+  the same optimism about a process in 2030 and 2060. That is deliberate
+  (DECISIONS.md 29) -- it means the improvement is one belief moving, and the
+  bands across years move together rather than jittering independently.
