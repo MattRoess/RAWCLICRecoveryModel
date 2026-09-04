@@ -870,6 +870,25 @@ def account(run, resource: str) -> dict[str, np.ndarray] | None:
             for name, columns in got.items()} | {'years': np.array(years)}
 
 
+def _round_step(rough: float) -> float:
+    """
+    The nearest step a person would actually count in: 1, 2, 2.5 or 5 times a
+    power of ten.
+
+    An axis ruled at 63.4 is an axis nobody reads a value off. Rounding the
+    wanted spacing UP to one of these keeps the gridlines at numbers that can
+    be added in the head, which is the whole point of ruling the axis when
+    every quantity on it is meant to be compared against every other.
+    """
+    if not np.isfinite(rough) or rough <= 0:
+        return 1.0
+    power = 10.0 ** np.floor(np.log10(rough))
+    for nice in (1, 2, 2.5, 5, 10):
+        if rough <= nice * power:
+            return float(nice * power)
+    return float(10 * power)
+
+
 def figure_account(run, theme: str, unit: str, resources=()):
     """
     THE WHOLE ACCOUNT OF A RESOURCE ON ONE SET OF AXES, so that every quantity
@@ -953,8 +972,9 @@ def figure_account(run, theme: str, unit: str, resources=()):
     scale, shown = scale_for(every, unit)
 
     wide = len(accounts)
-    figure, axes, colours = chart(1180 * wide, 780, theme, 1, wide)
+    figure, axes, colours = chart(1180 * wide, 820, theme, 1, wide)
     panels = list(axes.ravel()) if hasattr(axes, 'ravel') else [axes]
+    for_legend = []
 
     for panel, (resource, a) in zip(panels, sorted(accounts.items())):
         mean_of = {k: np.nanmean(v, axis=0) for k, v in a.items() if k != 'years'}
@@ -971,8 +991,8 @@ def figure_account(run, theme: str, unit: str, resources=()):
         # The 95% band of what leaves the fleet: the fleet's own uncertainty,
         # which every mass on this axis inherits and none of the others can
         # show without turning the figure into mud.
-        _, low, high = band(a['outflow'])
-        panel.fill_between(years, low * scale, high * scale,
+        _, low, high_of_all = band(a['outflow'])
+        panel.fill_between(years, low * scale, high_of_all * scale,
                            color=colours['title'], alpha=0.10, linewidth=0,
                            label='leaving the fleet, 95%')
 
@@ -1001,34 +1021,38 @@ def figure_account(run, theme: str, unit: str, resources=()):
                        label=f'RECOVERY RATE, right axis   '
                              f'{median[0]:.0f} → {median[-1]:.0f}% of what '
                              f'was collected')
+        # BOTH AXES READ IN THE SAME STEPS. The rate axis is per cent, so it is
+        # ruled every 10, and the mass axis is given about as many ticks -- a
+        # gridline the reader can count against on either side, rather than four
+        # far-apart labels on the left and a differently spaced set on the right.
         rate_axis.set_ylim(0, 100)
+        rate_axis.set_yticks(range(0, 101, 10))
         rate_axis.set_ylabel('recovered, % of what was collected',
-                             color=PALETTE[2], fontsize=9)
-        rate_axis.tick_params(colors=PALETTE[2], labelsize=8)
+                             color=PALETTE[2], fontsize=12)
+        rate_axis.tick_params(colors=PALETTE[2], labelsize=11)
         for side in ('top', 'left', 'bottom'):
             rate_axis.spines[side].set_visible(False)
         rate_axis.spines['right'].set_color(PALETTE[2])
+
+        top = float(np.nanmax(high_of_all) * scale)
+        step = _round_step(top / 10)
+        panel.set_ylim(0, step * np.ceil(top / step))
+        panel.set_yticks(np.arange(0, panel.get_ylim()[1] + step / 2, step))
 
         panel.set_title(
             f'{resource}   in {end}: {mean_of["outflow"][-1] * scale:,.0f} {shown} '
             f'left the fleet, {mean_of["collected"][-1] * scale:,.0f} reached a '
             f'recycler, {mean_of["recovered"][-1] * scale:,.0f} came back',
-            color=colours['title'], fontsize=11, fontweight='bold')
-        panel.set_xlabel('year', color=colours['meta'], fontsize=9)
-        panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=9)
+            color=colours['title'], fontsize=13, fontweight='bold')
+        panel.set_xlabel('year', color=colours['meta'], fontsize=12)
+        panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=12)
         panel.set_xticks(list(years))
+        panel.tick_params(labelsize=11)
         panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
         panel.set_zorder(rate_axis.get_zorder() + 1)
         panel.patch.set_visible(False)
 
-        handles, labels = panel.get_legend_handles_labels()
-        extra = rate_axis.get_legend_handles_labels()
-        # Centre left, not upper left: the recovery rate runs along the top of
-        # the axes and drew itself straight through the legend text there.
-        legend = panel.legend(handles + extra[0], labels + extra[1],
-                              fontsize=8.5, frameon=False, loc='center left')
-        for text in legend.get_texts():
-            text.set_color(colours['meta'])
+        for_legend.append((panel, rate_axis))
 
     names = ', '.join(sorted(accounts))
     header(figure, f'{names}: the whole account, on one axis', colours,
@@ -1036,6 +1060,27 @@ def figure_account(run, theme: str, unit: str, resources=()):
            f'can be compared by the distance between them: recovered + lost + '
            f'never collected = the outflow.  band: the outflow 95%.  '
            f'the rate is per draw, on the right axis')
+
+    # THE LEGEND SITS UNDER THE FIGURE, NOT ON IT. Ten entries is a block, and a
+    # block placed anywhere inside these axes lands on top of lines: upper left
+    # is where the rate runs, centre left is where the inflow climbs through.
+    # Below the axes it covers nothing, and it can be read in one pass across
+    # rather than as a tall column.
+    handles, labels = [], []
+    for panel, rate_axis in for_legend:
+        for source_axis in (panel, rate_axis):
+            got, names_of = source_axis.get_legend_handles_labels()
+            handles.extend(got)
+            labels.extend(names_of)
+    room = 0.055 + 0.038 * np.ceil(len(labels) / 3)
+    figure.subplots_adjust(bottom=room)
+    legend = figure.legend(handles, labels, fontsize=11, frameon=False,
+                           ncol=3, loc='lower center',
+                           bbox_to_anchor=(0.5, 0.012),
+                           handlelength=3.2, columnspacing=2.5,
+                           labelspacing=0.7)
+    for text in legend.get_texts():
+        text.set_color(colours['meta'])
     return figure
 
 
