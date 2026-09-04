@@ -1020,3 +1020,58 @@ The tools, none of which is a numbered step and all of which read the case from
 The input file format is specified in `../doc/User guide.docx` (Harmjan de
 Vries, 21-11-2024), still accurate on the schema. It does not describe model
 behaviour; MODEL_MECHANICS.md does.
+
+---
+
+## 2026-09-04 — the result array moved to disk, and the year step matters
+
+**The 5-year grid was hiding a real feature.** Net copper into the BEV fleet
+falls to a trough at 2054 (36.8 kt/yr) and rises to a peak at 2058
+(47.4 kt/yr). Sampling only 2055 and 2060 — 42.1 and 45.1 — draws a straight
+line across it, which reads as a plotting bug and is not one. The origin is a
+wave in the INFLOW: it dips to a local minimum of 473.7 kt in 2053 and rises to
+532.3 kt in 2059, while the outflow rises smoothly with no feature at all. That
+wave is in `RAWCLICStockAndFlow`, not here; this repository only reads the
+exported arrays. Verified by reading the `.npy` files directly: the figure
+reproduces them to better than 0.4%, and inflow/outflow/collected at 2070
+(585.1 / 593.4 / 521.8 kt) match the figure's 585 / 593 / 522.
+
+**So finer year steps are needed, and the memory model had to change.** The
+per-draw result is `rows x draws x 8 bytes` and grows with the year count: the
+boards case at every year and 200,000 draws is 16.6 GB on a 17 GB machine. It
+is now MEMORY-MAPPED to a file in the case's `output_data/` whenever it exceeds
+`monte_carlo.memory_budget_gb`, rather than the run being refused. The solve
+already fills it one year at a time, so only the pages being written stay
+resident; `plan()` sizes a chunk instead of raising; `MonteCarloRun.close()`
+deletes the file once the summary and figures are written, and
+`03_run_monte_carlo.py` calls it. Nothing above that changed and no figure
+knows. Wiring at every year (51 years, 200,000 draws) runs in 2:48.
+
+**`04_combine_cases.py` now writes three figures**, all copper, both cases
+added per draw:
+
+| figure | what it shows |
+|---|---|
+| `copper_combined.png` | the account: entering and leaving the fleet, reaching a recycler, recovered, and — DASHED — the two losses, never collected and lost inside recycling. Recovery rate on the right axis. |
+| `copper_with_the_bev.png` | what the fleet holds: solid = in the fleet (left axis), dashed = added per year (right axis), for total and each of wiring, motors, PCB, sensors |
+| `copper_lost.png` | the same five, for what is lost and not recycled |
+
+The figure language, agreed the hard way over several hours and not to be
+changed without asking:
+
+- **nothing is drawn on top of the lines** — no labels, no numbers, no legend
+  box inside the panel;
+- **the legend is one strip under the x-axis label**, names only, no numbers;
+- **total first, then the streams alphabetically**; total is black and the
+  heaviest line; the four streams have four fixed colours (blue, red, green,
+  orange) that do not change between figures;
+- **one dash pattern, one meaning** per figure, said once in the legend;
+- **the same unit on both axes**, four intervals each so one set of gridlines
+  serves both, and the two zeros on the same line;
+- **no stacks, no fills, no log scales.** Small streams are small lines.
+
+`figures.resources` is copper only. `rest` is excluded everywhere as waste
+(DECISIONS 40).
+
+**Still open:** the boards case at every year has not been run — it needs about
+17 GB of free disk while it runs. `years` is set to `'2020-2070, 1'`.

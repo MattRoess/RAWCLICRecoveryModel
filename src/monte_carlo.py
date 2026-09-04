@@ -45,6 +45,7 @@ change of input, not of engine.
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 
 import numpy as np
@@ -75,6 +76,49 @@ class MemoryBudgetExceeded(MemoryError):
     """Raised before allocating, when the result would not fit the budget."""
 
 
+def _result_array(total_rows: int, draws: int, budget_gb: float,
+                  data_folder: str, quiet: bool):
+    """
+    The per-draw result: in memory when it fits, ON DISK when it does not.
+
+    THE YEARS ARE INDEPENDENT AND THE ARRAY IS FILLED ONE YEAR AT A TIME, so
+    nothing ever needs every year's draws at once -- but the finished result is
+    indexed across years by the figures, which is why it was held whole. Held
+    whole in RAM it grows with the year count: the boards case at every year
+    and 200,000 draws is 16.6 GB, and the machine has 17.
+
+    Memory-mapping it moves that growth to disk. The solve writes one year's
+    block at a time and the operating system keeps in memory only the pages
+    being touched, so the resident set is bounded by the block rather than by
+    the run. A figure that reads one year's rows pages in that year and no
+    more. Nothing above this function changes, and no figure knows.
+
+    The file is deleted as soon as the run is finished with (`MonteCarloRun.
+    close`), and it lives beside the case's own output so a crash leaves it
+    somewhere a person would look rather than in a system temp folder.
+
+    Returns (array, backing) where `backing` is the path to delete, or None
+    when the result fitted in memory and there is nothing to clean up.
+    """
+    import tempfile
+
+    result_gb = total_rows * draws * BYTES_PER_VALUE / 1e9
+    if result_gb + OVERHEAD_GB <= budget_gb:
+        return np.zeros((total_rows, draws), dtype=np.float64), None
+
+    folder = os.path.join(data_folder, 'output_data')
+    os.makedirs(folder, exist_ok=True)
+    handle, path = tempfile.mkstemp(prefix='monte_carlo_', suffix='.f8',
+                                    dir=folder)
+    os.close(handle)
+    if not quiet:
+        print(f'Memory    : {result_gb:.2f} GB result is above the '
+              f'{budget_gb:.1f} GB budget, so it is memory-mapped to disk')
+        print(f'            {path}')
+    return np.memmap(path, dtype=np.float64, mode='w+',
+                     shape=(total_rows, draws)), path
+
+
 def plan(total_rows: int, draws: int, budget_gb: float,
          chunk: int = 0) -> tuple[int, str]:
     """
@@ -91,7 +135,17 @@ def plan(total_rows: int, draws: int, budget_gb: float,
     result_gb = total_rows * draws * BYTES_PER_VALUE / 1e9
     floor_gb = result_gb + OVERHEAD_GB
 
+    # A result above the budget is memory-mapped rather than refused
+    # (`_result_array`), so what has to fit here is the transient working set:
+    # the sampled coefficients and the block being evaluated.
     if floor_gb > budget_gb:
+        spare_gb = max(budget_gb - OVERHEAD_GB, budget_gb * 0.25)
+        per_draw = max(1, total_rows * BYTES_PER_VALUE) * TRANSIENT_FACTOR
+        sized = int(min(draws, max(1_000, spare_gb * 1e9 / per_draw)))
+        return (chunk or sized,
+                f'{chunk or sized:,} draws per chunk, result on disk')
+
+    if False:
         halved = result_gb / 2 + OVERHEAD_GB
         raise MemoryBudgetExceeded(
             f'This run needs about {floor_gb:.1f} GB and the budget is '
@@ -332,10 +386,32 @@ class MonteCarloRun:
     upstream: object = None     # src.upstream.Draws, for the flows the
                                 # case does not solve: inflow, outflow
     case: str = ''              # the folder it was solved from
+    backing: str | None = None  # the memory-map file to delete, when on disk
 
     @property
     def draws(self) -> int:
         return self.values.shape[1]
+
+    def close(self) -> None:
+        """
+        Release the result, and delete its file when it had one.
+
+        A memory-mapped result leaves a file behind that is worthless the
+        moment the run is over -- it is one run's draws, and re-solving is
+        cheaper than trusting a stale one. Called by the stage that solved;
+        harmless when the result was in memory, and harmless twice.
+        """
+        path, self.backing = self.backing, None
+        if path is None:
+            return
+        flush = getattr(self.values, 'flush', None)
+        if flush is not None:
+            flush()
+        self.values = np.empty((0, 0))
+        try:
+            os.remove(path)
+        except OSError:
+            pass
 
 
 
@@ -490,7 +566,8 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
     if not quiet:
         print(f'Memory    : {total_rows * draws * BYTES_PER_VALUE / 1e9:.2f} GB result, '
               f'{how}')
-    values = np.zeros((total_rows, draws), dtype=np.float64)
+    values, backing = _result_array(total_rows, draws, budget_gb, data_folder,
+                                    quiet)
 
     block, how = plan(total_rows, draws, budget_gb, chunk or 0)
     n_coefficients = len(structures[0][0]['tcs_df']) if structures else 0
@@ -536,4 +613,5 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
     return MonteCarloRun(keys=pd.concat(key_frames, ignore_index=True),
                          values=values, report=report,
                          tcs=sampled_tcs, tc_values=sampled_values,
-                         case=data_folder, upstream=upstream_draws)
+                         case=data_folder, upstream=upstream_draws,
+                         backing=backing)

@@ -265,6 +265,9 @@ def run_case(folder, params, draws: int) -> int:
         print(f'  median gap {np.median(np.abs(gap)):.1f}%, largest {gap.abs().max():.1f}% '
               f'on {worst["Stock/Flow ID"]} {named} in {worst["Year"]}')
         print(f'  Running every coefficient at its mode is not the same as the mean.')
+    # A memory-mapped result leaves a file behind; it is one run's draws and
+    # worthless once the summary and the figures are written.
+    run.close()
     return 0
 
 

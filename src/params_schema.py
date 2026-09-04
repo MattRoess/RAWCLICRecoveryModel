@@ -113,7 +113,7 @@ class RunParams:
     # problem in DESIGN_monte_carlo.md section 2, and the year axis is the most
     # direct lever on it.
     # SAFE TO CHANGE: yes -- it must match at least one year present in the data.
-    years: str = '2020-2070, 5'
+    years: str = '2020-2070, 1'
 
     # WHICH OF THE TWO ENGINES SOLVES THE SYSTEM: 'optimized' or 'LA'.
     # SAFE TO CHANGE: yes, but read this first. The two engines disagree beyond

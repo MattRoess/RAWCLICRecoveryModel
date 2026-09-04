@@ -866,7 +866,7 @@ def figure_fate(run, theme: str, unit: str, resources=()):
     return figure
 
 
-def account(run, resource: str) -> dict[str, np.ndarray] | None:
+def account(run, resource: str, domain: str | None = None) -> dict[str, np.ndarray] | None:
     """
     One resource's whole account, per draw and per year, in the working unit.
 
@@ -887,6 +887,12 @@ def account(run, resource: str) -> dict[str, np.ndarray] | None:
     quantities are scaled by the model's own collected mass over the upstream
     collected mass. No unit constant appears here on purpose: whatever the two
     sides are in, that ratio is the conversion between them.
+
+    `domain` narrows the whole account to ONE STREAM -- Wiring, Motors, PCB or
+    Sensors -- rather than the case as a whole. A case carries several, and
+    "which stream returns the copper" cannot be asked of a case-level total.
+    Both sides narrow together: the upstream arrays are read for that domain
+    alone and the model's rows are filtered on it, so the account still closes.
     """
     source = getattr(run, 'upstream', None)
     if source is None or not getattr(source, 'propagates', False):
@@ -898,6 +904,8 @@ def account(run, resource: str) -> dict[str, np.ndarray] | None:
     years = sorted(int(y) for y in keys['Year'].unique())
     domains = sorted({d for d in keys.loc[keys[layer] == resource,
                                           'Layer 2'].unique() if d})
+    if domain is not None:
+        domains = [d for d in domains if d == domain]
     if not recovered_ids or not domains:
         return None
 
@@ -905,10 +913,12 @@ def account(run, resource: str) -> dict[str, np.ndarray] | None:
                                  'uncollected', 'recovered', 'lost')}
     for year in years:
         def rows_of(flows):
-            return np.flatnonzero(
-                keys['Stock/Flow ID'].isin(flows).to_numpy()
-                & (keys[layer] == resource).to_numpy()
-                & (keys['Year'].astype(str) == str(year)).to_numpy())
+            wanted = (keys['Stock/Flow ID'].isin(flows).to_numpy()
+                      & (keys[layer] == resource).to_numpy()
+                      & (keys['Year'].astype(str) == str(year)).to_numpy())
+            if domain is not None:
+                wanted &= (keys['Layer 2'] == domain).to_numpy()
+            return np.flatnonzero(wanted)
 
         collected = run.values[rows_of(starts)].sum(axis=0)
         back = run.values[rows_of(recovered_ids)].sum(axis=0)
@@ -1008,9 +1018,7 @@ def draw_account(panel, title: str, a: dict, roads: dict, years,
                            linewidth=0)
     rate_axis.plot(years, median, color=PALETTE[2], linewidth=3.0,
                    marker='o', markersize=4,
-                   label=f'RECOVERY RATE, right axis   '
-                         f'{median[0]:.0f} → {median[-1]:.0f}% of what '
-                         f'was collected')
+                   label=f'recovery rate   {median[0]:.0f} → {median[-1]:.0f}%')
     # FOUR INTERVALS ON BOTH AXES, AND NOT ONE MORE. Five labels a side is what
     # a reader takes in at a glance; ruling the mass axis every 100 against a
     # rate axis every 10 gave twenty numbers down the page and two sets of
@@ -1019,8 +1027,7 @@ def draw_account(panel, title: str, a: dict, roads: dict, years,
     # a per cent on the right are read off the same place.
     rate_axis.set_ylim(0, 100)
     rate_axis.set_yticks([0, 25, 50, 75, 100])
-    rate_axis.set_ylabel('recovered, % of what was collected',
-                         color=PALETTE[2], fontsize=14)
+    rate_axis.set_ylabel('recovery rate (%)', color=PALETTE[2], fontsize=15)
     rate_axis.tick_params(colors=PALETTE[2], labelsize=17)
     for side in ('top', 'left', 'bottom'):
         rate_axis.spines[side].set_visible(False)
