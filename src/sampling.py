@@ -223,10 +223,11 @@ def check_ordering(tcs: pd.DataFrame) -> None:
             + '\n\nThese three numbers are what the model was handed. Where a '
               'case improves over time they are BLENDED -- each year is a mix '
               'of the TCs sheet and the TCs_improved one -- so they may appear '
-              'in neither sheet as written.\nRun 01_check_inputs.py: it checks '
-              'every year the run will solve and prints, for each row it '
-              'faults, both sheets\' own numbers and the first year that goes '
-              'bad.')
+              'in neither sheet as written. The fault is still in one of those '
+              'sheets: blending interpolates min, mode and max together and '
+              'cannot put them out of order on its own.\nRun '
+              '01_check_inputs.py: it prints both sheets\' own numbers for '
+              'each row it faults, and the first year that goes bad.')
 
 
 def check_residual_bounds(tcs: pd.DataFrame) -> None:

@@ -245,31 +245,35 @@ def _years_of(given: dict, folder: str) -> list[str] | None:
 
 def report_uncertainty_over_time(folder: str, given: dict) -> bool:
     """
-    Check the RAMPED table, not just the two tables it is built from.
+    Check `TCs_improved`, and every year the run will actually solve.
 
-    A case that improves over time is never solved at `TCs` or at
-    `TCs_improved`. It is solved at one table per year, each a weighted blend of
-    the two, and a blend can be invalid where both ends are fine. On the boards
-    case `TCs` says Au min 0.900, mode 0.950, max 0.980 and `TCs_improved` says
-    min 0.995, mode 0.980, max 0.960 -- min ABOVE max, a range typed the wrong
-    way round. Both tables pass a check applied to them separately, because the
-    old check only ever saw `TCs`; the blend crosses over around 2050 and the
-    run dies there with three ramped numbers nobody typed and a message naming
-    a file that does not exist.
+    `TCs_improved` was checked by nothing. Gold on the boards case was written
+    min 0.995, mode 0.980, max 0.960 -- a min above its own max -- and this
+    report said the case was clean because it only ever read `TCs`. The run
+    then died halfway along the ramp, quoting three blended numbers that appear
+    in neither sheet.
 
-    So this checks every year the run will solve, and reports the offending
-    year alongside the numbers as WRITTEN, in the sheet they were written in --
-    which is the only place they can be corrected.
+    THE FAULT IS ALWAYS IN A SHEET SOMEBODY TYPED, never in the blending. min,
+    mode and max each interpolate linearly, so `mode_w - min_w` is a sum of two
+    non-negative terms and the ordering survives any weight in [0, 1]: a ramped
+    year can only be invalid if one of the two tables already was. (Pinned by
+    `test_a_blend_of_two_valid_tables_is_always_valid`; the first version of
+    this check was written on the opposite belief and told the reader the blend
+    was at fault, which would have sent them looking in the wrong place.)
+
+    So the years are checked because they are what the run samples and they
+    name the point where it will stop -- but what is REPORTED is the sheet, the
+    row, and the numbers as written, because that is the only place they can be
+    corrected.
     """
     from src import case_tables
     if not case_tables.exists(folder, case_tables.IMPROVED):
         return True
 
-    # The years this case will actually be solved at. From the upstream frames
-    # when a run handed them over, from inputs.csv when it did not, and from the
-    # improvement window itself when a case has neither -- checking the two ends
-    # alone is not enough, since both ends can be valid while the blend between
-    # them is not, which is the whole reason this check exists.
+    # The years this case will actually be solved at, so the report can name
+    # the year the run would stop at. From the upstream frames when a run handed
+    # them over, from inputs.csv when it did not, and from the improvement
+    # window itself when a case has neither.
     years = _years_of(given, folder)
     try:
         ramped = case_tables.coefficients(folder, years)
@@ -281,21 +285,35 @@ def report_uncertainty_over_time(folder: str, given: dict) -> bool:
     from src.sampling import numeric_bounds
     ramped = numeric_bounds(ramped)
     bad = check_uncertainty(ramped)
-    print(f"\nIMPROVEMENT OVER TIME -- the blended table, one per year")
-    if bad is None or not len(bad):
-        span = f"{years[0]}-{years[-1]}" if years else 'every year'
+    span = f"{years[0]}-{years[-1]}" if years else 'every year'
+    print(f"\nIMPROVEMENT OVER TIME -- the table the run samples, one per year")
+
+    # CLOSURE, TOO. `TCs` closing to 1 says nothing about `TCs_improved`: on the
+    # boards case copper out of F_ground summed to 1.035 there, so every year
+    # from the window on created 3.5% of the copper it reported, and the only
+    # thing that noticed was the mass balance at the very END of the pipeline --
+    # after a full 200,000-draw run. Like the ordering check, a blend cannot
+    # introduce this (a convex combination of two vectors summing to 1 sums to
+    # 1), so the fault is in one of the sheets.
+    open_groups = _closure_faults(folder, ramped, case_tables)
+
+    if (bad is None or not len(bad)) and not open_groups:
         print(f"  OK -- {len(ramped)} rows across {span}, all with "
-              f"0 <= min <= mode <= max <= 1")
+              f"0 <= min <= mode <= max <= 1, every resource totalling 1")
         return True
 
-    print(f"  ERROR: {len(bad)} blended row(s) violate "
-          f"0 <= value_min <= value <= value_max <= 1.")
-    print(f"  The blend is invalid even though {case_tables.TABLES[2]} and "
-          f"{case_tables.IMPROVED} each pass on their own, so the fault is a "
-          f"range written the wrong way round in one of them.")
     identity = ['Input_FlowID', 'Input_layer_key', 'Output_FlowID', 'TC_target_key']
-    shown = bad.drop_duplicates(subset=identity).head(10)
-    for _, row in shown.iterrows():
+    if bad is not None and len(bad):
+        print(f"  ERROR: {len(bad)} row(s) violate "
+              f"0 <= value_min <= value <= value_max <= 1 in the table the run "
+              f"samples.")
+        print(f"  Correct it in whichever sheet below has min, mode and max out "
+              f"of order -- the blending cannot introduce this, so one of them "
+              f"already has it.")
+    shown = (bad.drop_duplicates(subset=identity).head(10)
+             if bad is not None and len(bad) else bad.head(0) if bad is not None
+             else None)
+    for _, row in (shown.iterrows() if shown is not None else ()):
         who = (f"{row['Input_FlowID']} {row['Input_layer_key']} -> "
                f"{row['Output_FlowID']} {row['TC_target_key']}")
         print(f"    {who}   first bad year {row.get('Year', '?')}")
@@ -308,7 +326,59 @@ def report_uncertainty_over_time(folder: str, given: dict) -> bool:
                 one = match.iloc[0]
                 print(f"      {sheet:14} min {one['value_min']:<8.4g} "
                       f"mode {one['value']:<8.4g} max {one['value_max']:<8.4g}")
+
+    for line in open_groups:
+        print(line)
     return False
+
+
+def _closure_faults(folder: str, ramped: pd.DataFrame, case_tables) -> list[str]:
+    """
+    Resources that do not total 1 in the ramped table, and which sheet does it.
+
+    Returns the lines to print, empty when everything closes. Reported rather
+    than raised so one run of the check shows every fault at once.
+    """
+    # PER YEAR. The ramped table holds one copy of every coefficient per year,
+    # so totalling it whole gives 11, not 1 -- which faults every resource in
+    # the case and says nothing. Each year has to close on its own.
+    numeric = ramped.assign(
+        **{'value': pd.to_numeric(ramped['value'], errors='coerce')})
+    per_year = ([(year, block) for year, block in numeric.groupby('Year')]
+                if 'Year' in numeric.columns else [(None, numeric)])
+    faulted = []
+    for year, block in per_year:
+        totals = check_transfer_coefficients(block)
+        bad_rows = totals[(totals['total'] - 1).abs() > TOLERANCE]
+        if len(bad_rows):
+            faulted.append((year, bad_rows))
+    if not faulted:
+        return []
+    first_year, off = faulted[0]
+
+    lines = [f"  ERROR: {len(off)} resource(s) do not total 1 in "
+             f"{first_year or 'the table the run samples'}"
+             f"{f' (and {len(faulted) - 1} further year(s))' if len(faulted) > 1 else ''}"
+             f", so mass is created or destroyed."]
+    per_sheet = {}
+    for sheet in (case_tables.TABLES[2], case_tables.IMPROVED):
+        table = case_tables.read(folder, sheet)
+        table = table.assign(**{'value': pd.to_numeric(table['value'],
+                                                       errors='coerce')})
+        sheet_totals = check_transfer_coefficients(table)
+        per_sheet[sheet] = sheet_totals.set_index(RESOURCE)['total']
+
+    for _, row in off.drop_duplicates(subset=RESOURCE).head(10).iterrows():
+        key = tuple(row[column] for column in RESOURCE)
+        who = (f"{row['Input_FlowID']} {row['Input_layer_key']} -> "
+               f"{row['TC_target_key']}")
+        lines.append(f"    {who}")
+        for sheet, sheet_totals in per_sheet.items():
+            if key in sheet_totals.index:
+                total = float(sheet_totals.loc[key])
+                mark = 'OK' if abs(total - 1) <= TOLERANCE else 'FIX THIS SHEET'
+                lines.append(f"      {sheet:14} totals {total:<8.6g} {mark}")
+    return lines
 
 
 # How far a group may sit from 1, in standard deviations of its own independent

@@ -418,6 +418,126 @@ def test_a_ramped_group_still_sums_to_one_every_year() -> None:
     assert len(totals) == len(years), 'a year went missing'
 
 
+def test_an_unchecked_improved_table_cannot_reach_the_sampler() -> None:
+    """
+    THE FAULT THAT COST A DAY, 2026-09-04.
+
+    `TCs_improved` was never checked. Gold on the boards case was written
+    min 0.995, mode 0.980, max 0.960 -- a min above its own max -- and
+    `01_check_inputs.py` reported the case clean, because it only ever looked
+    at the `TCs` sheet. `03_run_monte_carlo.py` then died on the same data at
+    a year in the middle, quoting three RAMPED numbers that appear in neither
+    sheet, and telling the reader to correct them in a file the case does not
+    have. Meanwhile the previous run stayed on disk looking finished and FLAT,
+    so the improvement appeared to do nothing.
+
+    What is asserted: a bad `TCs_improved` is refused BEFORE a run, wherever
+    the check looks -- at the sheet itself and at every ramped year built from
+    it -- and the sampler refuses it too, so nothing draws from a crossed
+    triangle.
+    """
+    from src.case_tables import ramp
+    from src.mass_balance import check_uncertainty
+    from src.sampling import SamplingError, sample
+
+    current, improved = _two_tables(improved_by=0.0)
+    assert not len(check_uncertainty(current)), 'TCs was meant to be valid'
+    # The gold row's fault: min and max the wrong way round, improved sheet only.
+    improved.loc[0, ['value_min', 'value', 'value_max']] = [0.99, 0.98, 0.96]
+
+    assert len(check_uncertainty(improved)), \
+        'TCs_improved is invalid and a check that skips it says nothing -- ' \
+        'which is exactly how this reached a run'
+
+    years = list(range(2020, 2075, 5))
+    blended = ramp(current, improved, start=2030, end=2060, years=years)
+    assert len(check_uncertainty(blended)), 'the ramped years must fault too'
+
+    worst = check_uncertainty(blended).iloc[[0]].copy()
+    try:
+        sample(worst, draws=8)
+    except SamplingError as error:
+        assert 'min <= mode <= max' in str(error)
+    else:
+        raise AssertionError('sampling accepted a crossed triangle')
+
+
+def test_an_improved_table_that_does_not_close_is_caught_before_a_run() -> None:
+    """
+    THE SECOND HALF OF THE SAME GAP, 2026-09-04.
+
+    Closure was checked on `TCs` and on nothing else. Copper out of F_ground
+    summed to 1.035 in the boards `TCs_improved`, so from the improvement
+    window onward the model created 3.5% of the copper it reported -- and the
+    only thing that ever noticed was the mass balance at the END of the
+    pipeline, after a full 200,000-draw run had already been paid for.
+
+    Closure, like ordering, survives blending: a convex combination of two
+    vectors that each sum to 1 sums to 1. So a ramped year that does not close
+    means a sheet that does not close, and the check has to say WHICH.
+    """
+    from src.case_tables import ramp
+    from src.mass_balance import check_transfer_coefficients
+
+    current, improved = _two_tables(improved_by=0.0)
+    assert abs(check_transfer_coefficients(current)['total'].iloc[0] - 1) < 1e-12
+
+    # 0.60 + 0.40 = 1 becomes 0.635 + 0.40 = 1.035: the boards fault exactly.
+    improved.loc[0, 'value'] = 0.635
+
+    years = list(range(2020, 2075, 5))
+    blended = ramp(current, improved, start=2030, end=2060, years=years)
+    for year, block in blended.groupby('Year'):
+        totals = check_transfer_coefficients(
+            block.assign(value=block['value'].astype(float)))
+        worst = float((totals['total'] - 1).abs().max())
+        if int(year) <= 2030:
+            assert worst < 1e-12, f'{year} should still close: off by {worst:g}'
+        else:
+            assert worst > 1e-9, \
+                f'{year} does not close in the sheet but the ramp hid it'
+
+
+def test_a_blend_of_two_valid_tables_is_always_valid() -> None:
+    """
+    THE INVARIANT THAT SAYS WHERE TO LOOK.
+
+    min, mode and max each interpolate linearly, so for a weight w in [0, 1]
+
+        mode_w - min_w = (1-w)(mode_now - min_now) + w(mode_imp - min_imp)
+
+    which is a sum of two non-negative terms. Ordering survives the blend, and
+    the same holds for max - mode. So a ramped year can only be invalid if one
+    of the two tables it is built from already was.
+
+    This matters because it says the fault is ALWAYS in a sheet somebody typed,
+    never in the blending -- so an error message must name a sheet and the
+    numbers as written, and must never hand back the ramped numbers alone.
+    Asserted rather than assumed: the first version of this check was built on
+    the opposite belief and told the reader the blend was at fault.
+    """
+    import numpy as np
+
+    from src.case_tables import ramp
+    from src.mass_balance import check_uncertainty
+
+    rng = np.random.default_rng(11)
+    years = list(range(2020, 2075, 5))
+    for _ in range(200):
+        current, improved = _two_tables(improved_by=0.0)
+        for table in (current, improved):
+            for row in (0, 1):
+                edges = np.sort(rng.random(3))
+                table.loc[row, ['value_min', 'value', 'value_max']] = edges
+        assert not len(check_uncertainty(current)) and not len(check_uncertainty(improved))
+
+        blended = ramp(current, improved, start=2030, end=2060, years=years)
+        bad = check_uncertainty(blended)
+        assert not len(bad), \
+            f'two valid tables blended into {len(bad)} invalid row(s), which ' \
+            f'the algebra says cannot happen:\n{bad.head().to_string()}'
+
+
 def test_one_draw_is_one_world_across_the_ramp() -> None:
     """
     THE PROPERTY THAT WOULD BREAK SILENTLY.

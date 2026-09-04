@@ -291,8 +291,8 @@ F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ag,0.9266666666666667,0.86333333333
 F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ag,0.9266666666666667,0.8633333333333333,0.955,element_recovery,one_per_element,,2035
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ag,0.07333333333333333,0.030833333333333338,0.18333333333333335,element_recovery,one_per_element,,2035
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ag,0.07333333333333333,0.030833333333333338,0.18333333333333335,element_recovery,one_per_element,,2035
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.955,0.9158333333333334,0.9766666666666667,element_recovery,one_per_element,,2035
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.955,0.9158333333333334,0.9766666666666667,element_recovery,one_per_element,,2035
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.955,0.91,0.9824999999999999,element_recovery,one_per_element,,2035
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.955,0.91,0.9824999999999999,element_recovery,one_per_element,,2035
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Au,0.045000000000000005,0.030000000000000002,0.17500000000000002,element_recovery,one_per_element,,2035
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Au,0.045000000000000005,0.030000000000000002,0.17500000000000002,element_recovery,one_per_element,,2035
 F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Cu,0.9458333333333333,0.8916666666666666,0.9733333333333333,element_recovery,one_per_element,,2035
@@ -385,8 +385,8 @@ F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ag,0.9333333333333333,0.87666666666
 F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ag,0.9333333333333333,0.8766666666666667,0.96,element_recovery,one_per_element,,2040
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ag,0.06666666666666667,0.026666666666666672,0.16666666666666669,element_recovery,one_per_element,,2040
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ag,0.06666666666666667,0.026666666666666672,0.16666666666666669,element_recovery,one_per_element,,2040
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.96,0.9316666666666666,0.9733333333333333,element_recovery,one_per_element,,2040
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.96,0.9316666666666666,0.9733333333333333,element_recovery,one_per_element,,2040
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.96,0.92,0.985,element_recovery,one_per_element,,2040
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.96,0.92,0.985,element_recovery,one_per_element,,2040
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Au,0.04,0.025,0.15000000000000002,element_recovery,one_per_element,,2040
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Au,0.04,0.025,0.15000000000000002,element_recovery,one_per_element,,2040
 F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Cu,0.9516666666666667,0.9033333333333333,0.9766666666666667,element_recovery,one_per_element,,2040
@@ -479,8 +479,8 @@ F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ag,0.94,0.89,0.965,element_recovery
 F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ag,0.94,0.89,0.965,element_recovery,one_per_element,,2045
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ag,0.06,0.022500000000000003,0.15000000000000002,element_recovery,one_per_element,,2045
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ag,0.06,0.022500000000000003,0.15000000000000002,element_recovery,one_per_element,,2045
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.965,0.9475,0.97,element_recovery,one_per_element,,2045
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.965,0.9475,0.97,element_recovery,one_per_element,,2045
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.965,0.9299999999999999,0.9875,element_recovery,one_per_element,,2045
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.965,0.9299999999999999,0.9875,element_recovery,one_per_element,,2045
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Au,0.035,0.020000000000000004,0.125,element_recovery,one_per_element,,2045
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Au,0.035,0.020000000000000004,0.125,element_recovery,one_per_element,,2045
 F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Cu,0.9575,0.915,0.98,element_recovery,one_per_element,,2045
@@ -573,8 +573,8 @@ F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ag,0.9466666666666667,0.90333333333
 F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ag,0.9466666666666667,0.9033333333333333,0.97,element_recovery,one_per_element,,2050
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ag,0.05333333333333334,0.018333333333333337,0.13333333333333336,element_recovery,one_per_element,,2050
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ag,0.05333333333333334,0.018333333333333337,0.13333333333333336,element_recovery,one_per_element,,2050
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.97,0.9633333333333334,0.9666666666666667,element_recovery,one_per_element,,2050
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.97,0.9633333333333334,0.9666666666666667,element_recovery,one_per_element,,2050
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.97,0.94,0.99,element_recovery,one_per_element,,2050
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.97,0.94,0.99,element_recovery,one_per_element,,2050
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Au,0.030000000000000002,0.015000000000000003,0.1,element_recovery,one_per_element,,2050
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Au,0.030000000000000002,0.015000000000000003,0.1,element_recovery,one_per_element,,2050
 F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Cu,0.9633333333333333,0.9266666666666666,0.9833333333333333,element_recovery,one_per_element,,2050
@@ -667,8 +667,8 @@ F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ag,0.9533333333333334,0.91666666666
 F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ag,0.9533333333333334,0.9166666666666667,0.975,element_recovery,one_per_element,,2055
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ag,0.04666666666666667,0.014166666666666668,0.11666666666666667,element_recovery,one_per_element,,2055
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ag,0.04666666666666667,0.014166666666666668,0.11666666666666667,element_recovery,one_per_element,,2055
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.975,0.9791666666666666,0.9633333333333333,element_recovery,one_per_element,,2055
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.975,0.9791666666666666,0.9633333333333333,element_recovery,one_per_element,,2055
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.975,0.95,0.9924999999999999,element_recovery,one_per_element,,2055
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.975,0.95,0.9924999999999999,element_recovery,one_per_element,,2055
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Au,0.025,0.010000000000000002,0.07499999999999998,element_recovery,one_per_element,,2055
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Au,0.025,0.010000000000000002,0.07499999999999998,element_recovery,one_per_element,,2055
 F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Cu,0.9691666666666666,0.9383333333333332,0.9866666666666667,element_recovery,one_per_element,,2055
@@ -761,8 +761,8 @@ F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ag,0.96,0.93,0.98,element_recovery,
 F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ag,0.96,0.93,0.98,element_recovery,one_per_element,,2060
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ag,0.04,0.010000000000000002,0.1,element_recovery,one_per_element,,2060
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ag,0.04,0.010000000000000002,0.1,element_recovery,one_per_element,,2060
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.98,0.995,0.96,element_recovery,one_per_element,,2060
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.98,0.995,0.96,element_recovery,one_per_element,,2060
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.98,0.96,0.995,element_recovery,one_per_element,,2060
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.98,0.96,0.995,element_recovery,one_per_element,,2060
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Au,0.02,0.005000000000000001,0.04999999999999999,element_recovery,one_per_element,,2060
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Au,0.02,0.005000000000000001,0.04999999999999999,element_recovery,one_per_element,,2060
 F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Cu,0.975,0.95,0.99,element_recovery,one_per_element,,2060
@@ -855,8 +855,8 @@ F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ag,0.96,0.93,0.98,element_recovery,
 F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ag,0.96,0.93,0.98,element_recovery,one_per_element,,2065
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ag,0.04,0.010000000000000002,0.1,element_recovery,one_per_element,,2065
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ag,0.04,0.010000000000000002,0.1,element_recovery,one_per_element,,2065
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.98,0.995,0.96,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.98,0.995,0.96,element_recovery,one_per_element,,2065
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.98,0.96,0.995,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.98,0.96,0.995,element_recovery,one_per_element,,2065
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Au,0.02,0.005000000000000001,0.04999999999999999,element_recovery,one_per_element,,2065
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Au,0.02,0.005000000000000001,0.04999999999999999,element_recovery,one_per_element,,2065
 F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Cu,0.975,0.95,0.99,element_recovery,one_per_element,,2065
@@ -949,8 +949,8 @@ F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ag,0.96,0.93,0.98,element_recovery,
 F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ag,0.96,0.93,0.98,element_recovery,one_per_element,,2070
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ag,0.04,0.010000000000000002,0.1,element_recovery,one_per_element,,2070
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ag,0.04,0.010000000000000002,0.1,element_recovery,one_per_element,,2070
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.98,0.995,0.96,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.98,0.995,0.96,element_recovery,one_per_element,,2070
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.98,0.96,0.995,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.98,0.96,0.995,element_recovery,one_per_element,,2070
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,Au,0.02,0.005000000000000001,0.04999999999999999,element_recovery,one_per_element,,2070
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Au,0.02,0.005000000000000001,0.04999999999999999,element_recovery,one_per_element,,2070
 F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Cu,0.975,0.95,0.99,element_recovery,one_per_element,,2070
