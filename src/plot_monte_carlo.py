@@ -1195,30 +1195,37 @@ def figure_account(run, theme: str, unit: str, resources=()):
     return figure
 
 
-def in_the_fleet(run, resource: str):
+def fleet_flows(run, resource: str):
     """
-    What is still in the cars: the net annual flow, and the stock it builds.
+    Every annual quantity this resource has, per draw, over ALL exported years.
 
-    EVERY YEAR THE ARRAYS HOLD, not the years the case solves. A stock is the
-    integral of a net flow, so integrating a five-yearly sample would either
-    miss four years in five or need a step factor pretending to be data. The
-    upstream export is annual and this reads all of it -- the case's own year
-    selection governs what is SOLVED, not what is integrated.
+    Returns a dict of (years x draws) arrays in the ARRAYS' own unit, plus the
+    year list and the years the model solved:
 
-    THE ACCUMULATION STARTS AT THE FIRST YEAR THE ARRAYS HOLD, and what was
-    already on the road then is NOT in it. The export begins in 2020, by which
-    time some electric cars existed, so this is what the fleet has taken in
-    SINCE 2020 and not the whole in-use stock. It is close to it -- the fleet
-    was small in 2020 against 11 Mt by 2065 -- but close is not the same, and a
-    figure that called it the stock would be asserting a zero nobody exported.
-    The subtitle says which it is; if a stock array is exported upstream one
-    day, read that instead of integrating.
+        inflow      entering the fleet
+        outflow     leaving it
+        collected   reaching a recycler
+        recovered   coming back as material, reusable
+        net         inflow - outflow, what the fleet absorbs that year
 
-    Returns (years, net, stock, layer name) with net and stock as (years,
-    draws), or None when this case has no upstream arrays.
+    ANNUAL, BECAUSE A STOCK IS AN INTEGRAL. The upstream export is annual and
+    all of it is read; integrating the case's five-yearly sample instead would
+    either miss four years in five or need a step factor pretending to be data.
+
+    `recovered` IS THE ONE INTERPOLATED QUANTITY, and it has to be, because the
+    model solves the years the case names and not every year. What is
+    interpolated is the RATE -- recovered over collected -- between the solved
+    years, and then applied to the annual collected mass. That is consistent
+    with how the model itself moves: an improving case ramps its coefficients
+    linearly between two tables (DECISIONS 27-29), so a linearly moving rate is
+    the model's own shape rather than a curve invented for a figure. The figure
+    says it is interpolated.
     """
     source = getattr(run, 'upstream', None)
     if source is None or not getattr(source, 'propagates', False):
+        return None
+    a = account(run, resource)
+    if a is None:
         return None
     keys, layer = run.keys, finest_layer(run.keys)
     domains = sorted({d for d in keys.loc[keys[layer] == resource,
@@ -1227,144 +1234,195 @@ def in_the_fleet(run, resource: str):
         return None
 
     every = [int(year) for year in source.years]
-    net = []
+    got = {'inflow': [], 'outflow': [], 'collected': []}
     for year in every:
-        into = source.other_flow('inflow', resource, domains, year, 0, run.draws)
-        out = source.other_flow('outflow', resource, domains, year, 0, run.draws)
-        if into is None or out is None:
-            return None
-        net.append(into - out)
-    net = np.array(net)                       # years x draws, arrays' own unit
-    return every, net, np.cumsum(net, axis=0), layer
+        for name in got:
+            piece = source.other_flow(name, resource, domains, year, 0, run.draws)
+            if piece is None:
+                return None
+            got[name].append(piece)
+    out = {name: np.array(block) for name, block in got.items()}
+    out['net'] = out['inflow'] - out['outflow']
+
+    # The rate the model found, at the years it solved, carried across the rest.
+    solved = [int(y) for y in a['years']]
+    with np.errstate(invalid='ignore', divide='ignore'):
+        rate = np.where(a['collected'] > 0,
+                        a['recovered'] / a['collected'], np.nan)   # draws x years
+    rate = np.nan_to_num(rate, nan=0.0)
+    annual = np.empty((len(every), run.draws))
+    for draw in range(0, run.draws, 20000):                # in slices, for memory
+        end = min(draw + 20000, run.draws)
+        annual[:, draw:end] = np.array(
+            [np.interp(every, solved, rate[one, :]) for one in range(draw, end)]).T
+    out['recovered'] = out['collected'] * annual
+    return {'years': every, 'solved': solved, **out}
 
 
 def figure_trapped(run, theme: str, unit: str, resources=()):
     """
-    HOW MUCH IS LOCKED UP IN CARS ON THE ROAD, per year and in total.
+    WHAT THE FLEET IS HOLDING, WHAT IT GIVES BACK, AND WHAT IS GONE.
 
     Between what a fleet takes in and what it gives back there is a stock, and
-    it is the largest number in this whole model: copper bought years ago,
-    still driving around, unavailable to anybody. Nothing here showed it --
-    `account.png` draws the inflow and the outflow as two lines and leaves the
-    gap between them to be imagined.
+    it is the largest number in this model -- copper bought years ago, still
+    driving around, unavailable to anybody. Nothing showed it: `account.png`
+    draws the inflow and the outflow and leaves the gap to be imagined.
 
-    Two panels, because they are two different quantities and one axis would
-    be a lie about units:
+    Two panels, because a rate and a stock are different quantities and one
+    axis would be a lie about units.
 
-    - **per year**, the net flow: what entered minus what left. Positive while
-      the fleet grows. Where it crosses zero the fleet has stopped absorbing
-      copper and begins returning more than it takes -- the single most
-      consequential date on this figure, so it is marked and named.
-    - **over time**, the stock that net flow builds: what the fleet has taken
-      in and not yet given back, counting from the first year exported.
+    **Per year, the flows.** Entering, leaving, and coming back reusable. The
+    gap between entering and leaving is shaded: that is what the fleet swallows
+    that year. On the right axis, the number that decides whether any of this
+    is circular -- RECOVERED AS A SHARE OF WHAT THE FLEET IS BUYING. At 100%
+    every new car could be built from old ones; below it, the difference has to
+    be mined. The year the net flow crosses zero is marked, because reading a
+    date off a crossing is guessing.
 
-    Both are computed over EVERY year the upstream arrays hold, not the years
-    the case solves, because a stock is an integral (see `in_the_fleet`). The
-    solved years are marked on the stock so the two figures can be lined up.
+    **Over time, the three stocks it builds.** In the fleet, recovered to date,
+    and lost to date. They are cumulative sums of the panel above, so together
+    they say where every kilogram that ever entered has got to: still driving,
+    back in the economy, or gone.
 
-    Scaled to the model's own unit by the same ratio `account` uses: the
-    model's collected mass over the array's, so no unit constant appears here.
+    Counting starts at the first exported year and what was already on the road
+    then is NOT in it -- see `fleet_flows`.
     """
     wanted = chosen(run, resources)
     series = {}
     for resource in wanted:
-        found = in_the_fleet(run, resource)
+        found = fleet_flows(run, resource)
         if found is None:
             continue
-        every, net, stock, layer = found
         a = account(run, resource)
-        if a is None:
-            continue
-        # The arrays are in their own unit and the model in another. The ratio
-        # is taken from the model's own collected mass against the array it came
-        # from, exactly as `account` does it.
-        keys = run.keys
+        first = int(a['years'][0])
+        keys, layer = run.keys, finest_layer(run.keys)
         domains = sorted({d for d in keys.loc[keys[layer] == resource,
                                               'Layer 2'].unique() if d})
-        first = int(a['years'][0])
         raw = run.upstream.other_flow('collected', resource, domains, first,
                                       0, run.draws)
         if raw is None or raw.mean() <= 0:
             continue
+        # The arrays' unit against the model's, from the model's own collected
+        # mass. No unit constant appears here on purpose.
         to_working = float(np.nanmean(a['collected'][:, 0]) / raw.mean())
-        series[resource] = {'years': every, 'net': net * to_working,
-                            'stock': stock * to_working,
-                            'solved': [int(y) for y in a['years']]}
+        series[resource] = {k: (v * to_working if isinstance(v, np.ndarray) else v)
+                            for k, v in found.items()}
     if not series:
         return None
 
-    every_stock = np.concatenate([np.nanpercentile(s['stock'], 97.5, axis=1)
-                                  for s in series.values()])
-    scale, shown = scale_for(every_stock, unit)
+    biggest = np.concatenate([np.nanpercentile(np.cumsum(s['net'], axis=0),
+                                               97.5, axis=1)
+                              for s in series.values()])
+    scale, shown = scale_for(biggest, unit)
 
-    across = min(3, len(series))
+    across = min(2, len(series))
     down = -(-len(series) // across)
-    figure, axes, colours = chart(1180 * across, 900 * down, theme,
-                                  2 * down, across, height_ratios=(1, 1.5) * down)
+    figure, axes, colours = chart(1250 * across, 940 * down, theme,
+                                  2 * down, across, height_ratios=(1, 1) * down)
     grid = np.array(axes, dtype=object).reshape(2 * down, across)
 
+    def band(draws):
+        return (np.nanpercentile(draws, 50, axis=1),
+                np.nanpercentile(draws, 2.5, axis=1),
+                np.nanpercentile(draws, 97.5, axis=1))
+
     for index, (resource, s) in enumerate(sorted(series.items())):
-        top, bottom = grid[2 * (index // across)][index % across], \
-            grid[2 * (index // across) + 1][index % across]
+        row, column = 2 * (index // across), index % across
+        top, bottom = grid[row][column], grid[row + 1][column]
         years = s['years']
+        end = years[-1]
 
-        def band(draws):
-            return (np.nanpercentile(draws, 50, axis=1),
-                    np.nanpercentile(draws, 2.5, axis=1),
-                    np.nanpercentile(draws, 97.5, axis=1))
+        # ---- the flows, per year -------------------------------------
+        into = np.nanmean(s['inflow'], axis=1)
+        out = np.nanmean(s['outflow'], axis=1)
+        back = np.nanmean(s['recovered'], axis=1)
+        top.fill_between(years, out * scale, into * scale,
+                         where=(into >= out), color=PALETTE[0], alpha=0.18,
+                         linewidth=0, label='the gap: what the fleet absorbs')
+        top.plot(years, into * scale, color=colours['meta'], linewidth=1.6,
+                 linestyle=(0, (1, 2)),
+                 label=f'entering the fleet   {readable(into[-1], unit)} in {end}')
+        top.plot(years, out * scale, color=colours['title'], linewidth=2.4,
+                 label=f'leaving the fleet   {readable(out[-1], unit)} in {end}')
+        top.plot(years, back * scale, color=PALETTE[1], linewidth=2.4,
+                 label=f'recovered, reusable   {readable(back[-1], unit)} in {end}')
 
-        median, low, high = band(s['net'])
-        top.fill_between(years, low * scale, high * scale, color=PALETTE[0],
-                         alpha=0.16, linewidth=0)
-        top.plot(years, median * scale, color=PALETTE[0], linewidth=2.2)
-        top.axhline(0, color=colours['title'], linewidth=1.0)
-        # WHERE IT TURNS. The first year the fleet gives back more than it
-        # takes is a date somebody wants; reading it off a crossing is guessing.
-        turned = next((year for year, value in zip(years, median) if value < 0),
-                      None)
+        # THE CIRCULARITY NUMBER, on its own axis because it is not a mass:
+        # how much of what the fleet is buying could come from what it returns.
+        circular = top.twinx()
+        with np.errstate(invalid='ignore', divide='ignore'):
+            share = np.where(s['inflow'] > 0,
+                             100 * s['recovered'] / s['inflow'], np.nan)
+        median, low, high = band(share)
+        circular.fill_between(years, low, high, color=PALETTE[2], alpha=0.12,
+                              linewidth=0)
+        circular.plot(years, median, color=PALETTE[2], linewidth=3.0,
+                      label=f'RECOVERED AS A SHARE OF WHAT THE FLEET BUYS, '
+                            f'right axis   {median[0]:.0f} → {median[-1]:.0f}%')
+        circular.set_ylim(0, 100)
+        circular.set_yticks([0, 25, 50, 75, 100])
+        circular.set_ylabel('recovered, % of what is entering',
+                            color=PALETTE[2], fontsize=13)
+        circular.tick_params(colors=PALETTE[2], labelsize=15)
+        for side in ('top', 'left', 'bottom'):
+            circular.spines[side].set_visible(False)
+        circular.spines['right'].set_color(PALETTE[2])
+        circular.grid(False)
+        top.set_zorder(circular.get_zorder() + 1)
+        top.patch.set_visible(False)
+
+        turned = next((year for year, value in zip(years, np.nanmean(s['net'], axis=1))
+                       if value < 0), None)
         if turned is not None:
             top.axvline(turned, color=colours['meta'], linewidth=1.0,
                         linestyle=(0, (3, 3)))
-            top.annotate(f'{turned}: the fleet starts giving back\nmore than it '
-                         f'takes', xy=(turned, 0), xytext=(6, 8),
+            top.annotate(f'{turned}: the fleet begins\ngiving back more\nthan it takes',
+                         xy=(turned, 0), xytext=(-8, 30),
                          textcoords='offset points', color=colours['meta'],
-                         fontsize=11)
-        top.set_title(f'{resource}: entering the fleet minus leaving it, per year',
+                         fontsize=11, ha='right')
+        top.set_title(f'{resource}: the flows, per year',
                       color=colours['title'], fontsize=13, fontweight='bold')
-        top.set_ylabel(f'net ({shown}/yr)', color=colours['meta'], fontsize=13)
+        top.set_ylabel(f'per year ({shown}/yr)', color=colours['meta'], fontsize=13)
 
-        median, low, high = band(s['stock'])
-        bottom.fill_between(years, low * scale, high * scale, color=PALETTE[1],
-                            alpha=0.18, linewidth=0)
-        bottom.plot(years, median * scale, color=PALETTE[1], linewidth=2.6)
-        peak = int(np.argmax(median))
-        bottom.annotate(f'{years[peak]}: {median[peak] * scale:,.0f} {shown} '
-                        f'held since {years[0]}',
-                        xy=(years[peak], median[peak] * scale),
-                        xytext=(-10, 12), textcoords='offset points',
-                        color=colours['title'], fontsize=12, fontweight='bold',
-                        ha='right')
-        marks = [y for y in s['solved'] if y in years]
-        bottom.plot(marks, [median[years.index(y)] * scale for y in marks],
-                    linestyle='none', marker='o', markersize=4,
-                    color=PALETTE[1])
-        bottom.set_title(f'{resource}: how much the fleet is holding, '
-                         f'accumulated from {years[0]}',
+        # ---- the stocks they build -----------------------------------
+        stocks = (('in the fleet, still driving', np.cumsum(s['net'], axis=0),
+                   PALETTE[0]),
+                  ('recovered to date, reusable', np.cumsum(s['recovered'], axis=0),
+                   PALETTE[1]),
+                  ('lost to date', np.cumsum(s['outflow'] - s['recovered'], axis=0),
+                   PALETTE[3]))
+        for name, block, colour in stocks:
+            median, low, high = band(block)
+            bottom.fill_between(years, low * scale, high * scale, color=colour,
+                                alpha=0.16, linewidth=0)
+            bottom.plot(years, median * scale, color=colour, linewidth=2.6,
+                        label=f'{name}   {readable(median[-1], unit)} by {end}')
+        bottom.set_title(f'{resource}: where everything that entered has got to, '
+                         f'counting from {years[0]}',
                          color=colours['title'], fontsize=13, fontweight='bold')
-        bottom.set_ylabel(f'in the fleet ({shown})', color=colours['meta'],
+        bottom.set_ylabel(f'accumulated ({shown})', color=colours['meta'],
                           fontsize=13)
         bottom.set_xlabel('year', color=colours['meta'], fontsize=13)
 
         for panel in (top, bottom):
             panel.tick_params(labelsize=15)
             panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
+            handles, labels = panel.get_legend_handles_labels()
+            if panel is top:
+                more = circular.get_legend_handles_labels()
+                handles, labels = handles + more[0], labels + more[1]
+            legend = panel.legend(handles, labels, fontsize=11, frameon=False,
+                                  loc='upper left')
+            for text in legend.get_texts():
+                text.set_color(colours['meta'])
 
     first = min(s['years'][0] for s in series.values())
-    header(figure, 'What is trapped in the fleet', colours,
-           f'every year the upstream arrays hold, {every_years(series)}.  '
-           f'solid: median, band: 95%.  the lower panel is the running total of '
-           f'the upper one, so it counts from {first} and does NOT include what '
-           f'was already on the road then.  dots mark the years the model solves')
+    header(figure, 'What the fleet holds, gives back, and loses', colours,
+           f'{every_years(series)}, every year the arrays hold.  masses are '
+           f'MEANS, the share a median with 95%.  the lower panel accumulates '
+           f'the upper one from {first}, so what was on the road then is not in '
+           f'it.  recovered uses the model\'s rate carried linearly between the '
+           f'years it solves')
     return figure
 
 

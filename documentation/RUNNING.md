@@ -87,8 +87,12 @@ figures/<case>/
                                  unit so any two can be compared by the
                                  distance between them, with the recovery rate
                                  on the right axis
-    trapped.png                  what the fleet is holding: the net flow per
-                                 year, and the stock it builds. Every year the
+    trapped.png                  what the fleet holds, gives back and loses.
+                                 Per year: entering, leaving, recovered and
+                                 reusable, with recovery as a share of what the
+                                 fleet BUYS on the right axis. Over time: the
+                                 three stocks those build -- still driving,
+                                 recovered to date, lost to date. Every year the
                                  upstream arrays hold, not just the solved ones
     losses.png                   WHY it did not come back -- one wedge per
                                  reason, as mass and as a share of the outflow
