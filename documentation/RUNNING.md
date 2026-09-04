@@ -80,8 +80,16 @@ figures/<case>/
     total.png                    the Sankey, all resources
     <resource>.png               one Sankey per resource
     over_time.png                median per resource per year, with the 95% band
+    account.png                  THE WHOLE ACCOUNT, ON ONE AXIS: entering and
+                                 leaving the fleet, reaching a recycler,
+                                 recovered, lost inside recycling, never
+                                 collected, and each road -- all in the same
+                                 unit so any two can be compared by the
+                                 distance between them, with the recovery rate
+                                 on the right axis
     recovery_rate.png            recovered as a SHARE of what came in, per year
-    routes.png                   which road it came back on, one panel per resource
+    routes.png                   which road it came back on: the two roads and
+                                 the split between them, per draw
     fate.png                     what becomes of it once it leaves the fleet:
                                  recovered / lost in recycling / never collected
     pdf_<resource>.png           the distribution, one panel per year

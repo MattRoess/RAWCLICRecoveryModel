@@ -426,7 +426,7 @@ class FigureParams:
     # resolves twenty-odd elements and a reader usually wants two.
     # SAFE TO CHANGE: yes. A name that no case has is ignored rather than
     # silently producing an empty figure.
-    resources: tuple[str, ...] = ()
+    resources: tuple[str, ...] = ('copper',)
 
     def enabled(self) -> list[str]:
         """The formats switched on above, in a fixed order. Not a setting."""

@@ -106,7 +106,8 @@ def write(figure, out_dir: str, stem: str, formats, dpi: int) -> list[str]:
     return written
 
 
-def chart(width: float, height: float, theme: str, rows: int = 1, columns: int = 1):
+def chart(width: float, height: float, theme: str, rows: int = 1, columns: int = 1,
+          height_ratios=None):
     """
     Ordinary axes for a statistical chart, themed to match the diagrams.
 
@@ -116,9 +117,16 @@ def chart(width: float, height: float, theme: str, rows: int = 1, columns: int =
 
     Returns (figure, axes, colours). `axes` is a single Axes when one panel is
     asked for, and an array of them otherwise.
+
+    `height_ratios` gives the rows unequal heights, for a figure whose second
+    row is a strip under a full panel rather than a second full panel. Left
+    alone, every row is the same height, as before.
     """
     colours = THEMES[theme]
-    figure, axes = plt.subplots(rows, columns, figsize=(width / 72, height / 72))
+    figure, axes = plt.subplots(
+        rows, columns, figsize=(width / 72, height / 72),
+        gridspec_kw=None if height_ratios is None
+        else {'height_ratios': list(height_ratios)})
     figure.patch.set_facecolor(colours['bg'])
 
     for panel in (axes.ravel() if hasattr(axes, 'ravel') else [axes]):

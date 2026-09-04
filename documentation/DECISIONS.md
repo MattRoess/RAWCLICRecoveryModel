@@ -172,6 +172,34 @@ lives in a chat message is a decision that will be broken.
     there. Routes are named from the `process` column: `own recycling`,
     `general recycling`. Decided 2026-09-03, after the user had to point it out.
 
+34. **A road is a side of the SPLIT, and the sides are named as a decision and
+    its negation.** `disassembled` and `not disassembled` -- not
+    `own recycling` / `general recycling`, which name where the material ends
+    up and so read as two independent roads a part could choose between. It
+    cannot: taken out of the car, it is not in the car any more. Decided
+    2026-09-04, after two wrong namings in a row.
+
+35. **The two roads are anti-correlated and the figure has to show it.** Two
+    95% bands side by side invite reading both at their upper edge at once,
+    which no draw can do. The split -- one road's share, formed per draw -- is
+    drawn as well, and its narrow band IS the correlation.
+
+36. **A rate is formed inside the draw, numerator AND denominator.** Since the
+    inflow draws are propagated (32), dividing a draw's recovered mass by the
+    MEAN inflow hands the fleet's whole spread to a number the fleet cannot
+    move: copper's 2020 recovery band came out at 142%, which is not a wide
+    estimate but an impossible one.
+
+37. **One question, one set of axes.** The copper account was three files, then
+    one file of four panels, and both were the same mistake: the moment two
+    quantities sit on different axes, comparing them means reading one,
+    remembering a number, and looking at the other. Everything that is a mass
+    in the same unit goes on the SAME axis, and then every comparison is a
+    distance on the page. Decided 2026-09-04 -- *"Only if things are directly
+    comparable, then one can understand the topic"*. The one exception is a
+    quantity in another unit: the recovery rate is a per cent, so it is on a
+    right-hand axis, drawn heavier, and says on its own axis what it is.
+
 ## Words
 
 19. **Disassembly** is taking a part out whole, with tools, on purpose.
