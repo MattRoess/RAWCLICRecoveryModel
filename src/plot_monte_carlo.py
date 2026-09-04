@@ -949,6 +949,141 @@ def _round_step(rough: float) -> float:
     return float(10 * power)
 
 
+def draw_account(panel, title: str, a: dict, roads: dict, years,
+                 scale: float, shown: str, colours):
+    """
+    ONE ACCOUNT ON ONE SET OF AXES. Returns the per-cent axis it adds.
+
+    Extracted so the per-case figure and the combined figure across cases
+    (`04_combine_cases.py`) are the SAME picture rather than two that drift
+    apart. The combined one hands in an account summed per draw across its
+    cases; nothing here knows or cares which kind it was given.
+
+    See `figure_account` for why the lines are the lines and why the rate is on
+    its own axis.
+    """
+    def band(draws):
+        return (np.nanpercentile(draws, 50, axis=0),
+                np.nanpercentile(draws, 2.5, axis=0),
+                np.nanpercentile(draws, 97.5, axis=0))
+
+    mean_of = {k: np.nanmean(v, axis=0) for k, v in a.items() if k != 'years'}
+    end = years[-1]
+
+    def draw(key, name, colour, style, width, values=None):
+        series = mean_of[key] if values is None else values
+        if not np.isfinite(series).any():
+            return
+        panel.plot(years, series * scale, color=colour, linewidth=width,
+                   linestyle=style, marker='o', markersize=3,
+                   label=f'{name}   {series[-1] * scale:,.0f} {shown} in {end}')
+
+    # The 95% band of what leaves the fleet: the fleet's own uncertainty, which
+    # every mass on this axis inherits and none of the others can show without
+    # turning the figure into mud.
+    _, low, high_of_all = band(a['outflow'])
+    panel.fill_between(years, low * scale, high_of_all * scale,
+                       color=colours['title'], alpha=0.10, linewidth=0,
+                       label='leaving the fleet, 95%')
+
+    draw('inflow', 'entering the fleet', colours['meta'], (0, (1, 2)), 1.6)
+    draw('outflow', 'leaving the fleet', colours['title'], '-', 2.4)
+    draw('collected', 'reaching a recycler', colours['title'], (0, (5, 2)), 1.8)
+    draw('recovered', 'recovered', PALETTE[1], '-', 2.4)
+    draw('uncollected', 'never collected', PALETTE[0], (0, (4, 1, 1, 1)), 1.8)
+    draw('lost', 'lost inside recycling', PALETTE[3], (0, (4, 1, 1, 1)), 1.8)
+    for place, (road, draws_of) in enumerate(roads.items()):
+        draw(road, f'recovered, {road}', PALETTE[(place + 4) % len(PALETTE)],
+             (0, (2, 1.5)), 1.5, values=np.nanmean(draws_of, axis=0))
+
+    # The rate, on its own axis because it is the only thing here that is not a
+    # mass. Per draw, so the fleet cancels and what is left is the
+    # coefficients' uncertainty.
+    rate_axis = panel.twinx()
+    with np.errstate(invalid='ignore', divide='ignore'):
+        rate = np.where(a['collected'] > 0,
+                        100 * a['recovered'] / a['collected'], np.nan)
+    median, low, high = band(rate)
+    rate_axis.fill_between(years, low, high, color=PALETTE[2], alpha=0.14,
+                           linewidth=0)
+    rate_axis.plot(years, median, color=PALETTE[2], linewidth=3.0,
+                   marker='o', markersize=4,
+                   label=f'RECOVERY RATE, right axis   '
+                         f'{median[0]:.0f} → {median[-1]:.0f}% of what '
+                         f'was collected')
+    # FOUR INTERVALS ON BOTH AXES, AND NOT ONE MORE. Five labels a side is what
+    # a reader takes in at a glance; ruling the mass axis every 100 against a
+    # rate axis every 10 gave twenty numbers down the page and two sets of
+    # gridlines that did not agree. At four apiece the two rule the SAME lines,
+    # so one set of horizontal rules serves both axes and a mass on the left and
+    # a per cent on the right are read off the same place.
+    rate_axis.set_ylim(0, 100)
+    rate_axis.set_yticks([0, 25, 50, 75, 100])
+    rate_axis.set_ylabel('recovered, % of what was collected',
+                         color=PALETTE[2], fontsize=14)
+    rate_axis.tick_params(colors=PALETTE[2], labelsize=17)
+    for side in ('top', 'left', 'bottom'):
+        rate_axis.spines[side].set_visible(False)
+    rate_axis.spines['right'].set_color(PALETTE[2])
+    rate_axis.grid(False)
+
+    top = float(np.nanmax(high_of_all) * scale)
+    step = _round_step(top / 4)
+    panel.set_ylim(0, step * 4)
+    panel.set_yticks([step * n for n in range(5)])
+
+    panel.set_title(
+        f'{title}   in {end}: {mean_of["outflow"][-1] * scale:,.0f} {shown} '
+        f'left the fleet, {mean_of["collected"][-1] * scale:,.0f} reached a '
+        f'recycler, {mean_of["recovered"][-1] * scale:,.0f} came back',
+        color=colours['title'], fontsize=13, fontweight='bold')
+    panel.set_xlabel('year', color=colours['meta'], fontsize=14)
+    panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=14)
+    # Every decade, not every point. The points are still drawn as markers, so
+    # nothing is hidden -- but eleven labels along the bottom is a row of
+    # numbers to read where six is a scale to glance at.
+    panel.set_xticks([y for y in years if y % 10 == 0] or list(years))
+    panel.tick_params(labelsize=17)
+    panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
+    panel.set_zorder(rate_axis.get_zorder() + 1)
+    panel.patch.set_visible(False)
+    return rate_axis
+
+
+def account_legend(figure, for_legend, colours, rows_of: int,
+                   strip_numbers: bool) -> None:
+    """
+    The shared legend, UNDER the figure rather than on it.
+
+    Ten entries is a block, and a block placed anywhere inside these axes lands
+    on lines: upper left is where the rate runs, centre left is where the
+    inflow climbs through. Below the axes it covers nothing and reads in one
+    pass across rather than as a tall column.
+
+    ONE PANEL'S WORTH, not every panel's. Every panel draws the same lines, so
+    collecting them all repeated the legend once per resource -- twenty-one
+    times on the boards case, and the reserved space came out taller than the
+    figure. `strip_numbers` drops each label's value where there are several
+    panels, since a value belongs to one of them and each panel's title carries
+    its own.
+    """
+    panel, rate_axis = for_legend[0]
+    handles, labels = panel.get_legend_handles_labels()
+    extra = rate_axis.get_legend_handles_labels()
+    handles, labels = handles + extra[0], labels + extra[1]
+    if strip_numbers:
+        labels = [text.split('   ')[0] for text in labels]
+    room = min(0.35, 0.055 + 0.038 * np.ceil(len(labels) / 3) / max(1, rows_of))
+    figure.subplots_adjust(bottom=room)
+    legend = figure.legend(handles, labels, fontsize=11, frameon=False,
+                           ncol=3, loc='lower center',
+                           bbox_to_anchor=(0.5, 0.012),
+                           handlelength=3.2, columnspacing=2.5,
+                           labelspacing=0.7)
+    for text in legend.get_texts():
+        text.set_color(colours['meta'])
+
+
 def figure_account(run, theme: str, unit: str, resources=()):
     """
     THE WHOLE ACCOUNT OF A RESOURCE ON ONE SET OF AXES, so that every quantity
@@ -1044,87 +1179,9 @@ def figure_account(run, theme: str, unit: str, resources=()):
     for_legend = []
 
     for panel, (resource, a) in zip(panels, sorted(accounts.items())):
-        mean_of = {k: np.nanmean(v, axis=0) for k, v in a.items() if k != 'years'}
-        end = years[-1]
-
-        def draw(key, name, colour, style, width, values=None):
-            series = mean_of[key] if values is None else values
-            if not np.isfinite(series).any():
-                return
-            panel.plot(years, series * scale, color=colour, linewidth=width,
-                       linestyle=style, marker='o', markersize=3,
-                       label=f'{name}   {series[-1] * scale:,.0f} {shown} in {end}')
-
-        # The 95% band of what leaves the fleet: the fleet's own uncertainty,
-        # which every mass on this axis inherits and none of the others can
-        # show without turning the figure into mud.
-        _, low, high_of_all = band(a['outflow'])
-        panel.fill_between(years, low * scale, high_of_all * scale,
-                           color=colours['title'], alpha=0.10, linewidth=0,
-                           label='leaving the fleet, 95%')
-
-        draw('inflow', 'entering the fleet', colours['meta'], (0, (1, 2)), 1.6)
-        draw('outflow', 'leaving the fleet', colours['title'], '-', 2.4)
-        draw('collected', 'reaching a recycler', colours['title'], (0, (5, 2)), 1.8)
-        draw('recovered', 'recovered', PALETTE[1], '-', 2.4)
-        draw('uncollected', 'never collected', PALETTE[0], (0, (4, 1, 1, 1)), 1.8)
-        draw('lost', 'lost inside recycling', PALETTE[3], (0, (4, 1, 1, 1)), 1.8)
-        for place, (road, draws_of) in enumerate(roads_for.get(resource, {}).items()):
-            draw(road, f'recovered, {road}', PALETTE[(place + 4) % len(PALETTE)],
-                 (0, (2, 1.5)), 1.5, values=draws_of.mean(axis=0))
-
-        # The rate, on its own axis because it is the only thing here that is
-        # not a mass. Per draw, so the fleet cancels and what is left is the
-        # coefficients' uncertainty.
-        rate_axis = panel.twinx()
-        with np.errstate(invalid='ignore', divide='ignore'):
-            rate = np.where(a['collected'] > 0,
-                            100 * a['recovered'] / a['collected'], np.nan)
-        median, low, high = band(rate)
-        rate_axis.fill_between(years, low, high, color=PALETTE[2], alpha=0.14,
-                               linewidth=0)
-        rate_axis.plot(years, median, color=PALETTE[2], linewidth=3.0,
-                       marker='o', markersize=4,
-                       label=f'RECOVERY RATE, right axis   '
-                             f'{median[0]:.0f} → {median[-1]:.0f}% of what '
-                             f'was collected')
-        # FOUR INTERVALS ON BOTH AXES, AND NOT ONE MORE. Five labels a side is
-        # what a reader takes in at a glance; ruling the mass axis every 100
-        # against a rate axis every 10 gave twenty numbers down the page and two
-        # sets of gridlines that did not agree. At four apiece the two rule the
-        # SAME lines, so one set of horizontal rules serves both axes and a mass
-        # on the left and a per cent on the right are read off the same place.
-        rate_axis.set_ylim(0, 100)
-        rate_axis.set_yticks([0, 25, 50, 75, 100])
-        rate_axis.set_ylabel('recovered, % of what was collected',
-                             color=PALETTE[2], fontsize=14)
-        rate_axis.tick_params(colors=PALETTE[2], labelsize=17)
-        for side in ('top', 'left', 'bottom'):
-            rate_axis.spines[side].set_visible(False)
-        rate_axis.spines['right'].set_color(PALETTE[2])
-        rate_axis.grid(False)
-
-        top = float(np.nanmax(high_of_all) * scale)
-        step = _round_step(top / 4)
-        panel.set_ylim(0, step * 4)
-        panel.set_yticks([step * n for n in range(5)])
-
-        panel.set_title(
-            f'{resource}   in {end}: {mean_of["outflow"][-1] * scale:,.0f} {shown} '
-            f'left the fleet, {mean_of["collected"][-1] * scale:,.0f} reached a '
-            f'recycler, {mean_of["recovered"][-1] * scale:,.0f} came back',
-            color=colours['title'], fontsize=13, fontweight='bold')
-        panel.set_xlabel('year', color=colours['meta'], fontsize=14)
-        panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=14)
-        # Every decade, not every point. The points are still drawn as markers,
-        # so nothing is hidden -- but eleven labels along the bottom is a row of
-        # numbers to read where six is a scale to glance at.
-        panel.set_xticks([y for y in years if y % 10 == 0] or list(years))
-        panel.tick_params(labelsize=17)
-        panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
-        panel.set_zorder(rate_axis.get_zorder() + 1)
-        panel.patch.set_visible(False)
-
+        rate_axis = draw_account(panel, resource, a,
+                                 roads_for.get(resource, {}),
+                                 years, scale, shown, colours)
         for_legend.append((panel, rate_axis))
 
     names = ', '.join(sorted(accounts))
@@ -1133,35 +1190,8 @@ def figure_account(run, theme: str, unit: str, resources=()):
            f'can be compared by the distance between them: recovered + lost + '
            f'never collected = the outflow.  band: the outflow 95%.  '
            f'the rate is per draw, on the right axis')
-
-    # THE LEGEND SITS UNDER THE FIGURE, NOT ON IT. Ten entries is a block, and a
-    # block placed anywhere inside these axes lands on top of lines: upper left
-    # is where the rate runs, centre left is where the inflow climbs through.
-    # Below the axes it covers nothing, and it can be read in one pass across
-    # rather than as a tall column.
-    #
-    # ONE PANEL'S WORTH, not every panel's. Every panel draws the same lines, so
-    # collecting them all repeated the legend once per resource -- on the boards
-    # case, twenty-one resources, and the reserved space came out taller than
-    # the figure. Only the values differ, and those are on each panel's title.
-    panel, rate_axis = for_legend[0]
-    handles, labels = panel.get_legend_handles_labels()
-    extra = rate_axis.get_legend_handles_labels()
-    handles, labels = handles + extra[0], labels + extra[1]
-    if len(accounts) > 1:
-        # The numbers in a label belong to ONE resource. With several panels
-        # they would be read as belonging to all of them, so the shared legend
-        # names the lines and each panel's title carries its own numbers.
-        labels = [text.split('   ')[0] for text in labels]
-    room = min(0.35, 0.055 + 0.038 * np.ceil(len(labels) / 3) / max(1, rows_of))
-    figure.subplots_adjust(bottom=room)
-    legend = figure.legend(handles, labels, fontsize=11, frameon=False,
-                           ncol=3, loc='lower center',
-                           bbox_to_anchor=(0.5, 0.012),
-                           handlelength=3.2, columnspacing=2.5,
-                           labelspacing=0.7)
-    for text in legend.get_texts():
-        text.set_color(colours['meta'])
+    account_legend(figure, for_legend, colours, rows_of,
+                   strip_numbers=len(accounts) > 1)
     return figure
 
 

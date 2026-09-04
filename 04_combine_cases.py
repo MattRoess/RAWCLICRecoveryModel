@@ -53,9 +53,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from src.figure_style import PALETTE, chart, write
 from src.monte_carlo import solve_draws
 from src.params_schema import Params
-from src.plot_monte_carlo import (header, recovered_flows, years_listed)
-from src.report import start_flows
-from src.rest import REST, LAYERS
+from src.plot_monte_carlo import (account, account_legend, draw_account,
+                                  header, routes)
+from src.rest import LAYERS, REST
 from src.units import readable, scale_for
 from src.upstream import load as refresh
 
@@ -66,17 +66,13 @@ class CombineError(ValueError):
     """Raised when the cases named cannot be added together."""
 
 
-def series_for(run, names) -> tuple[np.ndarray, np.ndarray, str] | None:
+def named_in(run, names) -> str | None:
     """
-    One case's recovered and collected mass for the metal, per year per draw.
+    Which spelling of the metal this case uses, if any.
 
-    `names` is every spelling the metal has across the cases -- the wiring case
-    resolves materials and calls it `copper`, the boards case resolves elements
-    and calls it `Cu`. Whichever this case has is the one used; a case with none
-    of them contributes nothing and says so, rather than counting zero quietly.
-
-    Returns (recovered, collected, the name this case used), each array shaped
-    (years, draws).
+    The wiring case resolves materials and calls it `copper`; the boards case
+    resolves elements and calls it `Cu`. A case with none of the names given
+    contributes nothing and says so, rather than counting zero quietly.
     """
     keys = run.keys
     layer = next((column for column in reversed(LAYERS)
@@ -85,121 +81,71 @@ def series_for(run, names) -> tuple[np.ndarray, np.ndarray, str] | None:
     if layer is None:
         return None
     present = {value for value in keys[layer].unique() if value and value != REST}
-    used = next((name for name in names if name in present), None)
-    if used is None:
-        return None
-
-    years = sorted(int(year) for year in keys['Year'].unique())
-    recovered_ids = recovered_flows(run, run.case)
-    starts = start_flows(run.tcs)
-
-    def rows_for(flows, year):
-        return np.flatnonzero(
-            keys['Stock/Flow ID'].isin(flows).to_numpy()
-            & (keys[layer] == used).to_numpy()
-            & (keys['Year'].astype(str) == str(year)).to_numpy())
-
-    got, came = [], []
-    for year in years:
-        back = rows_for(recovered_ids, year)
-        into = rows_for(starts, year)
-        got.append(run.values[back].sum(axis=0) if back.size
-                   else np.zeros(run.draws))
-        came.append(run.values[into].sum(axis=0) if into.size
-                    else np.zeros(run.draws))
-    return np.array(got), np.array(came), used
+    return next((name for name in names if name in present), None)
 
 
-def figure_combined(parts: dict, years, theme: str, unit: str,
-                    label: str, whole: str):
+def roads_of(run, resource: str, years) -> dict:
+    """That case's recovered mass per road, per year per draw."""
+    keys = run.keys
+    layer = next(column for column in reversed(LAYERS)
+                 if column in keys.columns
+                 and keys[column].astype(str).str.strip().any())
+    out = {}
+    for road, flows in routes(run).items():
+        columns = []
+        for year in years:
+            rows = np.flatnonzero(
+                keys['Stock/Flow ID'].isin(flows).to_numpy()
+                & (keys[layer] == resource).to_numpy()
+                & (keys['Year'].astype(str) == str(year)).to_numpy())
+            columns.append(run.values[rows].sum(axis=0) if rows.size
+                           else np.zeros(run.draws))
+        draws = np.column_stack(columns)
+        if draws.mean(axis=0).max() > 0:
+            out[road] = draws
+    return out
+
+
+def added(parts: list[dict]) -> dict:
     """
-    The metal across every stream, added, with each stream shown beneath it.
+    Several accounts added, per draw.
 
-    Two panels, sharing the year axis:
-
-    - **the mass**, one line per stream and a heavier line for the total, each
-      with its own 95% band. The total's band is NARROWER than the sum of the
-      streams' bands would be, because it is formed inside the draw.
-    - **the rate**, recovered over collected, for the whole and for each
-      stream. This is where a stream that recovers well but carries little mass
-      shows up: it is invisible in the panel above and obvious here.
+    Every key is (draws x years), and draw i is the same world in every case --
+    same fleet, same year -- so adding within the draw and taking percentiles
+    afterwards gives the interval of the SUM. Adding percentiles instead would
+    assume every stream hits its own 97.5th at once, which is wider than any
+    world can be.
     """
-    order = list(parts)
-    got = sum(parts[case]['recovered'] for case in order)
-    came = sum(parts[case]['collected'] for case in order)
+    keys = [k for k in parts[0] if k != 'years']
+    whole = {k: sum(part[k] for part in parts) for k in keys}
+    whole['years'] = parts[0]['years']
+    return whole
 
-    def band(draws):
-        return (np.percentile(draws, 50, axis=1),
-                np.percentile(draws, 2.5, axis=1),
-                np.percentile(draws, 97.5, axis=1))
 
-    scale, shown = scale_for(np.percentile(got, 97.5, axis=1), unit)
-    figure, axes, colours = chart(1180, 820, theme, 2, 1,
-                                  height_ratios=(1.6, 1))
-    mass, rate = np.array(axes, dtype=object).reshape(2)
+def figure_combined(whole: dict, roads: dict, years, theme: str, unit: str,
+                    label: str, title: str, streams: list[str]):
+    """
+    THE SAME PICTURE AS `account.png`, over every stream added together.
 
-    median, low, high = band(got)
-    mass.fill_between(years, low * scale, high * scale, color=colours['title'],
-                      alpha=0.12, linewidth=0)
-    mass.plot(years, median * scale, color=colours['title'], linewidth=3.0,
-              marker='o', markersize=4,
-              label=f'{whole}, all streams   {readable(median[-1], unit)} '
-                    f'in {years[-1]}')
-    for index, case in enumerate(order):
-        colour = PALETTE[index % len(PALETTE)]
-        one_median, one_low, one_high = band(parts[case]['recovered'])
-        mass.fill_between(years, one_low * scale, one_high * scale,
-                          color=colour, alpha=0.16, linewidth=0)
-        mass.plot(years, one_median * scale, color=colour, linewidth=1.9,
-                  marker='o', markersize=3,
-                  label=f'{parts[case]["name"]}   '
-                        f'{readable(one_median[-1], unit)} in {years[-1]}')
+    Not a new design: `src.plot_monte_carlo.draw_account` draws it, so the
+    combined figure and the per-case one cannot drift apart. What changes is
+    only what it is handed -- an account summed per draw across the cases
+    instead of one case's.
+    """
+    scale, shown = scale_for(np.nanpercentile(whole['outflow'], 97.5, axis=0),
+                             unit)
+    figure, axes, colours = chart(1180, 820, theme, 1, 1)
+    panel = axes if not hasattr(axes, 'ravel') else axes.ravel()[0]
+    rate_axis = draw_account(panel, f'{title} {label}', whole, roads, years,
+                             scale, shown, colours)
 
-    with np.errstate(invalid='ignore', divide='ignore'):
-        whole_rate = np.where(came > 0, 100 * got / came, np.nan)
-    median, low, high = (np.nanpercentile(whole_rate, 50, axis=1),
-                         np.nanpercentile(whole_rate, 2.5, axis=1),
-                         np.nanpercentile(whole_rate, 97.5, axis=1))
-    rate.fill_between(years, low, high, color=colours['title'], alpha=0.12,
-                      linewidth=0)
-    rate.plot(years, median, color=colours['title'], linewidth=3.0,
-              marker='o', markersize=4,
-              label=f'{whole}   {median[0]:.0f} → {median[-1]:.0f}%')
-    for index, case in enumerate(order):
-        colour = PALETTE[index % len(PALETTE)]
-        with np.errstate(invalid='ignore', divide='ignore'):
-            one = np.where(parts[case]['collected'] > 0,
-                           100 * parts[case]['recovered']
-                           / parts[case]['collected'], np.nan)
-        one_median = np.nanpercentile(one, 50, axis=1)
-        rate.plot(years, one_median, color=colour, linewidth=1.9,
-                  linestyle=(0, (5, 2)), marker='o', markersize=3,
-                  label=f'{parts[case]["name"]}   {one_median[0]:.0f} → '
-                        f'{one_median[-1]:.0f}%')
-    rate.set_ylim(0, 100)
-    rate.set_yticks([0, 25, 50, 75, 100])
-
-    mass.set_ylabel(f'{label} recovered ({shown})', color=colours['meta'],
-                    fontsize=13)
-    rate.set_ylabel('% of that stream collected', color=colours['meta'],
-                    fontsize=13)
-    rate.set_xlabel('year', color=colours['meta'], fontsize=13)
-    # The rate panel's legend goes at the BOTTOM: every stream recovers well,
-    # so all its lines run along the top and an upper-left legend is drawn
-    # straight through them.
-    for panel, where in ((mass, 'upper left'), (rate, 'lower left')):
-        panel.set_xticks([y for y in years if y % 10 == 0] or list(years))
-        panel.tick_params(labelsize=15)
-        panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
-        legend = panel.legend(fontsize=10, frameon=False, loc=where)
-        for text in legend.get_texts():
-            text.set_color(colours['meta'])
-
-    header(figure, f'{whole}: {label}, every stream added', colours,
+    header(figure, f'{title}: {label}, every stream added', colours,
            f'{years[0]}-{years[-1]}, {len(years)} years, one point each.  '
-           f'solid: median, band: 95%.  the streams are ADDED PER DRAW, so the '
-           f'total\'s interval is the interval of the sum, not the sum of the '
-           f'intervals')
+           f'{" + ".join(streams)}, ADDED PER DRAW, so every interval is the '
+           f'interval of a sum.  masses are MEANS in the same unit: recovered '
+           f'+ lost + never collected = the outflow')
+    account_legend(figure, [(panel, rate_axis)], colours, 1,
+                   strip_numbers=False)
     return figure
 
 
@@ -229,7 +175,7 @@ def _shared_prefix(names: list[str]) -> int:
 def main() -> int:
     params = Params()
     wanted = tuple(params.combine.resource)
-    parts, years = {}, None
+    parts, streams, roads, years = [], [], {}, None
     shorten = _shared_prefix([os.path.basename(c) for c in params.combine.cases])
 
     print(f'Combining : {params.combine.label} across '
@@ -248,7 +194,7 @@ def main() -> int:
                           budget_gb=params.monte_carlo.memory_budget_gb,
                           rule=params.monte_carlo.sum_to_one,
                           quiet=True)
-        found = series_for(run, wanted)
+        used = named_in(run, wanted)
         these = sorted(int(year) for year in run.keys['Year'].unique())
         if years is None:
             years = these
@@ -258,15 +204,21 @@ def main() -> int:
                 f'but the case before it covers {years[0]}-{years[-1]} '
                 f'({len(years)}). Cases can only be added year by year, so set '
                 f'`years` in src/params_schema.py to a span they all have.')
-        if found is None:
+        if used is None:
             print(f'    none of {", ".join(wanted)} in this case -- skipped')
             continue
-        got, came, used = found
+        one = account(run, used)
+        if one is None:
+            print(f'    {used}: no upstream draws for this case -- skipped')
+            continue
         stream = os.path.basename(folder)[shorten:].replace('_', ' ') \
             or os.path.basename(folder)
-        parts[folder] = {'recovered': got, 'collected': came,
-                         'name': f'{stream} ({used})'}
-        print(f'    {used}: {readable(float(got[-1].mean()), params.run.working_unit)} '
+        parts.append(one)
+        streams.append(f'{stream} ({used})')
+        for road, draws_of in roads_of(run, used, years).items():
+            roads[road] = roads.get(road, 0) + draws_of
+        print(f'    {used}: '
+              f'{readable(float(np.nanmean(one["recovered"][:, -1])), params.run.working_unit)} '
               f'recovered in {years[-1]}')
         del run
 
@@ -277,9 +229,9 @@ def main() -> int:
             f'the metal has -- the wiring case calls it `copper`, the boards '
             f'case calls it `Cu`.')
 
-    figure = figure_combined(parts, years, params.figures.theme,
+    figure = figure_combined(added(parts), roads, years, params.figures.theme,
                              params.run.working_unit, params.combine.label,
-                             params.combine.whole)
+                             params.combine.whole, streams)
     written = write(figure, params.combine.out_dir,
                     f'{params.combine.label}_combined',
                     params.figures.enabled(), params.figures.dpi)
