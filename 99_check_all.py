@@ -168,10 +168,19 @@ def main(argv=None) -> int:
         return 1 if code_failed else 0
 
     # ---- YOUR CASE -- depends on your data, and is meant to -----------------
-    print(f'\nYOUR CASE  {params.run.data_folder}')
+    # THE CASE'S OWN GROUPS, not the settings default. A case states its groups
+    # in its source sheet, and reading `data.groups` here printed the wiring
+    # case's Wiring, Motors above a run of the boards case -- a header that
+    # named the wrong data while the run underneath it was correct.
+    from src import source as source_table
+    case = params.run.data_folder
+    groups = params.data.groups
+    if source_table.exists(case):
+        groups = source_table.read(case, params).get('groups') or ()
+    print(f'\nYOUR CASE  {case}')
     print(f'           years {params.run.years or "all"}, {params.data.draws:,} draws, '
           f'{params.run.working_unit}, domains '
-          f'{", ".join(params.data.groups) or "all"}')
+          f'{", ".join(groups) or "all"}')
     stages = pipeline(params)
     for name, ok, tail in stages:
         print(f'  {"ok  " if ok else "FAIL"}  {name:<24} {tail[:76]}')

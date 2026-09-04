@@ -45,7 +45,7 @@ import numpy as np
 import pandas as pd
 
 from src.figure_style import PALETTE, chart, folder_for, write
-from src.units import scale_for
+from src.units import readable, scale_for
 
 LAYERS = ['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
 
@@ -278,8 +278,13 @@ def figure_over_time(run, deterministic: pd.DataFrame | None, theme: str, unit: 
     if not series:
         return None
 
+    # ONE SHARED AXIS TAKES ITS UNIT FROM THE LARGEST SERIES. Judged on the
+    # median, the boards case put a kilogram axis under five million kilograms
+    # of copper and matplotlib wrote `1e6` in the corner -- an instruction to
+    # multiply in your head. The legend numbers each carry their OWN unit,
+    # which a printed number can do and an axis cannot.
     every = np.concatenate([s['high'] for s in series.values()])
-    scale, shown = scale_for(every, unit)
+    scale, shown = scale_for(every, unit, by='max')
 
     figure, axes, colours = chart(1100, 620, theme, 1, 1)
     panel = axes if not hasattr(axes, 'ravel') else axes.ravel()[0]
@@ -290,8 +295,8 @@ def figure_over_time(run, deterministic: pd.DataFrame | None, theme: str, unit: 
                            color=colour, alpha=0.18, linewidth=0)
         panel.plot(years, s['median'] * scale, color=colour, linewidth=2.0,
                    marker='o', markersize=4,
-                   label=f"{element}   {s['median'][0] * scale:,.3g} "
-                         f"\u2192 {s['median'][-1] * scale:,.3g} {shown}")
+                   label=f"{element}   {readable(s['median'][0], unit)} "
+                         f"\u2192 {readable(s['median'][-1], unit)}")
         if np.isfinite(s['deterministic']).any():
             panel.plot(years, s['deterministic'] * scale, color=colour,
                        linewidth=1.4, linestyle='--', alpha=0.9)
@@ -300,9 +305,14 @@ def figure_over_time(run, deterministic: pd.DataFrame | None, theme: str, unit: 
                     'interval.  dashed: the deterministic run)',
                     color=colours['title'], fontsize=12, fontweight='bold',
                     loc='left')
-    panel.set_xlabel('year', color=colours['meta'], fontsize=9)
-    panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=9)
-    panel.set_xticks(years)
+    panel.set_xlabel('year', color=colours['meta'], fontsize=11)
+    panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=11)
+    panel.set_xticks([y for y in years if y % 10 == 0] or years)
+    panel.tick_params(labelsize=11)
+    # No `1e6` in the corner and no `2,020` on the year axis: an offset is a
+    # multiplication left for the reader, and a thousands separator on a year
+    # turns it into a quantity.
+    panel.ticklabel_format(style='plain', axis='y', useOffset=False)
     panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
     legend = panel.legend(fontsize=9, frameon=False, loc='upper left')
     for text in legend.get_texts():
@@ -642,6 +652,12 @@ def figure_recovery_rate(run, deterministic: pd.DataFrame | None,
 
     figure, axes, colours = chart(1100, 620, theme, 1, 1)
     panel = axes if not hasattr(axes, 'ravel') else axes.ravel()[0]
+    # BANDS ONLY WHILE THEY CAN STILL BE TOLD APART. Twenty-one translucent
+    # rectangles laid over each other are not twenty-one intervals, they are a
+    # grey wash with lines in it, and the wash hides the lines it is meant to
+    # qualify. Past a handful the bands come off and the figure says so; each
+    # resource's spread is still drawn in full on its own pdf_<resource>.png.
+    banded = len(lines) <= 7
     for index, (resource, s) in enumerate(lines.items()):
         colour = colours['title'] if resource == EVERYTHING \
             else PALETTE[(index - 1) % len(PALETTE)]
@@ -651,26 +667,41 @@ def figure_recovery_rate(run, deterministic: pd.DataFrame | None,
         # under another -- which reads as a missing resource rather than as two
         # that agree. On the wiring case alalloy and fealloy do exactly this.
         style = '-' if resource == EVERYTHING else DASHES[(index - 1) % len(DASHES)]
-        panel.fill_between(years, s['low'], s['high'], color=colour,
-                           alpha=0.10 if resource == EVERYTHING else 0.16,
-                           linewidth=0)
+        if banded:
+            panel.fill_between(years, s['low'], s['high'], color=colour,
+                               alpha=0.10 if resource == EVERYTHING else 0.16,
+                               linewidth=0)
         panel.plot(years, s['median'], color=colour, linewidth=width,
                    linestyle=style, marker='o', markersize=4,
                    label=f"{resource}   {s['median'][0]:.1f} \u2192 "
                          f"{s['median'][-1]:.1f}%")
 
-    panel.set_xlabel('year', color=colours['meta'], fontsize=9)
+    panel.set_xlabel('year', color=colours['meta'], fontsize=11)
     panel.set_ylabel('recovered, % of that resource collected',
-                     color=colours['meta'], fontsize=9)
-    panel.set_xticks(years)
+                     color=colours['meta'], fontsize=11)
+    panel.set_xticks([y for y in years if y % 10 == 0] or years)
+    panel.tick_params(labelsize=11)
     panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
-    legend = panel.legend(fontsize=9, frameon=False, loc='best')
-    for text in legend.get_texts():
-        text.set_color(colours['meta'])
 
     header(figure, 'Recovery rate over time', colours,
            f'{years_listed(run)}.  each resource against ITS OWN inflow, '
-           f'the black line against the whole.  median and 95%, ratio per draw')
+           f'the black line against the whole.  ratio per draw.  '
+           + ('median and 95%' if banded else
+              f'median only -- {len(lines)} bands would overlap into a wash; '
+              f'each spread is on its own pdf figure'))
+
+    # UNDER THE FIGURE, NOT ON IT. `loc="best"` had nowhere to go with
+    # twenty-one entries and dropped the block in the middle of the lines.
+    handles, labels = panel.get_legend_handles_labels()
+    columns = 1 if len(labels) <= 8 else (2 if len(labels) <= 16 else 4)
+    room = min(0.4, 0.06 + 0.035 * np.ceil(len(labels) / columns))
+    figure.subplots_adjust(bottom=room)
+    legend = figure.legend(handles, labels, fontsize=10, frameon=False,
+                           ncol=columns, loc='lower center',
+                           bbox_to_anchor=(0.5, 0.012), handlelength=3.2,
+                           columnspacing=2.5, labelspacing=0.6)
+    for text in legend.get_texts():
+        text.set_color(colours['meta'])
     return figure
 
 
@@ -971,9 +1002,16 @@ def figure_account(run, theme: str, unit: str, resources=()):
                             for a in accounts.values()])
     scale, shown = scale_for(every, unit)
 
-    wide = len(accounts)
-    figure, axes, colours = chart(1180 * wide, 820, theme, 1, wide)
+    # A GRID ONCE THERE ARE MORE THAN THREE. One row is right for the case that
+    # asked for two or three resources; the boards case resolves twenty-one, and
+    # twenty-one panels in a row is a strip nobody can hold in view.
+    across = min(3, len(accounts))
+    rows_of = -(-len(accounts) // across)
+    figure, axes, colours = chart(1180 * across, 820 * rows_of, theme,
+                                  rows_of, across)
     panels = list(axes.ravel()) if hasattr(axes, 'ravel') else [axes]
+    for spare in panels[len(accounts):]:
+        spare.set_visible(False)
     for_legend = []
 
     for panel, (resource, a) in zip(panels, sorted(accounts.items())):
@@ -1072,13 +1110,21 @@ def figure_account(run, theme: str, unit: str, resources=()):
     # is where the rate runs, centre left is where the inflow climbs through.
     # Below the axes it covers nothing, and it can be read in one pass across
     # rather than as a tall column.
-    handles, labels = [], []
-    for panel, rate_axis in for_legend:
-        for source_axis in (panel, rate_axis):
-            got, names_of = source_axis.get_legend_handles_labels()
-            handles.extend(got)
-            labels.extend(names_of)
-    room = 0.055 + 0.038 * np.ceil(len(labels) / 3)
+    #
+    # ONE PANEL'S WORTH, not every panel's. Every panel draws the same lines, so
+    # collecting them all repeated the legend once per resource -- on the boards
+    # case, twenty-one resources, and the reserved space came out taller than
+    # the figure. Only the values differ, and those are on each panel's title.
+    panel, rate_axis = for_legend[0]
+    handles, labels = panel.get_legend_handles_labels()
+    extra = rate_axis.get_legend_handles_labels()
+    handles, labels = handles + extra[0], labels + extra[1]
+    if len(accounts) > 1:
+        # The numbers in a label belong to ONE resource. With several panels
+        # they would be read as belonging to all of them, so the shared legend
+        # names the lines and each panel's title carries its own numbers.
+        labels = [text.split('   ')[0] for text in labels]
+    room = min(0.35, 0.055 + 0.038 * np.ceil(len(labels) / 3) / max(1, rows_of))
     figure.subplots_adjust(bottom=room)
     legend = figure.legend(handles, labels, fontsize=11, frameon=False,
                            ncol=3, loc='lower center',

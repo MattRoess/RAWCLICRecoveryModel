@@ -54,7 +54,11 @@ AMBIGUOUS_UNITS = {'ton', 'tons', 'T', 'MT', 'KT'}
 
 # Units offered for reading a figure, coarsest last. Only these are used for
 # display; the conversion table above is what the data may declare.
-DISPLAY_LADDER = ['g', 'kg', 't', 'kt', 'Mt']
+#
+# `mg` is on the ladder for the printed numbers, not for axes: the boards case
+# recovers germanium in grams and copper in kilotonnes, nine orders apart, and a
+# number printed in a legend can carry its own unit where an axis cannot.
+DISPLAY_LADDER = ['mg', 'g', 'kg', 't', 'kt', 'Mt']
 
 
 class UnitError(ValueError):
@@ -87,30 +91,57 @@ def convert(values, from_unit: str, to_unit: str):
     return values if scale == 1.0 else values * scale
 
 
-def scale_for(values, unit: str) -> tuple[float, str]:
+def scale_for(values, unit: str, by: str = 'median') -> tuple[float, str]:
     """
     A readable unit for a set of numbers, and what to multiply them by.
 
-    Picks the coarsest unit on the ladder that still leaves the typical value
+    Picks the coarsest unit on the ladder that still leaves the judged value
     at or above 1, so an axis reads "3.2 t" rather than "3200 kg" or
     "0.0032 kt". Returns (multiplier, unit name).
 
-    Judged on the median of the non-zero values rather than the maximum, so one
-    large flow does not push every other panel into a unit that makes it
-    unreadable.
+    `by='median'`, the default, judges on the median of the non-zero values, so
+    one large flow does not push every other panel into a unit that makes it
+    unreadable. That is right for a figure of many panels, each scaled to
+    itself.
+
+    `by='max'` judges on the largest value instead, and is what a figure with
+    ONE SHARED AXIS needs. The boards case recovers 5,180 t of copper beside
+    370 g of germanium; the median lands in kilograms, and an axis in kilograms
+    then runs to five million and gets drawn with a `1e6` stuck in the corner --
+    which is matplotlib telling the reader to multiply in their head. Judged on
+    the largest, the axis is in kilotonnes and the numbers on it are 0 to 7.
     """
     values = np.asarray(values, dtype=float)
     positive = values[values > 0]
     if positive.size == 0:
         return 1.0, unit
 
-    typical = float(np.median(positive))
+    judged = float(np.max(positive) if by == 'max' else np.median(positive))
     best_scale, best_unit = 1.0, unit
     for candidate in DISPLAY_LADDER:
         scale = factor(unit, candidate)
-        if typical * scale >= 1.0:
+        if judged * scale >= 1.0:
             best_scale, best_unit = scale, candidate
     return best_scale, best_unit
+
+
+def readable(value: float, unit: str) -> str:
+    """
+    One number with ITS OWN unit, never in scientific notation.
+
+    A legend that says `5.51e+04 kg` beside `0.000349 kg` has made the reader
+    do the arithmetic that the unit exists to do for them. Each printed number
+    gets the unit that puts it in a range a person reads at sight -- `55.1 t`,
+    `349 mg` -- which is safe precisely because it is PRINTED: it carries its
+    unit with it, unlike a position on a shared axis, which cannot.
+    """
+    if not np.isfinite(value) or value == 0:
+        return f'0 {unit}'
+    scale, shown = scale_for([abs(value)], unit)
+    size = value * scale
+    if abs(size) >= 100:
+        return f'{size:,.0f} {shown}'
+    return f'{size:,.1f} {shown}' if abs(size) >= 10 else f'{size:,.2f} {shown}'
 
 
 def convert_inflows(inflows, working_unit: str):
