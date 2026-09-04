@@ -87,6 +87,11 @@ figures/<case>/
                                  unit so any two can be compared by the
                                  distance between them, with the recovery rate
                                  on the right axis
+    trapped.png                  what the fleet is holding: the net flow per
+                                 year, and the stock it builds. Every year the
+                                 upstream arrays hold, not just the solved ones
+    losses.png                   WHY it did not come back -- one wedge per
+                                 reason, as mass and as a share of the outflow
     recovery_rate.png            recovered as a SHARE of what came in, per year
     routes.png                   which road it came back on: the two roads and
                                  the split between them, per draw
