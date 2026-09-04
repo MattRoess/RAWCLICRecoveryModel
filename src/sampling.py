@@ -209,11 +209,24 @@ def check_ordering(tcs: pd.DataFrame) -> None:
                  f"{row['Output_FlowID']} {row['TC_target_key']}: "
                  f"min {row[MIN_COLUMN]:g}, mode {row[MODE_COLUMN]:g}, max {row[MAX_COLUMN]:g}"
                  for _, row in broken.iterrows()]
+        # THESE NUMBERS MAY APPEAR IN NO SHEET AT ALL. A case that improves over
+        # time is solved at one table per year, each a mix of the TCs sheet and
+        # the TCs_improved one, so a blend can be invalid where both ends are
+        # fine -- a min and a max the wrong way round in one sheet does it. The
+        # old message said "correct the three numbers in TCs.csv", which named a
+        # file such a case does not have, printed numbers nobody had typed, and
+        # left the reader hunting for something that was not there.
         raise SamplingError(
             f'{len(broken)} transfer coefficient(s) do not satisfy '
             f'min <= mode <= max, after bounds were clamped into [0, 1]:\n'
             + '\n'.join(lines)
-            + '\n\nCorrect the three numbers in TCs.csv. They cannot all be right.')
+            + '\n\nThese three numbers are what the model was handed. Where a '
+              'case improves over time they are BLENDED -- each year is a mix '
+              'of the TCs sheet and the TCs_improved one -- so they may appear '
+              'in neither sheet as written.\nRun 01_check_inputs.py: it checks '
+              'every year the run will solve and prints, for each row it '
+              'faults, both sheets\' own numbers and the first year that goes '
+              'bad.')
 
 
 def check_residual_bounds(tcs: pd.DataFrame) -> None:
