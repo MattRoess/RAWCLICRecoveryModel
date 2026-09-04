@@ -1021,23 +1021,26 @@ def figure_account(run, theme: str, unit: str, resources=()):
                        label=f'RECOVERY RATE, right axis   '
                              f'{median[0]:.0f} → {median[-1]:.0f}% of what '
                              f'was collected')
-        # BOTH AXES READ IN THE SAME STEPS. The rate axis is per cent, so it is
-        # ruled every 10, and the mass axis is given about as many ticks -- a
-        # gridline the reader can count against on either side, rather than four
-        # far-apart labels on the left and a differently spaced set on the right.
+        # FOUR INTERVALS ON BOTH AXES, AND NOT ONE MORE. Five labels a side is
+        # what a reader takes in at a glance; ruling the mass axis every 100
+        # against a rate axis every 10 gave twenty numbers down the page and two
+        # sets of gridlines that did not agree. At four apiece the two rule the
+        # SAME lines, so one set of horizontal rules serves both axes and a mass
+        # on the left and a per cent on the right are read off the same place.
         rate_axis.set_ylim(0, 100)
-        rate_axis.set_yticks(range(0, 101, 10))
+        rate_axis.set_yticks([0, 25, 50, 75, 100])
         rate_axis.set_ylabel('recovered, % of what was collected',
                              color=PALETTE[2], fontsize=12)
-        rate_axis.tick_params(colors=PALETTE[2], labelsize=11)
+        rate_axis.tick_params(colors=PALETTE[2], labelsize=12)
         for side in ('top', 'left', 'bottom'):
             rate_axis.spines[side].set_visible(False)
         rate_axis.spines['right'].set_color(PALETTE[2])
+        rate_axis.grid(False)
 
         top = float(np.nanmax(high_of_all) * scale)
-        step = _round_step(top / 10)
-        panel.set_ylim(0, step * np.ceil(top / step))
-        panel.set_yticks(np.arange(0, panel.get_ylim()[1] + step / 2, step))
+        step = _round_step(top / 4)
+        panel.set_ylim(0, step * 4)
+        panel.set_yticks([step * n for n in range(5)])
 
         panel.set_title(
             f'{resource}   in {end}: {mean_of["outflow"][-1] * scale:,.0f} {shown} '
@@ -1046,8 +1049,11 @@ def figure_account(run, theme: str, unit: str, resources=()):
             color=colours['title'], fontsize=13, fontweight='bold')
         panel.set_xlabel('year', color=colours['meta'], fontsize=12)
         panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=12)
-        panel.set_xticks(list(years))
-        panel.tick_params(labelsize=11)
+        # Every decade, not every point. The points are still drawn as markers,
+        # so nothing is hidden -- but eleven labels along the bottom is a row of
+        # numbers to read where six is a scale to glance at.
+        panel.set_xticks([y for y in years if y % 10 == 0] or list(years))
+        panel.tick_params(labelsize=12)
         panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
         panel.set_zorder(rate_axis.get_zorder() + 1)
         panel.patch.set_visible(False)
