@@ -133,6 +133,43 @@ def test_the_chunk_setting_cannot_change_the_answer() -> None:
             f'{rule}: the chunk size moved the answer by {worst:.3e}'
 
 
+def test_a_result_on_disk_is_the_same_result() -> None:
+    """
+    THE PATH ADDED 2026-09-04, AND IT IS THE ONE NOBODY WOULD NOTICE BREAKING.
+
+    A result larger than `memory_budget_gb` is memory-mapped to a file instead
+    of the run being refused, which is what lets the boards case run at every
+    year: 16.6 GB of draws on a 17 GB machine. The danger is that it works and
+    is silently WRONG -- a memmap that is not flushed, or a dtype that differs
+    from the in-memory array, gives plausible numbers nobody checks.
+
+    So: the same run, once in memory and once forced onto disk by a budget of
+    almost nothing, must agree to the last bit. The file must also be gone
+    afterwards, since it is one run's draws and worthless once summarised.
+    """
+    import os
+
+    from src.monte_carlo import solve_draws
+
+    resident = solve_draws(f'data_folder/reference/template', NAMES, draws=200,
+                           seed=0, budget_gb=1e9)
+    on_disk = solve_draws(f'data_folder/reference/template', NAMES, draws=200,
+                          seed=0, budget_gb=1e-9)
+
+    assert on_disk.backing is not None, \
+        'a budget of a nanogram should have forced the result onto disk'
+    assert os.path.exists(on_disk.backing), 'the backing file was not created'
+
+    worst = float(np.max(np.abs(np.asarray(resident.values)
+                                - np.asarray(on_disk.values))))
+    assert worst == 0.0, f'the result on disk differs by {worst:.3e}'
+
+    path = on_disk.backing
+    on_disk.close()
+    assert not os.path.exists(path), f'{path} was left behind after close()'
+    on_disk.close()          # twice must be harmless
+
+
 def test_a_run_repeats_exactly_at_the_same_width_and_seed() -> None:
     """
     What the stable draw index is actually for: two runs at the same width and

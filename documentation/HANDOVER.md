@@ -1073,5 +1073,23 @@ changed without asking:
 `figures.resources` is copper only. `rest` is excluded everywhere as waste
 (DECISIONS 40).
 
+**The tests.** All 127 pass, in about six seconds for the whole suite —
+`test_monte_carlo.py` alone is two. The disk-backed result has its own test,
+`test_a_result_on_disk_is_the_same_result`: the same run is solved twice, once
+in memory and once forced onto disk by a budget of a nanogram, and the two must
+agree to the last bit. It also checks the file is created, and deleted by
+`close()`, and that calling `close()` twice is harmless. That test exists
+because the failure mode here is not a crash — it is a memmap that is not
+flushed, or a dtype that differs, giving plausible numbers nobody checks.
+
+| file | tests | covers |
+|---|---|---|
+| `test_monte_carlo.py` | 10 | chunking, seeding, mass and nesting per draw, **the result on disk** |
+| `test_sampling.py` | 40 | the triangular draws, the sum-to-1 rules, the streams |
+| `test_regression.py` | 30 | the ramp, TCs_improved being checked, closure and range faults |
+| `test_generality.py` | 26 | nothing case-specific leaking into `src/` |
+| `test_rest.py` | 9 | the derived `rest` child |
+| `test_units.py` | 12 | conversion and display scaling |
+
 **Still open:** the boards case at every year has not been run — it needs about
 17 GB of free disk while it runs. `years` is set to `'2020-2070, 1'`.
