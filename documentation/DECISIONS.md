@@ -100,20 +100,36 @@ lives in a chat message is a decision that will be broken.
     together in reporting — never a third flow, which would count the same metal
     twice.
 
-12. **A board left in the car is not followed.** It goes to the general
-    shredder and the boards case stops there -- ONE handoff flow, not a split
-    into aluminium, iron and trash.
+12. **A board left in the car IS followed, and only copper comes back off it.**
+    Reversed 2026-09-04 by the user, who had asked the opposite earlier. The
+    general shredder returns copper -- it survives crushing as sortable pieces
+    and the separators find it -- and everything else on that road is lost:
+    a trace element ground into mixed shredder residue is separated by nobody.
 
-    Nobody is asking what a shredded board becomes. The question that case
-    exists to answer is what the specialist route gets back, and the shredded
-    road is there only to say how much never reaches it. Splitting it cost
-    three flows and six coefficients that nobody would read, and each one was
-    a placeholder.
+    So `F_shredded` is no longer a `handoff`. It ends in `F_cu_general`
+    (recovered) and `F_loss_general` (loss), which is the shape the wiring case
+    already had. Both cases now follow both roads to the end, and neither hands
+    anything on.
 
-    `handoff` is the role for it: not recovered here, not lost, passed to a
-    process this case does not model. The wiring case DOES split its general
-    road, because there the alloys coming off the general shredder are the
-    answer rather than the leftovers.
+    What the earlier version said, and why it was wrong to keep: splitting the
+    shredded road into aluminium, iron and trash would have cost three flows
+    and six placeholder coefficients nobody would read. Copper alone costs one
+    flow and one number, and it is the one that carries mass.
+
+38. **Grinding and element recovery are two steps, not one arrow.** The
+    specialist route ran `F_disassembled -> F_recovered_own` under a
+    technology called `grinding_then_element` -- the name itself said it was
+    two things. It is now `F_disassembled -> F_ground` (grinding, definitional:
+    everything taken out whole is ground) and then `F_ground -> F_recovered_own
+    / F_loss_own`, where the individual elements are separated one process at
+    a time. Decided 2026-09-04. DECISIONS 7 said elements belong only where a
+    process really separates them; this makes that process visible.
+
+39. **A column of the structure diagram is ordered by its parents, not by the
+    alphabet.** Sorting each column by name put the two ends of one road above
+    the two ends of the other, so every arrow crossed every other and the
+    picture said the roads mix when they do not. Each road now travels straight
+    across the page.
 
 ## Figures
 

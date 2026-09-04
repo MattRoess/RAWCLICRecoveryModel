@@ -210,11 +210,24 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light',
     figure, axes, colours = canvas(width, height, theme)
 
     accent = {node: PALETTE[i % len(PALETTE)] for i, node in enumerate(nodes)}
+    parents: dict[str, list[str]] = {}
+    for source, target in edges:
+        parents.setdefault(target, []).append(source)
+
     position = {}
+    placed: dict[str, int] = {}          # node -> its row in its own column
     for index, group in sorted(columns.items()):
-        group.sort()
+        # BESIDE ITS PARENT, NOT IN THE ALPHABET. Sorting each column by name
+        # put the two ends of one road above the two ends of the other, so
+        # every arrow crossed every other and the picture said the roads mixed
+        # when they do not. Ordering a column by where its parents sit keeps a
+        # road travelling straight across the page; name breaks the ties.
+        group.sort(key=lambda node: (
+            min((placed[p] for p in parents.get(node, []) if p in placed),
+                default=0), node))
         offset = (tallest - len(group)) * (box_h + gap_y) / 2
         for i, node in enumerate(group):
+            placed[node] = i
             position[node] = (left + index * (box_w + col_gap), top + offset + i * (box_h + gap_y))
 
     label(axes, left, 26, f'{case} — how the flows connect', 17, colours['title'], 'bold')
