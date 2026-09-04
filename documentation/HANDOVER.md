@@ -1091,5 +1091,17 @@ flushed, or a dtype that differs, giving plausible numbers nobody checks.
 | `test_rest.py` | 9 | the derived `rest` child |
 | `test_units.py` | 12 | conversion and display scaling |
 
+**The structure is built once, not once a year.** Profiling a 51-year solve
+showed 73% of the time in `Structure.__init__` -- pandas joins producing index
+arrays, fifty-one times, identically. The network does not change with the
+year: only the inflow, the composition VALUES and the coefficient values do,
+and all three arrive as arguments to `evaluate`. `_shape_of` hashes each year's
+KEY columns, and a year whose shape matches one already built reuses it through
+`Structure.for_values`, a shallow copy that swaps `composition_values` alone.
+It is a cache keyed on shape, never an assumption: a case whose rows differ by
+year gets its own structure for that year. **51 years at 20,000 draws went from
+9.67 s to 1.68 s**, a 5.8x speed-up, with all 127 tests passing and the answer
+unchanged.
+
 **Still open:** the boards case at every year has not been run — it needs about
 17 GB of free disk while it runs. `years` is set to `'2020-2070, 1'`.
