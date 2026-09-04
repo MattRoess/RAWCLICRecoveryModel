@@ -216,6 +216,31 @@ lives in a chat message is a decision that will be broken.
     quantity in another unit: the recovery rate is a per cent, so it is on a
     right-hand axis, drawn heavier, and says on its own axis what it is.
 
+40. **`rest` is waste and is not a resource.** It is the part of a parent
+    nobody itemised, derived by `src/rest.py` so composition closes to 1 --
+    fibreglass, resin, plastics, solder on a board. No coefficient sends it to
+    a recovered flow. It is out of the figures and out of the denominator of
+    the total recovery rate: on the boards case it is 45% of the collected
+    mass, which put a fixed ceiling of 55% on that line and made a real
+    improvement read as flat, 46.5 to 51.9%. Against the recoverable inflow the
+    same improvement is 84.1 to 94.8%. Decided 2026-09-04 -- *"the rest has to
+    be excluded as it is waste"*.
+
+41. **Cases are added for the reader, never merged.** `04_combine_cases.py`
+    adds one metal across several case folders -- copper from the wiring and
+    from the boards is the copper BEV electronics returns. Each case stays its
+    own study (20): its own folder, network, coefficients and run. The addition
+    is reporting, the same way the two roads are reported apart and also
+    combined (11).
+
+    **Per draw, never per percentile.** Every case reads the same upstream
+    draws with the same seed, so draw i is one world in all of them. Adding
+    percentiles would assume every stream hits its own 97.5th at once, which is
+    wider than any world can be.
+
+    A separate stage because the list will grow: battery packs and drivetrains
+    join by getting a case folder and being named in `combine.cases`.
+
 ## Words
 
 19. **Disassembly** is taking a part out whole, with tools, on purpose.

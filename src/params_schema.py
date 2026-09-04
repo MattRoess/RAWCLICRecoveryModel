@@ -433,6 +433,53 @@ class FigureParams:
         return [name for name in FORMATS if getattr(self, name)]
 
 
+@dataclass
+class CombineParams:
+    """
+    Several cases added together, for 04_combine_cases.py.
+
+    ONE METAL ACROSS SEVERAL STREAMS. Each case stays its own case -- separate
+    folder, separate coefficients, separate run, and nothing here merges them
+    (DECISIONS 20). This is reporting: the copper the wiring case recovers plus
+    the copper the boards case recovers is the copper the electronics recover,
+    added the way DECISIONS 11 adds the two roads.
+
+    Adding is done PER DRAW, not by adding percentiles. Every case reads the
+    same upstream draws with the same seed, so draw i is one world across all
+    of them, and the interval of the sum is the interval of a sum rather than
+    the sum of two intervals -- which would be wider than any world.
+    """
+
+    # WHICH CASES ARE ADDED. Any number; battery packs and drivetrains join by
+    # being listed here once they have a case folder of their own.
+    # SAFE TO CHANGE: yes. A folder that does not exist is named and refused.
+    cases: tuple[str, ...] = ('data_folder/bev_electronics_wiring',
+                              'data_folder/bev_electronics_boards')
+
+    # THE METAL, AS EACH CASE NAMES IT. The wiring case resolves materials and
+    # calls it `copper`; the boards case resolves elements and calls it `Cu`.
+    # They are the same metal, and this is the only place that says so -- every
+    # name listed is looked for in every case, and whichever one that case has
+    # is the one used.
+    # SAFE TO CHANGE: yes. A case with none of these names is reported as
+    # contributing nothing rather than silently counting zero.
+    resource: tuple[str, ...] = ('copper', 'Cu')
+
+    # What the metal is called in the title. The names above are how the data
+    # spells it; this is how a reader says it.
+    # SAFE TO CHANGE: yes.
+    label: str = 'copper'
+
+    # What the combined streams are called together, for the title.
+    # SAFE TO CHANGE: yes.
+    whole: str = 'BEV electronics'
+
+    # WHERE THE COMBINED FIGURE GOES. Not any one case's folder: it belongs to
+    # none of them.
+    # SAFE TO CHANGE: yes.
+    out_dir: str = 'figures/combined'
+
+
 # ======================================================================
 #  Below here is machinery. Nothing to edit.
 # ======================================================================
@@ -445,8 +492,9 @@ class Params:
     data: DataParams = field(default_factory=DataParams)
     monte_carlo: MonteCarloParams = field(default_factory=MonteCarloParams)
     figures: FigureParams = field(default_factory=FigureParams)
+    combine: CombineParams = field(default_factory=CombineParams)
 
-    SECTIONS = ('run', 'data', 'monte_carlo', 'figures')
+    SECTIONS = ('run', 'data', 'monte_carlo', 'figures', 'combine')
 
     def validate(self) -> list[str]:
         """Return a list of plain-language problems. Empty means all is well."""

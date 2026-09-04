@@ -423,9 +423,16 @@ def chosen(run, wanted) -> list[str]:
     A case can resolve twenty-odd elements, and a reader usually wants two. The
     setting narrows what is DRAWN and never what is solved -- every resource is
     still in the workbook and the summary.
+
+    `rest` IS NOT A RESOURCE. It is the part of a parent nobody itemised --
+    fibreglass, resin, plastics, solder on a board -- derived by src/rest.py so
+    that composition closes to 1. It is waste: no coefficient sends it to a
+    recovered flow and none ever will. Drawing it beside gold and palladium
+    puts a quantity that is not a material in a figure about materials.
     """
+    from src.rest import REST
     layer = finest_layer(run.keys)
-    every = sorted({e for e in run.keys[layer].unique() if e})
+    every = sorted({e for e in run.keys[layer].unique() if e and e != REST})
     if not wanted:
         return every
     asked = [r.strip() for r in wanted if r.strip()]
@@ -607,9 +614,21 @@ def figure_recovery_rate(run, deterministic: pd.DataFrame | None,
         first version of this figure made that mistake and reported it as
         copper being recovered worse.
 
-        The total line still divides by the whole inflow, which is the one case
-        where that IS the question.
+        The total line divides by the whole RECOVERABLE inflow -- everything
+        collected except `rest`.
+
+        `rest` IS WASTE AND IS NOT IN THE DENOMINATOR. It is the part of a
+        parent nobody itemised, derived by src/rest.py so composition closes to
+        1: fibreglass, resin, plastics, solder on a board. No coefficient sends
+        it to a recovered flow, so it contributes nothing to the numerator and
+        never improves -- and on the boards case it is 45% of the collected
+        mass. Left in, it puts a fixed ceiling of 55% on the total line and
+        makes a real improvement look flat: 46.5 -> 51.9%, where the same
+        improvement against the recoverable inflow is 84.1 -> 94.8%. A rate
+        whose denominator is half unrecoverable by construction is not a
+        recovery rate, it is a composition figure.
         """
+        from src.rest import REST
         wanted = (keys['Stock/Flow ID'].isin(starts)
                   & (keys['Year'].astype(str) == str(year)))
         if resource is not None:
@@ -619,13 +638,21 @@ def figure_recovery_rate(run, deterministic: pd.DataFrame | None,
             return None
         if resource is None:
             # Nesting: a resource row is part of its parent's, so the inflow is
-            # totalled at its own shallowest depth (MODEL_MECHANICS.md 1).
-            depth = (rows[[c for c in LAYERS if c in rows.columns]] != '').sum(axis=1)
-            rows = rows[depth == depth.min()]
+            # totalled at its own shallowest depth (MODEL_MECHANICS.md 1) --
+            # except that `rest` has to come off, and it only exists at the
+            # finest layer. So the total is taken there instead, over the
+            # resources that are not waste, which sums to the same whole minus
+            # the waste.
+            deep = rows[(rows[layer] != '') & (rows[layer] != REST)]
+            if not deep.empty:
+                rows = deep
+            else:
+                depth = (rows[[c for c in LAYERS if c in rows.columns]] != '').sum(axis=1)
+                rows = rows[depth == depth.min()]
         return run.values[keys.index.get_indexer(rows.index)].sum(axis=0)
 
     lines: dict[str, dict[str, np.ndarray]] = {}
-    for resource in [EVERYTHING] + sorted({e for e in keys[layer].unique() if e}):
+    for resource in [EVERYTHING] + chosen(run, ()):
         median, low, high = [], [], []
         for year in years:
             wanted = keys['Stock/Flow ID'].isin(recovered).to_numpy() & \
@@ -679,13 +706,15 @@ def figure_recovery_rate(run, deterministic: pd.DataFrame | None,
     panel.set_xlabel('year', color=colours['meta'], fontsize=11)
     panel.set_ylabel('recovered, % of that resource collected',
                      color=colours['meta'], fontsize=11)
+    panel.set_ylim(0, 100)
     panel.set_xticks([y for y in years if y % 10 == 0] or years)
     panel.tick_params(labelsize=11)
     panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
 
     header(figure, 'Recovery rate over time', colours,
-           f'{years_listed(run)}.  each resource against ITS OWN inflow, '
-           f'the black line against the whole.  ratio per draw.  '
+           f'{years_listed(run)}.  each resource against ITS OWN inflow, the '
+           f'black line against every resource together.  `rest` is waste and '
+           f'is in neither.  ratio per draw.  '
            + ('median and 95%' if banded else
               f'median only -- {len(lines)} bands would overlap into a wash; '
               f'each spread is on its own pdf figure'))
