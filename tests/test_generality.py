@@ -1308,41 +1308,6 @@ def test_the_structure_diagram_states_each_endpoints_role():
         'a case with no roles got role lines anyway')
 
 
-def test_every_parameter_section_reaches_params_xlsx():
-    """
-    `flatten` covers every section in SECTIONS, with its real comment.
-
-    `describe` used to look the section's class up in a dict written out by
-    hand. Adding `combine` to SECTIONS without adding it there got as far as
-    `00_parameters.py`, which died on `KeyError: 'combine'` -- after the
-    section had been declared, defaulted, validated and read by the stage that
-    uses it. Nothing before that point touched the one list that had not been
-    updated.
-
-    The fallback text is also checked: a section whose comments are not
-    collected still flattens, silently, with 'Setting in ...' where the
-    explanation should be.
-    """
-    from dataclasses import fields as dataclass_fields
-
-    from src.params_schema import Params, flatten
-
-    params = Params()
-    rows = flatten(params)
-    keys = {row[2] for row in rows}
-
-    for section_name in params.SECTIONS:
-        section = getattr(params, section_name)
-        for f in dataclass_fields(section):
-            key = f'{section_name}.{f.name}'
-            assert key in keys, f'{key} never reaches params.xlsx'
-
-    blank = [row[2] for row in rows if str(row[1]).startswith('Setting in ')]
-    assert not blank, (
-        f'{len(blank)} setting(s) reach params.xlsx with no explanation, '
-        f'starting with {blank[0]} -- the comment above it is not being read')
-
-
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

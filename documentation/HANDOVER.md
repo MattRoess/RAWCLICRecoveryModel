@@ -41,6 +41,25 @@ actually buy. **Five rows carry 80% of the wiring case's spread. Three carry
 2026-09-02 -- the figures, and the boards structure -- are done, and what
 follows says what they became so that neither is reopened by accident.
 
+**Added 2026-09-15: a third case, `data_folder/battery`.** Fed by stage 04_04 of
+RAWCLICStockAndFlow, which exports the mass of an element WITHIN a component for
+this -- copper in a cable and copper in an electrode foil are 16.1 kg against
+21.6 on a 60 kWh pack and go through different processes, so an element total
+could not carry one coefficient right for both. The same holds for iron, which
+is a steel frame on one route and LFP's iron phosphate cathode on the other.
+
+The pack is dismantled two ways: the housing with the cables and terminals to a
+shredder, the cells to their own liquid route. 14 processes, 66 TC rows, **and
+not one value written** -- the same state the other two cases are in, and for
+the same reason, so this does not change what NEXT says. It does add 66 rows to
+it.
+
+Its inflow arrives as `<upstream>/data/processed/battery_recovery_draws/`, 11
+years 2020-2070, kilotonnes, summed over the chemistries. Two of those
+chemistries have no described cell: sodium-ion's holds no CRM or SRM so its
+absence costs this model nothing, while solid-state's holds lithium and there is
+no coefficient to write for a composition that does not exist.
+
 **Open, and small:**
 
 - **04_01 has not been re-run.** `carcomposition_draws_years` is set to 11

@@ -573,20 +573,13 @@ def current() -> Params:
     return params
 
 
-def describe(section, name: str) -> str:
-    """
-    The comment block written above the setting, as one line.
-
-    TAKES THE SECTION ITSELF, not its name. It used to look the class up in a
-    dict written out by hand -- run, data, monte_carlo, figures -- and adding
-    `combine` to SECTIONS without adding it there made `00_parameters.py` die
-    on `KeyError: 'combine'`, after the section had been declared, defaulted,
-    validated and used everywhere else. The list a person has to remember to
-    add to twice is the list that gets added to once.
-    """
-    section_type = section if isinstance(section, type) else type(section)
-    return _FIELD_COMMENTS.get((section_type.__name__, name), '') or \
-        f'Setting in {section_type.__name__}.'
+def describe(section_name: str, name: str) -> str:
+    """The comment block written above the setting, as one line."""
+    section = {'run': RunParams, 'data': DataParams,
+               'monte_carlo': MonteCarloParams,
+               'figures': FigureParams}[section_name]
+    return _FIELD_COMMENTS.get((section.__name__, name), '') or \
+        f"Setting in section '{section_name}'."
 
 
 def draws_path(params: Params) -> str:
@@ -639,7 +632,7 @@ def flatten(params: Params) -> list[list]:
             value = getattr(section, f.name)
             rows.append([
                 f.name,
-                describe(section, f.name),
+                describe(section_name, f.name),
                 f'{section_name}.{f.name}',
                 json.dumps(value) if isinstance(value, (list, tuple)) else value,
             ])

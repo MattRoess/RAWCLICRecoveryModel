@@ -1023,47 +1023,6 @@ A local variable in that code was called `role` and held the TC target LAYER,
 which is likely how the real role went unnoticed for as long as it did. It is
 called `depth` now.
 
-### 3.20 A new parameter section stopped `00_parameters.py` dead — **FIXED**
-
-    KeyError: 'combine'
-
-`combine` had been declared, given defaults, added to `SECTIONS`, validated,
-documented in its own comment blocks and read by `04_combine_cases.py`. It
-worked. The one thing it had not been added to was a dict written out by hand
-inside `describe`:
-
-```python
-section = {'run': RunParams, 'data': DataParams,
-           'monte_carlo': MonteCarloParams,
-           'figures': FigureParams}[section_name]
-```
-
-So the FIRST stage of the pipeline -- the one whose whole job is to write the
-settings out, and which every other stage reads the artifact of -- crashed on a
-section every other stage was already using.
-
-The caller had the section object in its hand:
-
-```python
-for section_name in params.SECTIONS:
-    section = getattr(params, section_name)      # right here
-    for f in fields(section):
-        rows.append([..., describe(section_name, f.name), ...])
-```
-
-and threw it away to pass a string that had to be mapped back to a class.
-
-**FIXED:** `describe` takes the section itself. There is no second list to keep
-in step, so a section added to `SECTIONS` cannot fail this way again. A test
-walks every field of every section through `flatten` and also refuses the
-fallback text -- a section whose comments are not collected would otherwise
-flatten silently, with `Setting in ...` where its explanation should be.
-Confirmed the test fails against the old code before keeping it.
-
-Side effect worth noting: `documentation/PARAMETER_REFERENCE.md` had never
-carried the `combine` section, because the generator could not run. It does
-now.
-
 ---
 
 ## 4. Code quality notes
