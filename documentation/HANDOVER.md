@@ -1,7 +1,8 @@
 # Handover
 
-Current as of **2026-09-02**. Rewritten from the ground up on 2026-08-21 and
-updated since; git has the older text.
+Current as of **2026-09-16**. Rewritten from the ground up on 2026-08-21 and
+updated since; git has the older text. The newest entries are at the foot of
+this file.
 
 **What is left to do is in NEXT, immediately below: the coefficients, and
 nothing else.** The rest of this document is why things are the way they are,
@@ -49,10 +50,13 @@ could not carry one coefficient right for both. The same holds for iron, which
 is a steel frame on one route and LFP's iron phosphate cathode on the other.
 
 The pack is dismantled two ways: the housing with the cables and terminals to a
-shredder, the cells to their own liquid route. 14 processes, 66 TC rows, **and
-not one value written** -- the same state the other two cases are in, and for
-the same reason, so this does not change what NEXT says. It does add 66 rows to
-it.
+shredder, the cells to their own liquid route.
+
+**Updated 2026-09-16. It is now 17 processes, 18 flows, 87 TC rows, and 65 of
+them are written.** What is left is **11 hydrometallurgy rates**, and they are
+the only numbers in this case that nobody else has already answered. The rest
+came from precedent or from definition -- see the 09-16 entry at the foot of
+this file.
 
 Its inflow arrives as `<upstream>/data/processed/battery_recovery_draws/`, 11
 years 2020-2070, kilotonnes, summed over the chemistries. Two of those
@@ -1124,3 +1128,86 @@ unchanged.
 
 **Still open:** the boards case at every year has not been run — it needs about
 17 GB of free disk while it runs. `years` is set to `'2020-2070, 1'`.
+
+---
+
+## 2026-09-16 — the battery case, filled where nobody had to choose
+
+**65 of 87 coefficients are written. 11 hydrometallurgy rates are left, and
+they are the user's.** He said so explicitly, twice. Do not fill them.
+
+The principle behind the whole day: **a coefficient was written only where
+there was no choice to make** — either another case had already answered it, or
+the row had one destination and the value was forced. Everything that needed a
+judgement was left empty and named.
+
+### What was written, and on whose authority
+
+| rows | what | where it came from |
+|---|---|---|
+| 36 | dismantling | **the user**: 0.95 / 0.98 / 1.00 to the proper branch, 0 to the other, 0.00 / 0.02 / 0.05 to waste |
+| 19 | the shredder | **the electronics cases** — same shredder, same rates |
+| 7 | `rest` → loss on the cell road | definitional, 1.0 |
+| 3 | Si, cathode O, cathode Al → loss | one destination, so forced |
+| 22 | **empty** | 11 hydromet groups: C, Li ×2, Ni, Co, Mn, Fe, P, Cu, Al ×2 |
+
+### Three things that were not obvious
+
+**Which branch a component takes was never a choice.** Each of the twelve
+appears downstream in exactly one branch, so routing it to the other strands its
+mass, which `validate_inputs` refuses: *"their mass stops there and disappears
+from every total."* Five follow the housing — frame, module enclosures, thermal
+conductor, cables, cell terminals — and seven follow the cells.
+
+**The battery does not get the electronics pattern for imperfect dismantling,
+and this is regulatory, not modelling.** Wiring and boards send what is missed
+down the worse road: `stays_in_car` → `general_recycling`. **A battery pack must
+come out of the car whole and no cell may enter a shredder**, so that road does
+not exist here. What cannot be separated is waste at the dismantling step —
+hence `F_loss_dismantling`, a third destination rather than a stray into the
+other branch.
+
+**Six element routes were missing and would have stranded mass.** The
+composition names them: the anode is 47.7 kg of carbon and 5.9 kg of silicon at
+80 kWh, and the cathode carries Al, O and P depending on chemistry. Two new
+recovered flows were added — **`F_graphite`** and **`F_p`** — and
+`currentCollectorAnode / Al` now reports to `F_al_cell`, because it is sodium's
+aluminium anode collector. Si, cathode O and cathode Al are lost outright.
+
+`F_p` takes a bare name like `F_li`, `F_ni`, `F_co`, `F_mn`. Only metals that
+**also** come off the shredder carry the `_cell` suffix, so the two roads to the
+same metal can be told apart.
+
+### The improvement ramp now builds
+
+The case declared `improvement_start 2030` / `improvement_end 2060` with no
+`TCs_improved` table, so `case_tables.coefficients()` raised `ImprovementError`
+— *"nothing says WHAT improves"* — and **no run could read a coefficient**. That
+is fixed: 87 rows, same keys, same order. 435 rows across 2025/2030/2045/2060/2070.
+
+The shredder improves, again from the electronics cases' own improved table:
+Cu 0.60 → 0.85, Al 0.50 → 0.72, Fe 0.50 → 0.72. Definitional rows do not move.
+
+> **Filling a hydromet rate means filling it TWICE** — a 2030 value in `TCs` and
+> a 2060 value in `TCs_improved`. Both sheets carry all 87 rows.
+
+### Two things left, and both are the user's
+
+1. **The 11 hydrometallurgy rates.** No other case in this project uses
+   hydrometallurgy, so there is no precedent to borrow. Lithium appears twice —
+   from the cathode and from the electrolyte — and they need not be the same
+   rate; electrolyte lithium is the harder one.
+2. **The 2060 dismantling rate.** 95 / 98 / 100 is a 2030 number. `TCs_improved`
+   currently **copies it across unchanged**, and every dismantling row's `source`
+   column says so rather than hiding it. Every other case improves its
+   disassembly: Motors 0.65 → 0.80, Wiring 0.90 → 0.96, PCB 0.85 → 0.95.
+
+### Checking it
+
+```bash
+./.venv/bin/python tools/plot_structure.py data_folder/battery
+```
+
+Draws the wiring with every coefficient beside its arrow, reads `TCs` and
+nothing else, needs no result and solves nothing. It is the fastest way to see
+what is still `nan`.
