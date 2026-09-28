@@ -1,74 +1,43 @@
 # Handover
 
-## ⚠️ GIT: THIS RESOLVES ON THURSDAY. IT IS ONE STRAIGHT LINE.
+## GIT: DONE. `main` holds everything.
 
-**The history is split across the two Mac Minis and the remote is three weeks
-behind.** Nothing is lost; it is in two places that have not met.
+    origin/main   49195d6   2026-09-28   everything, both machines
 
-    origin/main      2040ccd   2026-09-16   "Handover: the battery case..."
-    the other Mini   2040ccd + about 20 commits, 09-17 to 09-25, NEVER PUSHED
-                     (cb3f0ca .. a4a2d5c -- the traction motor work)
-    this Mac         2040ccd + e6eb1ec, one commit holding the SAME content
-                     as those twenty, plus all of 2026-09-28. Committed
-                     locally, NOT pushed, on purpose.
+Pushed on 2026-09-28. Nothing is left to run here and nothing is waiting on a
+person. The temporary backup ref is deleted; `main` is the only ref.
 
-⚠️ **`e6eb1ec` is a safety copy, not history.** It must not reach `origin`
-before the other Mini pushes, or the two versions of the same work end up side
-by side and the line stops being straight.
+### ⚠️ The other Mini, whenever it is next opened
 
-### Step 1 -- THURSDAY, on the other Mini
+It still has about twenty local commits from 09-17 to 09-25 -- the traction
+motor work, `cb3f0ca` to `a4a2d5c` -- which were never pushed. **Their CONTENT
+is in `49195d6` already**, because the working tree is the shared iCloud tree
+and all of it was committed from this machine. What those twenty carry that
+`main` does not is their MESSAGES, and nothing else.
 
-Thursday is when that machine is worked on. Nothing before then.
+So that machine is out of step with the remote, and one command fixes it:
 
-    git status                 # commit anything outstanding first
-    git push origin main       # its twenty commits go up, with their messages
+    git fetch origin && git reset --hard origin/main
 
-### Step 2 -- then, on this Mini (the iCloud tree)
+Safe: the working tree it resets to is byte for byte what is already on disk
+there, because both machines share the same iCloud folder. Nothing is lost
+except the twenty messages, and what they described is written up in the
+09-24 and 09-25 entries at the foot of this file.
 
-    git fetch origin
-    git reset --mixed origin/main    # history becomes theirs; FILES UNTOUCHED
-    git add -A
-    git commit -m "..."              # exactly 2026-09-28's work, one commit
-    git push origin main
+### Why it broke, so it is not repeated
 
-`--mixed` is the whole trick: it moves HEAD to their history and leaves the
-working tree alone, so what is left staged is precisely the difference between
-their 09-25 state and today's -- which IS today's work.
-
-### The result
-
-    2040ccd -- their twenty commits (09-17..09-25) -- one commit (09-28)
-
-One straight line. No branch, no merge, no force.
-
-### The safety copy on GitHub
-
-Pushed 2026-09-28 so that three weeks of work is not sitting on two machines
-until Thursday:
-
-    refs/backup/icloud-2026-09-28   ->  b9ad5d1
-
-⚠️ **It is NOT a branch.** It sits outside `refs/heads/`, so it does not show in
-the branch list, nothing tracks it, and `refs/heads/main` is untouched at
-2040ccd. **The two steps above are unaffected and need no force.** Delete it
-once step 2 has pushed:
-
-    git push origin :refs/backup/icloud-2026-09-28
-
-### Why it broke
-
-`.git` was moved out of iCloud on 2026-09-22 because iCloud corrupted it. That
-was done ON THE OTHER MINI. What synced here was the one-line pointer file; the
+`.git` was moved out of iCloud on 2026-09-22, because iCloud corrupted it. That
+was done on the other Mini. What synced here was the one-line pointer file; the
 directory it points at, `~/gitdirs/`, was never created on this machine, so
-every git command here failed from 09-22 until 09-28. Restarting Positron
-cannot fix it -- the directory was absent, not locked. It is attached now and
-will not need doing again:
+every git command here failed from 09-22 until 09-28. Restarting the editor
+cannot fix it -- the directory was absent, not locked. It is attached now:
 
     ~/gitdirs/RAWCLICRecoveryModel.git   core.worktree -> the iCloud tree
 
-**The rule this exists to serve, from RAWCLICStockAndFlow's handover:** *machines
-exchange work by push and pull, not by iCloud. Commit and push on one Mac, pull
-on the other.*
+**The rule, from RAWCLICStockAndFlow's handover:** *machines exchange work by
+push and pull, not by iCloud. Commit and push on one Mac, pull on the other.*
+Three weeks passed without that happening, which is how the two histories
+drifted apart in the first place.
 
 ---
 
