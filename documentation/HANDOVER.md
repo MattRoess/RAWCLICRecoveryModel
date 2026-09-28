@@ -1999,3 +1999,131 @@ imported unchanged -- which the checker itself reports as not an error.
 Adding it is one name in that list, once the disassembly share is a number
 somebody chose rather than the placeholder in
 `tools/build_tractionmotor_mixed_case.py`.
+
+---
+
+## 2026-09-28 (evening) — READ THE FIRST SECTION BEFORE TOUCHING THE FLEET CASE
+
+### ⚠️ 1. `tractionmotor_fleet` DOUBLE-COUNTS MOTOR REMOVAL. Do not use its numbers.
+
+The case is built and runs. Its numbers are wrong and I found it minutes before
+stopping, by reading the user's own extracted study table.
+
+**The study already contains the split.** `documentation/recycling_coefficients.csv`,
+extracted from `RAWCLIC_BEV_Motor_Recycling_TC_V1.xlsx` on 09-25:
+
+    2030  disassembly  step 1  EoL vehicle collection      0.70 | 0.80 | 0.90
+    2030  disassembly  step 2  Motor removal from vehicle  0.85 | 0.93 | 0.98
+
+**Step 2 IS the disassembly share.** It is in the review, with a range, per
+horizon. I invented a coefficient `DISASSEMBLY_SHARE` and put it ABOVE a chain
+that already applies capture x removal:
+
+    disassembly road  =   d    x (0.80 capture x 0.93 removal)   <- removal twice
+    shredder road     = (1-d)  x (0.80 capture x 0.98 feed)
+
+**The correct structure adds nothing and uses the review's numbers:**
+
+    F_collected --0.80 capture--> --0.93 removal--> removed   -> recovery chain
+                                   \-0.07---------> not removed -> shredder chain
+
+That is also DECISIONS 10 word for word: *nothing is lost by not being
+disassembled, it simply travels the other road*. In the pure disassembly case
+the 7% not removed goes to `F_loss_upstream` and is written off; in a fleet
+case it must go to the shredder.
+
+**THE FIX:** delete `DISASSEMBLY_SHARE` from
+`tools/build_tractionmotor_fleet_case.py` and branch at step 2 instead. It
+needs the two builders to expose their step-2 value rather than folding it into
+`up = prod(['capture','removal'])`.
+
+⚠️ **`figures/tractionmotor_fleet/` and its workbook are from the wrong
+structure.** So is `agreement_with_the_review.png`: it compared the case
+against `d x dis + (1-d) x shr` using the SAME invented `d`, so it agreed with
+itself. Its worst gap of 1.9 pp means nothing until the structure is right.
+
+Two values of `d` were used today, both wrong for the same reason: 0.20, my
+placeholder, and then 0.95|0.98|1.00, the BATTERY case's own dismantling rate,
+after *"why are only so few traction motors taken out. It will be the same as
+for batteries."* The reasoning there is sound -- a hulk opened for the pack is
+one the motor can come out of -- but the review's own step 2 is the number to
+use, and it says 0.93.
+
+### ⚠️ 2. THE STUDY DOCUMENTS ARE NOT IN THIS PROJECT, AND THE ORIGINALS ARE GONE
+
+Asked for explicitly on 2026-09-28: the study belongs in a folder in the
+project AND in `documentation/`. It was never done.
+
+`~/Downloads/TractionMotor/` -- where the 09-24 entry says
+`RAWCLIC_BEV_Motor_Recycling_Report_V1.md` and
+`RAWCLIC_BEV_Motor_Recycling_TC_V1.xlsx` lived -- **no longer exists**. The
+only survivor in this repository is the extraction:
+
+    documentation/recycling_coefficients.csv    118 rows, 11 columns
+
+Related but NOT the same documents, in a sibling repository:
+
+    RAWCLICVehicleTractionMotor/documentation/TractionMotor/
+        RAWCLIC_BEV_Motors_Comprehensive_Report_V1.md / .pdf
+        RAWCLIC_BEV_Motors_Critical_Review_V1.md / .pdf
+        RAWCLIC_BEV_Motors_Comprehensive_Data_V2.xlsx
+
+**FIRST JOB NEXT SESSION:** find the two originals -- check the other Mini,
+check the Trash -- and copy them into this project. Every traction coefficient
+traces to them and right now nothing here holds them.
+
+### 3. What was built today and is sound
+
+- **Upstream `04_03` now exports `outflow`** (`traction_export.py`, composed
+  from collected + export + unknown_whereabouts, which partition it). Re-run
+  and verified: 108 arrays, 3 flows, 950 MB. Without it `account()` returned
+  None and FOUR figures were silently never drawn.
+- **`other_flow` can address a resource exported AS a component**
+  (`__component____copper.npy`). Both were needed before copper could have an
+  account at all. DEFECTS 3.23.
+- **The same nesting double count, found in three places**: the Sankey
+  (3.21), `account()` and every row selection in `plot_monte_carlo` that sums
+  mass (3.24). `account` read copper's collected mass as 140.94 kt against
+  70.47, and because `lost = collected - recovered` mixed a doubled quantity
+  with an undoubled one, copper appeared to lose 91.7 kt of the 70.5 it had --
+  closing to 0.00e+00 the whole time, because closure is by construction.
+- **A road split now requires that some resource travel more than one road.**
+  The shredder's first branch is four material streams, and reading them as
+  roads drew `recovered, ndfeb stream` beside `recovered`, the same 0.3396 kt
+  twice.
+- **Three study files** -- `02_electronics.py`, `03_tractionmotors.py`,
+  `04_batteries.py` -- and the stages moved to `stages/`. DECISIONS 28.
+- **Figures**: six essential per case with the rest in `detail/`, one resource
+  per figure for account/losses/fleet, `over_time` on a log axis, and titles
+  and legends that state only what the figure can show. DECISIONS 30-35.
+- **`tools/compare_routes.py`** gained `<resource>_recovered` and
+  `<resource>_lost`, cumulative above and per year below, one line per route,
+  no total.
+
+### 4. What is uncommitted
+
+`main` is at `47eb40a`, pushed. Not yet committed:
+
+    M  src/figure_style.py            write() takes essential=
+    M  src/params_schema.py           study points at tractionmotor_fleet
+    M  tools/build_tractionmotor_case.py    write() guarded so it can be imported
+    M  tools/compare_routes.py        the two new figures, wrapped subtitles
+    D  tools/build_tractionmotor_mixed_case.py   replaced by the fleet builder
+    D  data_folder/tractionmotor_mixed/
+    ?? data_folder/tractionmotor_fleet/         ⚠️ wrong structure, see §1
+    ?? tools/build_tractionmotor_fleet_case.py  ⚠️ wrong structure, see §1
+    ?? tools/check_ratios.py                    ⚠️ checks against itself, see §1
+
+Nothing here is lost; none of it is right yet.
+
+### 5. Where to continue, in order
+
+1. **Find the two study documents and put them in the project.** §2.
+2. **Rebuild the fleet case from step 2 of the review.** §1. Then
+   `check_ratios.py` becomes a real check rather than a mirror.
+3. **The overview figure.** Asked for repeatedly and not delivered: it should
+   carry the ratios READ FROM THE RUN, so they can be checked. It still
+   hard-types `Nd 0.41 -> 0.65`, which is a chain of modes and not any
+   percentile of the result.
+4. DECISIONS.md still has three weeks of decisions that live only in this log.
+

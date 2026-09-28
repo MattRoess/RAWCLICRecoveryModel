@@ -134,13 +134,21 @@ ESSENTIAL = ('over_time', 'recovery_rate', 'total', 'pdf_all')
 ESSENTIAL_PER_RESOURCE = ('account_', 'losses_', 'fleet_')
 
 
-def write(figure, out_dir: str, stem: str, formats, dpi: int) -> list[str]:
+def write(figure, out_dir: str, stem: str, formats, dpi: int,
+          essential: bool | None = None) -> list[str]:
     """
     Write one figure to every requested format. Returns the paths written.
 
-    The essential six land in `out_dir`; everything else in `out_dir/detail`.
+    The essential ones land in `out_dir`; everything else in `out_dir/detail`.
+
+    `essential=True` overrides the rule. `figures/routes/` is a folder of
+    comparisons and nothing else -- there is no detail to separate from, so
+    burying half of it would be sorting a folder into itself.
     """
-    if stem not in ESSENTIAL and not stem.startswith(ESSENTIAL_PER_RESOURCE):
+    if essential is None:
+        essential = (stem in ESSENTIAL
+                     or stem.startswith(ESSENTIAL_PER_RESOURCE))
+    if not essential:
         out_dir = os.path.join(out_dir, 'detail')
     os.makedirs(out_dir, exist_ok=True)
     written = []

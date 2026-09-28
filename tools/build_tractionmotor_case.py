@@ -184,10 +184,18 @@ lists = pd.DataFrame({'keyed_at': ['component', 'material', 'element', None],
                       'role': ['recovered', 'loss', 'handoff', 'intermediate']})
 
 path = 'data_folder/tractionmotor/input_data/case.xlsx'
-with pd.ExcelWriter(path, engine='openpyxl') as w:
-    source.to_excel(w, sheet_name='source', index=False)
-    processes.to_excel(w, sheet_name='processes', index=False)
-    lists.to_excel(w, sheet_name='_lists', index=False)
-    tc_rows(S30).to_excel(w, sheet_name='TCs', index=False)
-    tc_rows(S60).to_excel(w, sheet_name='TCs_improved', index=False)
-print(f'{path}: {len(tc_rows(S30))} TC rows, {len(processes)} processes')
+
+
+def write() -> None:
+    """Write the case. Guarded so the FLEET builder can import this chain."""
+    with pd.ExcelWriter(path, engine='openpyxl') as w:
+        source.to_excel(w, sheet_name='source', index=False)
+        processes.to_excel(w, sheet_name='processes', index=False)
+        lists.to_excel(w, sheet_name='_lists', index=False)
+        tc_rows(S30).to_excel(w, sheet_name='TCs', index=False)
+        tc_rows(S60).to_excel(w, sheet_name='TCs_improved', index=False)
+    print(f'{path}: {len(tc_rows(S30))} TC rows, {len(processes)} processes')
+
+
+if __name__ == '__main__':
+    write()
