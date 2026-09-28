@@ -80,9 +80,10 @@ def label(axes, x, y, text, size, colour, weight='normal', ha='left', family=Non
               **({'fontfamily': family} if family else {}))
 
 
-def folder_for(out_dir: str, case: str) -> str:
+def folder_for(out_dir: str, case: str, scenario: str = '') -> str:
     """
-    Where one case's figures go: `<out_dir>/<case>/`.
+    Where one case's figures go: `<out_dir>/<case>/`, or
+    `<out_dir>/<case>/<scenario>/` when the run names one.
 
     A FOLDER PER CASE, NOT A PREFIX. Two cases used to write `mc_pdf_Cu.png`
     into the same directory and the second run replaced the first's silently,
@@ -90,12 +91,57 @@ def folder_for(out_dir: str, case: str) -> str:
     with nothing but timestamps to tell them apart. A folder cannot collide, and
     it means the figure names say what the figure IS -- `total.png`,
     `structure.png`, `Cu.png` -- rather than repeating the case in every one.
+
+    AND A FOLDER PER SCENARIO, 2026-09-17, for exactly the same reason. The
+    battery is the first case with more than one -- S1, S2, S3 -- and a run is
+    one scenario, so three of them wrote the same names to the same place. The
+    result would have been the third scenario's figures under the first
+    scenario's name, which is the failure above word for word.
+
+    EVERY figure goes under the scenario, including ones that do not depend on
+    it such as `structure.png`. One rule and no exceptions beats a rule nobody
+    can remember the exceptions to; the cost is an identical drawing written
+    three times.
     """
-    return os.path.join(out_dir, os.path.basename(os.path.normpath(case)))
+    path = os.path.join(out_dir, os.path.basename(os.path.normpath(case)))
+    return os.path.join(path, scenario) if scenario else path
+
+
+# ⚠️ THE FEW WORTH OPENING FIRST. A traction motor run wrote 512 figures --
+# 16 folders of 32 -- and finding the answer in them meant knowing which
+# filename to look for. Said on 2026-09-28: *"I want to be able to see what is
+# essential and not diluted by hundreds of other figures."*
+#
+# These six stay in the case's own folder. EVERYTHING ELSE GOES TO `detail/`
+# beside them. Nothing stops being drawn: what changes is that the folder you
+# open answers the question, and the rest is one directory further in for when
+# a number needs chasing.
+#
+#     over_time      what comes back per year, with its 95% band
+#     recovery_rate  the share of what was collected
+#     account        the whole account -- in, out, recovered, lost, never collected
+#     losses         why it does not come back, and how much of each reason
+#     total          the Sankey: where the mass actually went
+#     pdf_all        every resource's distribution on one page
+#
+# A stem not named here is detail, so a new figure lands in `detail/` unless
+# somebody decides it belongs in the six.
+ESSENTIAL = ('over_time', 'recovery_rate', 'total', 'pdf_all')
+
+# The same, one file per resource: `account_Nd`, `losses_copper`. A grid of six
+# was unreadable, so each resource gets its own figure and they all belong at
+# the top -- they ARE the answer for the resource they name.
+ESSENTIAL_PER_RESOURCE = ('account_', 'losses_', 'fleet_')
 
 
 def write(figure, out_dir: str, stem: str, formats, dpi: int) -> list[str]:
-    """Write one figure to every requested format. Returns the paths written."""
+    """
+    Write one figure to every requested format. Returns the paths written.
+
+    The essential six land in `out_dir`; everything else in `out_dir/detail`.
+    """
+    if stem not in ESSENTIAL and not stem.startswith(ESSENTIAL_PER_RESOURCE):
+        out_dir = os.path.join(out_dir, 'detail')
     os.makedirs(out_dir, exist_ok=True)
     written = []
     for fmt in formats:

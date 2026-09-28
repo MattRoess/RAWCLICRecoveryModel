@@ -1,0 +1,119 @@
+horizon,route,step,step_name,material,min,mode,max,used_in,sheet,note
+2030,disassembly,1,EoL vehicle collection,NdFeB (all),0.7,0.8,0.9,tractionmotor,TC_2030_Disassembly_Route,Fraction of PMSM-bearing EoL vehicles reaching ATF. Report: NR fleet-wide; scenario assumption.
+2030,disassembly,1,EoL vehicle collection,Cu,0.7,0.8,0.9,tractionmotor,TC_2030_Disassembly_Route,Same upstream for all motor materials
+2030,disassembly,1,EoL vehicle collection,Al,0.7,0.8,0.9,tractionmotor,TC_2030_Disassembly_Route,Same upstream for all motor materials
+2030,disassembly,1,EoL vehicle collection,Fe/Si-steel,0.7,0.8,0.9,tractionmotor,TC_2030_Disassembly_Route,Same upstream for all motor materials
+2030,disassembly,2,Motor removal from vehicle,NdFeB (all),0.85,0.93,0.98,tractionmotor,TC_2030_Disassembly_Route,"Motor unit extracted intact. Manual: mature. Robotic: pilot [Ref 6,7,8,9]. Report: NR; scenario assumption."
+2030,disassembly,2,Motor removal from vehicle,Cu,0.85,0.93,0.98,tractionmotor,TC_2030_Disassembly_Route,Motor removed as unit → same TC for all internal materials
+2030,disassembly,2,Motor removal from vehicle,Al,0.85,0.93,0.98,tractionmotor,TC_2030_Disassembly_Route,Motor removed as unit → same TC
+2030,disassembly,2,Motor removal from vehicle,Fe/Si-steel,0.85,0.93,0.98,tractionmotor,TC_2030_Disassembly_Route,Motor removed as unit → same TC
+2030,disassembly,3,"Motor pre-processing (dehousing, demag)",NdFeB (all),0.8,0.88,0.95,tractionmotor,TC_2030_Disassembly_Route,"Dehousing + thermal demag. Demag at ~300–500°C [Ref 47,48]. Oxidation risk if atmosphere not controlled. Report: NR."
+2030,disassembly,3,Motor pre-processing,Cu,0.9,0.95,0.98,tractionmotor,TC_2030_Disassembly_Route,Cu windings separated at this stage; high recovery potential
+2030,disassembly,3,Motor pre-processing,Al,0.92,0.96,0.99,tractionmotor,TC_2030_Disassembly_Route,Housing removed first — clean Al fraction
+2030,disassembly,3,Motor pre-processing,Fe/Si-steel,0.85,0.92,0.97,tractionmotor,TC_2030_Disassembly_Route,Laminations separated from Cu and magnets
+2030,disassembly,4a,Magnet extraction (disassembly),NdFeB (all),0.7,0.82,0.92,tractionmotor,TC_2030_Disassembly_Route,IPM in closed pockets: difficult. SPM: easier. H₂-assisted liberation possible [Ref 17]. Report: NR.
+2030,disassembly,5,"Magnet pre-processing (decoat, mill)",NdFeB (all),0.88,0.93,0.97,tractionmotor,TC_2030_Disassembly_Route,"Decoating, crushing, milling. Clean magnets: straightforward. Contaminated: lower TC."
+2030,disassembly,6b,Hydromet — acid leach + SX,Nd,0.85,0.92,0.97,tractionmotor,TC_2030_Disassembly_Route,"Leaching + SX. Selected stages >99% [Ref 31,32]. Full-route TC lower. Supplier claim 99.8% [Ref 34, Rel:60%]."
+2030,disassembly,6b,Hydromet — acid leach + SX,Pr,0.83,0.9,0.96,tractionmotor,TC_2030_Disassembly_Route,Pr behaviour similar to Nd in hydromet
+2030,disassembly,6b,Hydromet — acid leach + SX,Dy,0.8,0.88,0.95,tractionmotor,TC_2030_Disassembly_Route,Dy may partition differently in SX [Report §9.4]
+2030,disassembly,6b,Hydromet — acid leach + SX,Tb,0.78,0.86,0.94,tractionmotor,TC_2030_Disassembly_Route,Tb: least abundant; higher uncertainty
+2030,disassembly,7,REE separation (SX),Nd,0.88,0.93,0.98,tractionmotor,TC_2030_Disassembly_Route,SX is industrial technology. Motor-specific chain integration is the gap.
+2030,disassembly,7,REE separation (SX),Pr,0.86,0.91,0.97,tractionmotor,TC_2030_Disassembly_Route,Pr/Nd separation well-established
+2030,disassembly,7,REE separation (SX),Dy,0.85,0.91,0.97,tractionmotor,TC_2030_Disassembly_Route,HRE separation: commercial
+2030,disassembly,7,REE separation (SX),Tb,0.83,0.89,0.96,tractionmotor,TC_2030_Disassembly_Route,Tb/Dy separation: commercial but trace qty
+2030,disassembly,8,REE oxide/metal production,Nd,0.9,0.95,0.98,tractionmotor,TC_2030_Disassembly_Route,Calcination/reduction: mature industrial process
+2030,disassembly,8,REE oxide/metal production,Pr,0.9,0.95,0.98,tractionmotor,TC_2030_Disassembly_Route,Same mature process
+2030,disassembly,8,REE oxide/metal production,Dy,0.9,0.95,0.98,tractionmotor,TC_2030_Disassembly_Route,Same mature process
+2030,disassembly,8,REE oxide/metal production,Tb,0.9,0.95,0.98,tractionmotor,TC_2030_Disassembly_Route,Same mature process
+2030,disassembly,9,Cu winding separation & refining,Cu,0.82,0.9,0.96,tractionmotor,TC_2030_Disassembly_Route,Mechanical cutting/pulling + Cu smelter. Industrially practiced. Motor-specific TC: NR [Report §7].
+2030,disassembly,10,Al housing recovery,Al,0.88,0.93,0.97,tractionmotor,TC_2030_Disassembly_Route,Dehoused Al castings to secondary smelter. Report: NR; scenario assumption.
+2030,disassembly,11,Electrical steel recovery,Fe/Si-steel,0.8,0.88,0.95,tractionmotor,TC_2030_Disassembly_Route,Ferrous recovery ≠ functional lamination reuse. New motor-grade sheet from scrap: NR [Report §7].
+2060,disassembly,1,EoL vehicle collection,NdFeB (all),0.82,0.9,0.96,tractionmotor,TC_2060_Disassembly_Route,Improved by ELVD mandatory targets + digital tracking. 2030→2060: 0.80→0.90 Mode.
+2060,disassembly,1,EoL vehicle collection,Cu,0.82,0.9,0.96,tractionmotor,TC_2060_Disassembly_Route,Same improvement
+2060,disassembly,1,EoL vehicle collection,Al,0.82,0.9,0.96,tractionmotor,TC_2060_Disassembly_Route,Same improvement
+2060,disassembly,1,EoL vehicle collection,Fe/Si-steel,0.82,0.9,0.96,tractionmotor,TC_2060_Disassembly_Route,Same
+2060,disassembly,2,Motor removal from vehicle,NdFeB (all),0.92,0.97,0.99,tractionmotor,TC_2060_Disassembly_Route,"Robotic disassembly mature by 2060. Design-for-disassembly standard [Ref 60,61]."
+2060,disassembly,2,Motor removal,Cu,0.92,0.97,0.99,tractionmotor,TC_2060_Disassembly_Route,Automated removal mature
+2060,disassembly,2,Motor removal,Al,0.92,0.97,0.99,tractionmotor,TC_2060_Disassembly_Route,Same
+2060,disassembly,2,Motor removal,Fe/Si-steel,0.92,0.97,0.99,tractionmotor,TC_2060_Disassembly_Route,Same
+2060,disassembly,3,Motor pre-processing,NdFeB (all),0.88,0.94,0.98,tractionmotor,TC_2060_Disassembly_Route,"Improved atmosphere control, standardised dehousing. 2030→2060: 0.88→0.94 Mode."
+2060,disassembly,3,Motor pre-processing,Cu,0.93,0.97,0.99,tractionmotor,TC_2060_Disassembly_Route,Mature winding separation
+2060,disassembly,3,Motor pre-processing,Al,0.95,0.98,0.99,tractionmotor,TC_2060_Disassembly_Route,Design-for-disassembly: easy dehousing
+2060,disassembly,3,Motor pre-processing,Fe/Si-steel,0.9,0.95,0.98,tractionmotor,TC_2060_Disassembly_Route,Improved lamination separation
+2060,disassembly,4a,Magnet extraction,NdFeB (all),0.82,0.92,0.97,tractionmotor,TC_2060_Disassembly_Route,Robotic extraction + H₂ liberation mature. Design-for-disassembly reduces adhesive. 2030→2060: 0.82→0.92 Mode.
+2060,disassembly,5,Magnet pre-processing,NdFeB (all),0.92,0.96,0.99,tractionmotor,TC_2060_Disassembly_Route,Automated decoating and milling. 2030→2060: 0.93→0.96 Mode.
+2060,disassembly,6a/d,Short-loop recycling (HD/direct),NdFeB → new magnet,0.88,0.93,0.97,"tractionmotor_shortloop, tractionmotor_split",TC_2060_Disassembly_Route,Short-loop (HD/HPMS/direct) becomes main route for clean known feed by 2060. Alloy retained.
+2060,disassembly,6b,Hydromet (mixed feed fallback),Nd,0.9,0.96,0.99,tractionmotor,TC_2060_Disassembly_Route,"Improved reagent efficiency, closed-loop acid. 2030→2060: 0.92→0.96 Mode."
+2060,disassembly,6b,Hydromet (mixed feed fallback),Pr,0.88,0.94,0.98,tractionmotor,TC_2060_Disassembly_Route,Similar improvement
+2060,disassembly,6b,Hydromet (mixed feed fallback),Dy,0.86,0.93,0.97,tractionmotor,TC_2060_Disassembly_Route,HRE separation improved
+2060,disassembly,6b,Hydromet (mixed feed fallback),Tb,0.84,0.92,0.97,tractionmotor,TC_2060_Disassembly_Route,Tb recovery improved
+2060,disassembly,7,REE separation (SX),Nd,0.92,0.96,0.99,tractionmotor,TC_2060_Disassembly_Route,Mature industrial SX. 2030→2060: 0.93→0.96.
+2060,disassembly,7,REE separation (SX),Pr,0.9,0.95,0.99,tractionmotor,TC_2060_Disassembly_Route,
+2060,disassembly,7,REE separation (SX),Dy,0.9,0.95,0.98,tractionmotor,TC_2060_Disassembly_Route,
+2060,disassembly,7,REE separation (SX),Tb,0.88,0.94,0.98,tractionmotor,TC_2060_Disassembly_Route,
+2060,disassembly,8,REE oxide/metal production,All REE,0.93,0.97,0.99,tractionmotor,TC_2060_Disassembly_Route,Mature. 2030→2060: 0.95→0.97.
+2060,disassembly,9,Cu winding separation,Cu,0.88,0.94,0.98,tractionmotor,TC_2060_Disassembly_Route,Automated + design-for-disassembly
+2060,disassembly,10,Al housing recovery,Al,0.92,0.96,0.99,tractionmotor,TC_2060_Disassembly_Route,Mature
+2060,disassembly,11,Electrical steel recovery,Fe/Si-steel,0.85,0.92,0.97,tractionmotor,TC_2060_Disassembly_Route,Mass recovery high; functional closed-loop reuse emerging but unquantified
+2030,shredder,1,EoL vehicle collection,NdFeB (all),0.7,0.8,0.9,tractionmotor_shredder,TC_2030_Shredder_Route,Same upstream as disassembly route
+2030,shredder,1,EoL vehicle collection,Cu,0.7,0.8,0.9,tractionmotor_shredder,TC_2030_Shredder_Route,Same
+2030,shredder,1,EoL vehicle collection,Al,0.7,0.8,0.9,tractionmotor_shredder,TC_2030_Shredder_Route,Same
+2030,shredder,1,EoL vehicle collection,Fe/Si-steel,0.7,0.8,0.9,tractionmotor_shredder,TC_2030_Shredder_Route,Same
+2030,shredder,2,Motor to shredder feed,NdFeB (all),0.95,0.98,1.0,tractionmotor_shredder,TC_2030_Shredder_Route,Entire motor enters shredder; minimal pre-sorting loss
+2030,shredder,2,Motor to shredder feed,Cu,0.95,0.98,1.0,tractionmotor_shredder,TC_2030_Shredder_Route,Motor enters shredder intact
+2030,shredder,2,Motor to shredder feed,Al,0.95,0.98,1.0,tractionmotor_shredder,TC_2030_Shredder_Route,Motor enters shredder intact
+2030,shredder,2,Motor to shredder feed,Fe/Si-steel,0.95,0.98,1.0,tractionmotor_shredder,TC_2030_Shredder_Route,Motor enters shredder intact
+2030,shredder,3,Shredding: NdFeB to ferrous frac.,NdFeB → ferrous,0.2,0.35,0.55,tractionmotor_shredder,TC_2030_Shredder_Route,"NdFeB brittle+ferromagnetic; fragments partly captured with ferrous. Conc. 9.47→50.8% demo [Ref 10,11,12]. NOT recoverable form."
+2030,shredder,3,Shredding: NdFeB to non-ferrous frac.,NdFeB → non-ferrous,0.1,0.15,0.2,tractionmotor_shredder,TC_2030_Shredder_Route,Some NdFeB fragments in non-ferrous stream
+2030,shredder,3,Shredding: NdFeB to ASR (lost),NdFeB → ASR,0.3,0.4,0.5,tractionmotor_shredder,TC_2030_Shredder_Route,Fine fragments in auto shredder residue — effectively lost
+2030,shredder,3,Shredding: NdFeB hydromet recovery,NdFeB → recovered REE,0.0,0.02,0.05,tractionmotor_shredder,TC_2030_Shredder_Route,Currently near zero. NdFeB diluted in ferrous fraction → enters steel melt → REE lost in slag.
+2030,shredder,4,Ferrous stream → steel melt,NdFeB → recoverable REE,0.0,0.01,0.03,"pathway modelled, coefficient not taken",TC_2030_Shredder_Route,NdFeB diluted into steel melt. REE reports to slag. Recovery from EAF slag: NR. Essentially lost.
+2030,shredder,3,Shredding: Cu to non-ferrous,Cu,0.6,0.75,0.85,tractionmotor_shredder,TC_2030_Shredder_Route,Lower than disassembly due to mixing and contamination. Cu attached to laminations contaminates steel.
+2030,shredder,3,Shredding: Al to non-ferrous,Al,0.65,0.78,0.88,tractionmotor_shredder,TC_2030_Shredder_Route,Al housing fragments in non-ferrous. Alloy mixing degrades quality.
+2030,shredder,3,Shredding: Fe/Si-steel to ferrous,Fe/Si-steel,0.85,0.92,0.97,tractionmotor_shredder,TC_2030_Shredder_Route,"Laminations to ferrous fraction. High mass recovery, but functional reuse as motor-grade sheet: NR."
+2060,shredder,1,EoL vehicle collection,NdFeB (all),0.82,0.9,0.96,tractionmotor_shredder,TC_2060_Shredder_Route,Same as 2060 disassembly
+2060,shredder,1,EoL vehicle collection,Cu,0.82,0.9,0.96,tractionmotor_shredder,TC_2060_Shredder_Route,Same
+2060,shredder,1,EoL vehicle collection,Al,0.82,0.9,0.96,tractionmotor_shredder,TC_2060_Shredder_Route,Same
+2060,shredder,1,EoL vehicle collection,Fe/Si-steel,0.82,0.9,0.96,tractionmotor_shredder,TC_2060_Shredder_Route,Same
+2060,shredder,2,Motor to shredder feed,NdFeB (all),0.95,0.98,1.0,tractionmotor_shredder,TC_2060_Shredder_Route,Entire motor enters
+2060,shredder,2,Motor to shredder feed,Cu,0.95,0.98,1.0,tractionmotor_shredder,TC_2060_Shredder_Route,Same
+2060,shredder,2,Motor to shredder feed,Al,0.95,0.98,1.0,tractionmotor_shredder,TC_2060_Shredder_Route,Same
+2060,shredder,2,Motor to shredder feed,Fe/Si-steel,0.95,0.98,1.0,tractionmotor_shredder,TC_2060_Shredder_Route,Same
+2060,shredder,3,Controlled shredding + inline mag. sep.,NdFeB → mag. sep. conc.,0.3,0.5,0.7,tractionmotor_shredder,TC_2060_Shredder_Route,OPTIMISTIC 2060 scenario: inline magnetic/sensor separation after demag+shred produces NdFeB-enriched fraction
+2060,shredder,3,Controlled shredding,NdFeB → ASR (lost),0.15,0.25,0.4,tractionmotor_shredder,TC_2060_Shredder_Route,Reduced but not eliminated loss to ASR
+2060,shredder,3→6b,Hydromet of NdFeB concentrate,NdFeB → recovered REE,0.15,0.3,0.5,tractionmotor_shredder,TC_2060_Shredder_Route,OPTIMISTIC: hydromet processing of shredder concentrate. Assumes effective inline concentration + hydromet.
+2060,shredder,3,Shredding: Cu,Cu,0.68,0.8,0.9,tractionmotor_shredder,TC_2060_Shredder_Route,Improved sensor-based sorting. Still lower than disassembly.
+2060,shredder,3,Shredding: Al,Al,0.72,0.83,0.92,tractionmotor_shredder,TC_2060_Shredder_Route,Improved separation technology.
+2060,shredder,3,Shredding: Fe/Si-steel,Fe/Si-steel,0.88,0.94,0.98,tractionmotor_shredder,TC_2060_Shredder_Route,High ferrous recovery.
+2030,disassembly,CHAIN,stated full chain,Element,,2030 Disassembly Mode,,verification only,Process Comparison,the number each case is checked against
+2030,shredder,CHAIN,stated full chain,Element,,2030 Shredder Mode,,verification only,Process Comparison,the number each case is checked against
+2060,disassembly,CHAIN,stated full chain,Element,,2060 Disassembly Mode,,verification only,Process Comparison,the number each case is checked against
+2060,shredder,CHAIN,stated full chain,Element,,2060 Shredder Mode,,verification only,Process Comparison,the number each case is checked against
+2030,disassembly,CHAIN,stated full chain,Nd,,0.41,,verification only,Process Comparison,the number each case is checked against
+2030,shredder,CHAIN,stated full chain,Nd,,0.02,,verification only,Process Comparison,the number each case is checked against
+2060,disassembly,CHAIN,stated full chain,Nd,,0.65,,verification only,Process Comparison,the number each case is checked against
+2060,shredder,CHAIN,stated full chain,Nd,,0.26,,verification only,Process Comparison,the number each case is checked against
+2030,disassembly,CHAIN,stated full chain,Pr,,0.39,,verification only,Process Comparison,the number each case is checked against
+2030,shredder,CHAIN,stated full chain,Pr,,0.02,,verification only,Process Comparison,the number each case is checked against
+2060,disassembly,CHAIN,stated full chain,Pr,,0.63,,verification only,Process Comparison,the number each case is checked against
+2060,shredder,CHAIN,stated full chain,Pr,,0.26,,verification only,Process Comparison,the number each case is checked against
+2030,disassembly,CHAIN,stated full chain,Dy,,0.38,,verification only,Process Comparison,the number each case is checked against
+2030,shredder,CHAIN,stated full chain,Dy,,0.02,,verification only,Process Comparison,the number each case is checked against
+2060,disassembly,CHAIN,stated full chain,Dy,,0.62,,verification only,Process Comparison,the number each case is checked against
+2060,shredder,CHAIN,stated full chain,Dy,,0.26,,verification only,Process Comparison,the number each case is checked against
+2030,disassembly,CHAIN,stated full chain,Tb,,0.36,,verification only,Process Comparison,the number each case is checked against
+2030,shredder,CHAIN,stated full chain,Tb,,0.02,,verification only,Process Comparison,the number each case is checked against
+2060,disassembly,CHAIN,stated full chain,Tb,,0.61,,verification only,Process Comparison,the number each case is checked against
+2060,shredder,CHAIN,stated full chain,Tb,,0.26,,verification only,Process Comparison,the number each case is checked against
+2030,disassembly,CHAIN,stated full chain,Material,2030 Dis. Min,2030 Dis. Mode,2030 Dis. Max,verification only,Process Comparison,the number each case is checked against
+2030,shredder,CHAIN,stated full chain,Material,2030 Shred. Min,2030 Shred. Mode,2030 Shred. Max,verification only,Process Comparison,the number each case is checked against
+2060,disassembly,CHAIN,stated full chain,Material,2060 Dis. Min,2060 Dis. Mode,2060 Dis. Max,verification only,Process Comparison,the number each case is checked against
+2030,disassembly,CHAIN,stated full chain,Cu,0.44,0.64,0.83,verification only,Process Comparison,the number each case is checked against
+2030,shredder,CHAIN,stated full chain,Cu,0.4,0.59,0.77,verification only,Process Comparison,the number each case is checked against
+2060,disassembly,CHAIN,stated full chain,Cu,0.62,0.8,0.92,verification only,Process Comparison,the number each case is checked against
+2030,disassembly,CHAIN,stated full chain,Al,0.48,0.66,0.85,verification only,Process Comparison,the number each case is checked against
+2030,shredder,CHAIN,stated full chain,Al,0.43,0.61,0.79,verification only,Process Comparison,the number each case is checked against
+2060,disassembly,CHAIN,stated full chain,Al,0.66,0.82,0.93,verification only,Process Comparison,the number each case is checked against
+2030,disassembly,CHAIN,stated full chain,Fe/Si-steel,0.4,0.6,0.81,verification only,Process Comparison,the number each case is checked against
+2030,shredder,CHAIN,stated full chain,Fe/Si-steel,0.57,0.72,0.87,verification only,Process Comparison,the number each case is checked against
+2060,disassembly,CHAIN,stated full chain,Fe/Si-steel,0.58,0.76,0.9,verification only,Process Comparison,the number each case is checked against

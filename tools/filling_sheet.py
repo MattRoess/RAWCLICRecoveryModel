@@ -197,6 +197,7 @@ def sheet(folder: str, params) -> pd.DataFrame:
                       seed=params.monte_carlo.seed, tables=tables,
                       chunk=params.monte_carlo.chunk,
                       budget_gb=params.monte_carlo.memory_budget_gb,
+                      scenario=params.run.scenario,
                       rule=params.monte_carlo.sum_to_one)
 
     # The resolved table does not carry a 0-based index -- it has been through

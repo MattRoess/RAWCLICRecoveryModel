@@ -23,3 +23,8 @@ matplotlib==3.11.1
 
 # Required by Positron to start a Python console or run notebooks.
 ipykernel==7.3.0
+
+# The test suite. The tests are plain asserts and each file still runs on its
+# own with `./.venv/bin/python tests/test_regression.py`, but pytest runs all
+# six in one go -- about twelve seconds for 130 tests.
+pytest==9.1.1

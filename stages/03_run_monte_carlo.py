@@ -5,7 +5,7 @@
 Run the model over many draws and write the figures that show what the spread
 actually is.
 
-    ./.venv/bin/python 03_run_monte_carlo.py
+    ./.venv/bin/python stages/03_run_monte_carlo.py
 
 Everything it uses is set in `src/params_schema.py`: which case, which years,
 how many draws, the seed, the chunk size and the figure formats. Change a value
@@ -45,13 +45,12 @@ import sys
 # root on the path. Must come before any third-party import.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 if os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-                in ('tests', 'tools')
+                in ('tests', 'tools', 'stages')
                 else os.path.dirname(os.path.abspath(__file__)))
 from src.bootstrap import ensure_venv
 ensure_venv()
 
 
-import argparse
 import os
 import sys
 
@@ -62,7 +61,8 @@ import pandas as pd
 from src.monte_carlo import MemoryBudgetExceeded, solve_draws
 from src.params_schema import ParameterError, current
 from src.sampling import SamplingError
-from src.upstream import UpstreamError, load as refresh
+from src.upstream import (UpstreamError, cases_to_run,
+                          load as refresh, scenarios_to_run)
 from src.plot_monte_carlo import draw_all
 from src.report import write as write_workbook
 from src.recovery_model_optimized import RecoveryModelOptimized
@@ -89,7 +89,7 @@ def deterministic_solution(params, folder) -> pd.DataFrame:
     """The single-value answer, for comparison. Every coefficient at its mode."""
     solution = RecoveryModelOptimized(
         data_folder=folder, layer_names=LAYER_NAMES,
-        tables=_tables(params, folder),
+        tables=_tables(params, folder), scenario=params.run.scenario,
     ).solve_models_and_write_to_output()
     solution['Value'] = pd.to_numeric(solution['Value'])
     solution['Year'] = solution['Year'].astype(str)
@@ -173,6 +173,11 @@ def run_case(folder, params, draws: int) -> int:
                       chunk=params.monte_carlo.chunk,
                       budget_gb=params.monte_carlo.memory_budget_gb,
                       rule=params.monte_carlo.sum_to_one,
+                      # PASSED, NOT LOOKED UP. solve_draws falls back to a
+                      # Params() of its own, which cannot see a scenario set on
+                      # this one, and an upstream case whose draws declare a
+                      # scenario is then refused for not naming it.
+                      scenario=params.run.scenario,
                       quiet=False)
 
     report = run.report
@@ -227,9 +232,14 @@ def run_case(folder, params, draws: int) -> int:
     merged = summary.merge(determined[KEYS + ['Value']].rename(
         columns={'Value': 'deterministic'}), on=KEYS, how='left')
 
+    # The scenario is passed, not looked up. The engine's fallback builds its
+    # own Params(), which is a second source of truth for the same setting --
+    # 2026-09-17 that disagreed with the params the tables were loaded with and
+    # the run was refused for naming a scenario its own data did not carry.
     model = RecoveryModelOptimized(data_folder=folder,
                                    layer_names=LAYER_NAMES,
-                                   tables=_tables(params, folder))
+                                   tables=_tables(params, folder),
+                                   scenario=params.run.scenario)
     path = model.output_path('monte_carlo_summary.csv')
     from src.rest import drop_unused_layers
     drop_unused_layers(merged).to_csv(path, index=False)
@@ -247,7 +257,8 @@ def run_case(folder, params, draws: int) -> int:
     written = draw_all(run, determined, params.figures.out_dir,
                        params.figures.enabled(), params.figures.dpi,
                        params.figures.theme, params.run.working_unit,
-                       case=folder, resources=params.figures.resources)
+                       case=folder, resources=params.figures.resources,
+                       scenario=params.run.scenario)
     for figure_path in written:
         print(f'{figure_path}')
 
@@ -272,11 +283,13 @@ def run_case(folder, params, draws: int) -> int:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('folder', nargs='?', default=None,
-                        help='case folder to run; defaults to run.data_folder')
-    args = parser.parse_args(argv)
+    """
+    Everything this needs is in `src/params_schema.py`.
 
+    NO ARGUMENTS, AND NOT BY OVERSIGHT. This project is run by pressing Run on
+    the numbered stages; a switch that only exists on a command line is a
+    switch the person running this never sees.
+    """
     try:
         params = current()
     except ParameterError as error:
@@ -287,24 +300,68 @@ def main(argv=None) -> int:
         print('monte_carlo.enabled is False in src/params_schema.py. Nothing to do.')
         return 0
 
-    folder = args.folder or params.run.data_folder
-    if not os.path.isdir(folder):
-        print(f"There is no case folder called '{folder}'.", file=sys.stderr)
-        return 1
+    # A RUN THAT NAMES SEVERAL CASES RUNS ALL OF THEM, the same way a case set
+    # up as scenarios is run as all of them. See upstream.cases_to_run.
+    asked_for = params.run.scenario
+    cases = cases_to_run(params)
+    for candidate in cases:
+        if not os.path.isdir(candidate):
+            print(f"There is no case folder called '{candidate}'.",
+                  file=sys.stderr)
+            return 1
+    if len(cases) > 1:
+        print(f'Cases     : '
+              f'{", ".join(os.path.basename(c) for c in cases)}')
 
-    # The case says how many draws it has (src/source.py); the setting is only
-    # the fallback for a case that does not.
-    from src import source as source_module
-    draws = source_module.read(folder, params)['draws'] \
-        if source_module.exists(folder) else params.data.draws
-    print(f'Case      : {folder}')
-    print(f'Draws     : {draws:,}  (seed {params.monte_carlo.seed})')
+    for case_position, folder in enumerate(cases):
+        # PUT THE SCENARIO SETTING BACK FIRST. The loop below writes the
+        # current scenario into it, so after the first case it no longer holds
+        # what was configured -- it holds the last scenario that ran, and
+        # `scenarios_to_run` reads a non-blank setting as "only this one".
+        # Left out, a blank setting ran all four grades for the first case and
+        # then silently ran only the last of them for every case after it.
+        params.run.scenario = asked_for
+        # Downstream reads run.data_folder, so point it at the current case --
+        # the same move the scenario loop already makes below.
+        params.run.data_folder = folder
+        if len(cases) > 1:
+            print(f'\n########## case {os.path.basename(folder)} '
+                  f'({case_position + 1} of {len(cases)}) ##########')
 
-    try:
-        return run_case(folder, params, draws)
-    except CLEAR as error:
-        print(error, file=sys.stderr)
-        return 1
+        # The case says how many draws it has (src/source.py); the setting is
+        # only the fallback for a case that does not.
+        from src import source as source_module
+        draws = source_module.read(folder, params)['draws'] \
+            if source_module.exists(folder) else params.data.draws
+        # A CASE SET UP AS SCENARIOS IS RUN AS ALL OF THEM. Each pass is its
+        # own solve, writing its own output_data/<scenario>/ and
+        # figures/<case>/<scenario>/.
+        #
+        # A FAILURE STOPS THE REST. Four cases at 200,000 draws is a long
+        # evening, and carrying on after one has failed buys a second failure
+        # rather than a result; the one that failed is named so the others can
+        # be run without it.
+        scenarios = scenarios_to_run(params, folder)
+        if len(scenarios) > 1:
+            print(f'Scenarios : {", ".join(scenarios)}')
+
+        for position, scenario in enumerate(scenarios):
+            params.run.scenario = scenario
+            if len(scenarios) > 1:
+                print(f'\n=== scenario {scenario}  ({position + 1} of '
+                      f'{len(scenarios)}) ===')
+            print(f'Case      : {folder}')
+            print(f'Draws     : {draws:,}  (seed {params.monte_carlo.seed})')
+            try:
+                code = run_case(folder, params, draws)
+            except CLEAR as error:
+                print(error, file=sys.stderr)
+                print(f'{scenario} failed; {len(scenarios) - position - 1} '
+                      f'scenario(s) not attempted.', file=sys.stderr)
+                return 1
+        if code:
+            return code
+    return 0
 
 
 if __name__ == '__main__':

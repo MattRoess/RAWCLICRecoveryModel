@@ -34,9 +34,9 @@ one while the model reads the other.
 Running it is naming it:
 
 ```bash
-./.venv/bin/python 01_check_inputs.py    data_folder/carcomposition_mockup
-./.venv/bin/python 02_run_model.py       data_folder/carcomposition_mockup
-./.venv/bin/python 03_run_monte_carlo.py data_folder/carcomposition_mockup
+./.venv/bin/python stages/01_check_inputs.py    data_folder/carcomposition_mockup
+./.venv/bin/python stages/02_run_model.py       data_folder/carcomposition_mockup
+./.venv/bin/python stages/03_run_monte_carlo.py data_folder/carcomposition_mockup
 ```
 
 With no argument each uses `run.data_folder`, so the everyday case still runs
@@ -50,17 +50,17 @@ Switching between 04_01 and 04_02 is naming the folder. **Nothing in
 ### 04_02 — BEV electronics
 
 ```bash
-./.venv/bin/python 01_check_inputs.py    data_folder/bev_electronics_wiring
-./.venv/bin/python 02_run_model.py       data_folder/bev_electronics_wiring
-./.venv/bin/python 03_run_monte_carlo.py data_folder/bev_electronics_wiring
+./.venv/bin/python stages/01_check_inputs.py    data_folder/bev_electronics_wiring
+./.venv/bin/python stages/02_run_model.py       data_folder/bev_electronics_wiring
+./.venv/bin/python stages/03_run_monte_carlo.py data_folder/bev_electronics_wiring
 ```
 
 ### 04_01 — car composition
 
 ```bash
-./.venv/bin/python 01_check_inputs.py    data_folder/carcomposition_mockup
-./.venv/bin/python 02_run_model.py       data_folder/carcomposition_mockup
-./.venv/bin/python 03_run_monte_carlo.py data_folder/carcomposition_mockup
+./.venv/bin/python stages/01_check_inputs.py    data_folder/carcomposition_mockup
+./.venv/bin/python stages/02_run_model.py       data_folder/carcomposition_mockup
+./.venv/bin/python stages/03_run_monte_carlo.py data_folder/carcomposition_mockup
 ```
 
 With no folder argument each uses `run.data_folder`, so the everyday case runs
@@ -144,7 +144,7 @@ resource leaves the composition for reasons that say nothing about the row: the
 one-domain-at-a-time workflow above does it every time, and so does an upstream
 export resolving fewer elements than the last one. Both happened together on
 2026-09-01 and cost `bev_electronics` 32 filled rows in one re-run.
-`01_check_inputs.py` already reports a row that cannot fire, which is the honest
+`stages/01_check_inputs.py` already reports a row that cannot fire, which is the honest
 state — the row is not wrong, it is not currently reachable.
 
 **`make_carcomposition_tcs.py` overwrites**, deliberately: everything it writes
@@ -476,14 +476,14 @@ What this does *not* affect, both checked in `tests/test_monte_carlo.py`:
 Only `start`, used to resume a run in pieces, loses its meaning under
 conditioning. Nothing in the pipeline uses it.
 
-### The `SUM TO 1` section of `01_check_inputs.py`
+### The `SUM TO 1` section of `stages/01_check_inputs.py`
 
 A constrained group's modes sum to 1 by construction. Its **means need not**: a
 triangular's mean is `(min + mode + max) / 3`, so a range whose mode sits
 off-centre has a mean away from its mode. Where the two disagree, enforcing the
 constraint has to move the answer away from what is written in the sheet.
 
-`01_check_inputs.py` reports that gap per group, as `offset` — how many
+`stages/01_check_inputs.py` reports that gap per group, as `offset` — how many
 standard deviations of the group's own independent sum separate 1 from where
 that sum actually lands:
 
@@ -498,7 +498,7 @@ SUM TO 1 -- do the measured ranges agree with the constraint?
 
 **This is not an error.** It is the reason a run at the modes and a run of the
 full distributions give different answers — the same difference
-`03_run_monte_carlo.py` reports at the end of every run. Near zero means the
+`stages/03_run_monte_carlo.py` reports at the end of every run. Near zero means the
 ranges already agree with the constraint and enforcing it changes little.
 Large means the measured distributions and sum-to-1 pull in different
 directions, and whatever rule is applied has to override something.

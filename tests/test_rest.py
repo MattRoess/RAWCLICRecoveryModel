@@ -207,6 +207,53 @@ def test_nothing_strands_when_composition_is_complete() -> None:
         'a complete composition produced stranded rest'
 
 
+
+def _parts(*shares) -> pd.DataFrame:
+    """One parent's element rows, for the overshoot tests."""
+    return pd.DataFrame([
+        dict((('Year', '2050'), ('Stock/ID', 'F1'), ('Layer 1', 'Item'),
+              ('Layer 2', 'shell'), ('Layer 3', 'steel'),
+              ('Layer 4', f'E{i}'), ('Value', share), ('parameterCode', 'e-m')))
+        for i, share in enumerate(shares)])
+
+
+def test_a_float_sized_overshoot_is_complete_rather_than_refused() -> None:
+    """
+    A parent whose parts sum to a hair over 1 has no rest, not a negative one.
+
+    MEASURED 2026-09-17. The composition workbook's rows sum to their component
+    to 3.3e-16 -- exact -- and what the recovery model receives runs up to
+    2.3e-4 over, because the chain deriving it interpolates between capacity
+    anchors and stores float32. Refusing that stopped the battery case dead on
+    arithmetic nobody can correct.
+    """
+    from src.rest import OVERSHOOT_TOLERANCE
+
+    assert OVERSHOOT_TOLERANCE >= 2.3e-4, \
+        'the measured float32 overshoot has to fit inside the tolerance'
+
+    with_rest, notes = add_rest(_parts(0.5, 0.500228))
+    assert not is_rest(with_rest).any(), \
+        'a parent already over 1 was given a rest as well'
+    assert not notes, notes
+    assert len(with_rest) == 2, with_rest
+
+
+def test_a_real_overshoot_is_still_refused() -> None:
+    """
+    The two defects found on 2026-09-17 sit a factor of 50 above the tolerance
+    and must still be caught: the NMC anodes summed to 1.0123 and battLiMFP's
+    cathode to 1.0115, each a share raised without its siblings being reduced.
+    """
+    for total in (1.0115, 1.0123):
+        try:
+            add_rest(_parts(0.5, total - 0.5))
+        except RestError as error:
+            assert 'more than the whole' in str(error), error
+        else:
+            raise AssertionError(f'parts summing to {total} were accepted')
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

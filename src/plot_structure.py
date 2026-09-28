@@ -317,7 +317,8 @@ def draw(target: str | None = None, params: Params | None = None) -> None:
         tcs = numeric_bounds(tcs)
     from src.rest import flow_roles
     figure = render(tcs, case, theme=params.figures.theme, roles=flow_roles(folder))
-    for path in write(figure, folder_for(params.figures.out_dir, case), 'structure',
+    for path in write(figure, folder_for(params.figures.out_dir, case,
+                                        params.run.scenario), 'structure',
                       params.figures.enabled(), params.figures.dpi):
         print(f'wrote {path}')
 

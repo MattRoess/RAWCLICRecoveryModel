@@ -56,6 +56,7 @@ import subprocess
 import pandas as pd
 
 from src.params_schema import ParameterError, current
+from src.upstream import cases_to_run
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PYTHON = os.path.join(ROOT, '.venv', 'bin', 'python')
@@ -86,18 +87,19 @@ def suites() -> list[tuple[str, bool, str]]:
 
 def pipeline(params) -> list[tuple[str, bool, str]]:
     """The stages, run on the real case exactly as a person would run them."""
-    stages = [('01_check_inputs.py', ()), ('02_run_model.py', ('--quiet',)),
-              ('03_run_monte_carlo.py', ())]
+    stages = [(os.path.join('stages', '01_check_inputs.py'), ()),
+              (os.path.join('stages', '02_run_model.py'), ('--quiet',)),
+              (os.path.join('stages', '03_run_monte_carlo.py'), ())]
     out = []
     for script, args in stages:
         ok, tail = run(script, script, *args)
-        out.append((script, ok, tail))
+        out.append((os.path.basename(script), ok, tail))
         if not ok:
             break                       # a later stage cannot mean anything
     return out
 
 
-def mass_balance(params) -> tuple[bool, str]:
+def mass_balance(params, folder: str) -> tuple[bool, str]:
     """
     What enters must equal what leaves, in every year.
 
@@ -106,7 +108,7 @@ def mass_balance(params) -> tuple[bool, str]:
     own shallowest depth: rows are nested, so summing every depth counts the
     same mass several times (MODEL_MECHANICS.md section 1).
     """
-    path = os.path.join(params.run.data_folder, 'output_data', 'monte_carlo_summary.csv')
+    path = os.path.join(folder, 'output_data', 'monte_carlo_summary.csv')
     if not os.path.exists(path):
         return False, f'{path} was not written'
 
@@ -121,7 +123,7 @@ def mass_balance(params) -> tuple[bool, str]:
     summary['depth'] = (summary[layers] != '').sum(axis=1)
 
     from src import case_tables
-    tcs = case_tables.read(params.run.data_folder, 'TCs')
+    tcs = case_tables.read(folder, 'TCs')
     sources = set(tcs['Input_FlowID'])
     terminals = set(tcs['Output_FlowID']) - sources
     starts = sources - set(tcs['Output_FlowID'])
@@ -173,27 +175,37 @@ def main(argv=None) -> int:
     # case's Wiring, Motors above a run of the boards case -- a header that
     # named the wrong data while the run underneath it was correct.
     from src import source as source_table
-    case = params.run.data_folder
-    groups = params.data.groups
-    if source_table.exists(case):
-        groups = source_table.read(case, params).get('groups') or ()
-    print(f'\nYOUR CASE  {case}')
-    print(f'           years {params.run.years or "all"}, {params.data.draws:,} draws, '
-          f'{params.run.working_unit}, domains '
-          f'{", ".join(groups) or "all"}')
+    # EVERY CASE THE SETTING NAMES. The stages below read `run.data_folder`
+    # themselves and a run that names several does all of them, so the pipeline
+    # is one call whatever the setting says -- but mass balance is a property of
+    # one case's own summary file, so that is asked once per case.
+    folders = cases_to_run(params)
+    for folder in folders:
+        groups = params.data.groups
+        if source_table.exists(folder):
+            groups = source_table.read(folder, params).get('groups') or ()
+        print(f'\nYOUR CASE  {folder}')
+        print(f'           years {params.run.years or "all"}, '
+              f'{params.data.draws:,} draws, {params.run.working_unit}, '
+              f'domains {", ".join(groups) or "all"}')
+
     stages = pipeline(params)
     for name, ok, tail in stages:
         print(f'  {"ok  " if ok else "FAIL"}  {name:<24} {tail[:76]}')
 
-    # Only meaningful if the run that produced the summary actually succeeded.
-    # Reading it after a failed pipeline checks the PREVIOUS run's file and
-    # reports "ok" for a case that did not solve at all.
-    if all(ok for _, ok, _ in stages):
-        ok, detail = mass_balance(params)
-    else:
-        ok, detail = False, 'not checked -- the pipeline did not complete'
-    print(f'  {"ok  " if ok else "FAIL"}  {"mass balance":<24} {detail}')
-    case = stages + [('mass balance', ok, detail)]
+    # Only meaningful if the run that produced the summaries actually
+    # succeeded. Reading them after a failed pipeline checks the PREVIOUS run's
+    # files and reports "ok" for a case that did not solve at all.
+    case = list(stages)
+    for folder in folders:
+        if all(ok for _, ok, _ in stages):
+            ok, detail = mass_balance(params, folder)
+        else:
+            ok, detail = False, 'not checked -- the pipeline did not complete'
+        label = ('mass balance' if len(folders) == 1
+                 else f'mass balance {os.path.basename(folder)}')
+        print(f'  {"ok  " if ok else "FAIL"}  {label:<24} {detail}')
+        case.append((label, ok, detail))
     case_failed = [name for name, passed, _ in case if not passed]
 
     print()

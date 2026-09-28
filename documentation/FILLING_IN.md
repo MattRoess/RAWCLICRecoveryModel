@@ -101,7 +101,7 @@ out falsely narrow.
 ## 4. Check it, then run it
 
 ```
-./.venv/bin/python 01_check_inputs.py
+./.venv/bin/python stages/01_check_inputs.py
 ```
 
 Reports the totals, whether each group closes to 1, and a `SUM TO 1` section
@@ -112,7 +112,7 @@ that would otherwise take twenty minutes to discover.
 Then:
 
 ```
-./.venv/bin/python 03_run_monte_carlo.py
+./.venv/bin/python stages/03_run_monte_carlo.py
 ```
 
 The numbers, the distributions and the figures.
@@ -137,7 +137,7 @@ filled in. So you can do a case in stages.
 If the upstream data *loses* a resource — a re-export resolving fewer elements,
 or a row moving to a different material — the coefficient you wrote for it is
 **kept**, moved to the end of the sheet and reported as *inert*.
-`01_check_inputs.py` then says it does not currently fire. Your number is never
+`stages/01_check_inputs.py` then says it does not currently fire. Your number is never
 thrown away because the data moved under it.
 
 **Close Excel first.** It writes the workbook by replacing the file, and Excel
@@ -150,8 +150,8 @@ holding it open is the one thing that stops that working.
 1. `tools/filling_sheet.py` — which rows matter
 2. Open `case.xlsx`, `TCs` sheet — fill `value`, `value_min`, `value_max`, and the citation in `source`
 3. Don't touch `is_residual`
-4. `01_check_inputs.py` — check
-5. `03_run_monte_carlo.py` — run
+4. `stages/01_check_inputs.py` — check
+5. `stages/03_run_monte_carlo.py` — run
 
 For the reasoning behind any of it, see [CASES.md](CASES.md).
 

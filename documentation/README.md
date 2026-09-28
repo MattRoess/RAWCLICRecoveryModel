@@ -26,8 +26,8 @@ MODEL_MECHANICS.md covers.
 ## Everything is a file you press Run on
 
 Nothing in this project needs a terminal, and nothing takes an argument.
-`00_parameters.py`, `01_check_inputs.py`, `02_run_model.py`,
-`03_run_monte_carlo.py`, `99_check_all.py`, `tools/plot_structure.py` and
+`00_parameters.py`, `stages/01_check_inputs.py`, `stages/02_run_model.py`,
+`stages/03_run_monte_carlo.py`, `99_check_all.py`, `tools/plot_structure.py` and
 `tools/compare_sum_rules.py`, `tools/tc_worklist.py` and
 `tools/filling_sheet.py` each do
 one step, and each reads `run.data_folder` from `src/params_schema.py` -- which

@@ -30,6 +30,11 @@ WHAT IS PINNED
 6. The two resolved semantics produce the agreed numbers -- overlapping rules
    resolve to the specific one, and a scenario is matched exactly rather than
    by prefix.
+7. A recovered flow never falls from `TCs` to `TCs_improved`. Added 2026-09-17
+   after two tables were found exchanged and nothing here noticed.
+8. The stranding check follows the coefficients instead of assuming every
+   resource reaches every flow. Added 2026-09-17 with that change.
+9. Two scenarios of one case cannot write their figures to the same folder.
 """
 
 from __future__ import annotations
@@ -1052,6 +1057,270 @@ def test_the_LA_engine_builds_only_sparse_arrays() -> None:
     assert vector.shape == (3, 1), vector.shape
     assert matrix.toarray()[0, 1] == 1.0 and matrix.toarray()[1, 2] == 2.0
     assert vector.toarray()[1, 0] == 3.0
+
+
+
+# --- the ramp can only go one way -------------------------------------------
+#
+# 2026-09-17: the battery case's `TCs` and `TCs_improved` had been exchanged.
+# Every check this repository owns passed -- both tables summed to 1 in all 45
+# groups, every value sat inside its bounds, and the keys matched in the same
+# order -- because a swap of two tables with the SAME SHAPE is invisible to all
+# of them. What it did was make the case get WORSE with time: copper off the
+# pack cables 0.85 in 2030 falling to 0.60 in 2060, while the electronics cases
+# those rates were borrowed from run 0.60 -> 0.85. It was found by reading the
+# `source` column, which is not a check.
+#
+# Only a RECOVERED flow can be asserted. An intermediate one legitimately falls
+# -- `F_in_car` in the electronics cases is what was not disassembled, and less
+# of it is the improvement -- so the case's own `role` column decides this, not
+# the flow's name.
+
+RAMP_TOLERANCE = 1e-12
+
+KEY_COLUMNS = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
+               'Output_FlowID', 'TC_target_layer', 'TC_target_key']
+
+
+def _rows_that_fall(now, later, roles):
+    """Recovered rows whose coefficient is smaller in the improved table."""
+    # The two tables are read row for row, so a difference in the keys would
+    # silently compare one row against another. `ramp` relies on the same
+    # alignment; this is that prose invariant made executable.
+    assert now[KEY_COLUMNS].equals(later[KEY_COLUMNS]), \
+        'TCs and TCs_improved do not carry the same keys in the same order'
+
+    keyed = now.merge(roles, on='Output_FlowID', how='left')
+    keyed['later'] = later['value'].to_numpy()
+    recovered = keyed[keyed['role'] == 'recovered']
+    return recovered[recovered['later'] < recovered['value'] - RAMP_TOLERANCE]
+
+
+def _ramp_of(case):
+    """A case's two coefficient tables and its roles, or None if it is flat."""
+    from src import case_tables
+
+    if not case_tables.exists(case, 'TCs_improved'):
+        return None
+    now = case_tables.normalise(case_tables.read(case, 'TCs'))
+    later = case_tables.normalise(case_tables.read(case, 'TCs_improved'))
+    roles = case_tables.read(case, 'processes')[['Output_FlowID', 'role']]
+    return now, later, roles.drop_duplicates()
+
+
+def test_no_recovered_flow_falls_across_the_ramp() -> None:
+    """
+    Every committed case that improves, improves.
+
+    Measured 2026-09-17 on all four: wiring, boards, battery and the car
+    composition mockup all have zero falling rows. The pre-repair battery
+    workbook had seven.
+    """
+    from src.plot_structure import find_cases
+
+    checked = 0
+    for case in find_cases():
+        tables = _ramp_of(case)
+        if tables is None:
+            continue
+        checked += 1
+        falling = _rows_that_fall(*tables)
+        assert falling.empty, (
+            f'{case}: {len(falling)} recovered rows fall from TCs to '
+            f'TCs_improved, so the case gets worse with time. First: '
+            f"{falling.iloc[0]['Input_layer_key']} -> "
+            f"{falling.iloc[0]['Output_FlowID']}, "
+            f"{falling.iloc[0]['value']} -> {falling.iloc[0]['later']}. "
+            f'Are the two sheets the right way round?')
+
+    assert checked >= 3, \
+        f'only {checked} cases carry a TCs_improved; this test stopped looking'
+
+
+def test_two_tables_the_wrong_way_round_are_caught() -> None:
+    """
+    The detector itself, not the data it happens to be pointed at.
+
+    Without this, weakening `_rows_that_fall` leaves a suite that still passes
+    on four healthy cases and would not have caught the defect it was written
+    for.
+    """
+    current, improved = _two_tables()
+    roles = pd.DataFrame({'Output_FlowID': ['F_recovered', 'F_loss'],
+                          'role': ['recovered', 'loss']})
+
+    assert _rows_that_fall(current, improved, roles).empty, \
+        'the right way round must be silent'
+
+    swapped = _rows_that_fall(improved, current, roles)
+    assert len(swapped) == 1, \
+        f'the swap must be caught; got {len(swapped)} falling rows'
+    assert float(swapped.iloc[0]['value']) == 0.80
+    assert float(swapped.iloc[0]['later']) == 0.60
+
+
+
+# --- a branching case, and what may be reported as stranded ------------------
+#
+# 2026-09-17: `_check_nothing_strands` took every resource in the composition
+# against every non-terminal flow. That holds for a case whose branches all
+# carry the same components and fails for one that splits: the battery sends
+# the housing to a shredder and the cells to a liquid route, and the check
+# asked for cable copper to have an exit from the cell road. 19 resources were
+# reported as stranding mass that never arrives there.
+#
+# The fixture below is that shape and shares no name with any real case.
+
+def _a_case_that_branches():
+    """A product whose two components take two different roads."""
+    composition = pd.DataFrame([
+        # deepest filled layer is 2, so these are the component-layer resources
+        dict((('Layer 1', 'Item'), ('Layer 2', 'shell'), ('Layer 3', ''),
+              ('Layer 4', ''), ('Value', 0.6))),
+        dict((('Layer 1', 'Item'), ('Layer 2', 'core'), ('Layer 3', ''),
+              ('Layer 4', ''), ('Value', 0.4))),
+        # and these are the elements inside them. TWO ON EACH ROAD, so that a
+        # test can take one exit away and leave the flow with coefficients --
+        # a flow no row leaves at all is skipped by the check, which is a
+        # different hole and not the one these tests are about.
+        dict((('Layer 1', 'Item'), ('Layer 2', 'shell'), ('Layer 3', 'steel'),
+              ('Layer 4', 'Fe'), ('Value', 0.7))),
+        dict((('Layer 1', 'Item'), ('Layer 2', 'shell'), ('Layer 3', 'coat'),
+              ('Layer 4', 'Zn'), ('Value', 0.3))),
+        dict((('Layer 1', 'Item'), ('Layer 2', 'core'), ('Layer 3', 'salt'),
+              ('Layer 4', 'Li'), ('Value', 0.8))),
+        dict((('Layer 1', 'Item'), ('Layer 2', 'core'), ('Layer 3', 'brine'),
+              ('Layer 4', 'Na'), ('Value', 0.2))),
+    ])
+    processes = pd.DataFrame([
+        dict(Input_FlowID='F_in', Output_FlowID='F_hard', role='intermediate'),
+        dict(Input_FlowID='F_in', Output_FlowID='F_soft', role='intermediate'),
+        dict(Input_FlowID='F_hard', Output_FlowID='F_iron', role='recovered'),
+        dict(Input_FlowID='F_soft', Output_FlowID='F_lithium', role='recovered'),
+    ])
+    tcs = pd.DataFrame([
+        # dismantling, keyed at the component layer: one road each
+        dict(Input_FlowID='F_in', Input_layer='product', Input_layer_key='Item',
+             Output_FlowID='F_hard', TC_target_layer='component',
+             TC_target_key='shell', value=1.0),
+        dict(Input_FlowID='F_in', Input_layer='product', Input_layer_key='Item',
+             Output_FlowID='F_soft', TC_target_layer='component',
+             TC_target_key='core', value=1.0),
+        # each road moves on only the element that reaches it
+        dict(Input_FlowID='F_hard', Input_layer='material', Input_layer_key='steel',
+             Output_FlowID='F_iron', TC_target_layer='element',
+             TC_target_key='Fe', value=1.0),
+        dict(Input_FlowID='F_hard', Input_layer='material', Input_layer_key='coat',
+             Output_FlowID='F_iron', TC_target_layer='element',
+             TC_target_key='Zn', value=1.0),
+        dict(Input_FlowID='F_soft', Input_layer='material', Input_layer_key='salt',
+             Output_FlowID='F_lithium', TC_target_layer='element',
+             TC_target_key='Li', value=1.0),
+        dict(Input_FlowID='F_soft', Input_layer='material', Input_layer_key='brine',
+             Output_FlowID='F_lithium', TC_target_layer='element',
+             TC_target_key='Na', value=1.0),
+    ])
+    return processes, composition, tcs
+
+
+def _stranding(processes, composition, tcs):
+    from src.validate_inputs import _check_nothing_strands
+    return _check_nothing_strands(processes, composition, tcs)
+
+
+def test_a_branch_carrying_only_some_components_is_not_reported() -> None:
+    """The battery's shape: nothing is wrong and nothing may be reported."""
+    problems = _stranding(*_a_case_that_branches())
+    assert not problems, \
+        'a branching case was reported as stranding: ' \
+        + '; '.join(p.message.splitlines()[0] for p in problems)
+
+
+def test_a_resource_that_truly_cannot_leave_is_still_reported() -> None:
+    """The check must not have been loosened into silence."""
+    processes, composition, tcs = _a_case_that_branches()
+    tcs = tcs[~((tcs['Input_FlowID'] == 'F_soft')
+                & (tcs['TC_target_key'] == 'Li'))].reset_index(drop=True)
+
+    problems = _stranding(processes, composition, tcs)
+    assert len(problems) == 1, f'expected one problem, got {len(problems)}'
+    assert 'Li' in problems[0].message and 'F_soft' in problems[0].message, \
+        problems[0].message
+
+
+def test_a_coarser_row_carries_its_elements_into_the_flow() -> None:
+    """
+    An element arrives wherever the component holding it was sent.
+
+    Following reachability layer by layer instead reports NOTHING here: the
+    element never appears to have moved, because the row that moved it is
+    keyed at the component layer. That was the first version of this change,
+    2026-09-17, and it made the check silent rather than wrong-headed.
+    """
+    processes, composition, tcs = _a_case_that_branches()
+    tcs = tcs[~((tcs['Input_FlowID'] == 'F_hard')
+                & (tcs['TC_target_key'] == 'Fe'))].reset_index(drop=True)
+
+    problems = _stranding(processes, composition, tcs)
+    assert len(problems) == 1, \
+        'Fe reaches F_hard because the shell was sent there, and nothing ' \
+        'moves it on -- that has to be reported'
+    assert 'Fe' in problems[0].message and 'F_hard' in problems[0].message, \
+        problems[0].message
+
+
+def test_a_zero_coefficient_does_not_make_a_resource_arrive() -> None:
+    """
+    A 0 is the table saying the road is not taken, so nothing arrives by it.
+
+    The battery writes both roads for every component and zeroes the one not
+    taken. Reading a 0 as an arrival puts the whole composition on both roads
+    and the branching case is back to being unreportable.
+    """
+    processes, composition, tcs = _a_case_that_branches()
+    zero = pd.DataFrame([dict(
+        Input_FlowID='F_in', Input_layer='product', Input_layer_key='Item',
+        Output_FlowID='F_soft', TC_target_layer='component',
+        TC_target_key='shell', value=0.0)])
+
+    with_zero = pd.concat([tcs, zero], ignore_index=True)
+    assert not _stranding(processes, composition, with_zero), \
+        'a zero-valued row put the shell on the soft road'
+
+    # The same row carrying mass MUST be reported: the shell now reaches
+    # F_soft and nothing there moves iron on.
+    carrying = with_zero.copy()
+    carrying.loc[carrying.index[-1], 'value'] = 0.5
+    problems = _stranding(processes, composition, carrying)
+    assert len(problems) == 1 and 'F_soft' in problems[0].message, \
+        'a real split onto the soft road left iron with no way out, unreported'
+
+
+
+def test_two_scenarios_cannot_share_a_figure_folder() -> None:
+    """
+    The collision `folder_for` exists to prevent, one level down.
+
+    A run is one scenario, so the battery's S1, S2 and S3 are three runs
+    writing the same file names. Without the scenario in the path the third
+    would sit under the first's name with nothing but a timestamp to say so --
+    which is the case-level failure that put this function here in 2026-09-03,
+    repeated exactly.
+    """
+    from src.figure_style import folder_for
+
+    case = 'data_folder/battery'
+    plain = folder_for('figures', case)
+    assert plain == os.path.join('figures', 'battery'), plain
+
+    folders = {s: folder_for('figures', case, s) for s in ('S1', 'S2', 'S3')}
+    assert len(set(folders.values())) == 3, folders
+    for scenario, folder in folders.items():
+        assert folder == os.path.join(plain, scenario), folder
+
+    # and a second case is still somewhere else entirely
+    assert folder_for('figures', 'data_folder/bev_electronics_wiring', 'S1') \
+        != folders['S1']
 
 
 def main() -> int:

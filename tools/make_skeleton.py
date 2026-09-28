@@ -76,7 +76,7 @@ is a coefficient you are certain about.
 For each resource, the values across its destinations should sum to 1 -- that
 is what makes mass balance checkable rather than aspirational. Check it with:
 
-    ./.venv/bin/python 01_check_inputs.py <case>
+    ./.venv/bin/python stages/01_check_inputs.py <case>
 """
 
 from __future__ import annotations
@@ -467,15 +467,15 @@ def main(case: str) -> int:
 
     if not blank.any():
         print('\n  Nothing left to fill. Run it:')
-        print('    ./.venv/bin/python 02_run_model.py')
-        print('    ./.venv/bin/python 03_run_monte_carlo.py')
+        print('    ./.venv/bin/python stages/02_run_model.py')
+        print('    ./.venv/bin/python stages/03_run_monte_carlo.py')
         return 0
 
     resources = skeleton[blank].groupby(
         ['Input_FlowID', 'Input_layer_key', 'TC_target_key']).ngroups
     print(f'\n  {resources} resources still need values, each of whose coefficients')
     print('  should sum to 1 across its destinations. Check with:')
-    print(f'    ./.venv/bin/python 01_check_inputs.py {case}')
+    print(f'    ./.venv/bin/python stages/01_check_inputs.py {case}')
     return 0
 
 

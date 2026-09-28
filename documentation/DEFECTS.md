@@ -102,7 +102,7 @@ Two inflows, FA composed of C1 and FB composed of C2:
 | FB / P1 / C2 | 100 | 100 |
 
 The component layer of FA now sums to 200 against a product layer of 100. Mass
-is invented, silently. The optimized engine is the one `02_run_model.py` uses.
+is invented, silently. The optimized engine is the one `stages/02_run_model.py` uses.
 
 **Severity: high.** Any real dataset where two flows carry the same product with
 different compositions was wrong, in the direction of overestimating recovery.
@@ -420,7 +420,7 @@ The optimized engine does not fail at all:
 In (b) the orphan flow's mass enters the system, expands through the full
 composition tree, and goes nowhere. No warning from either engine.
 
-**Severity: high for the optimized engine**, which is the one `02_run_model.py`
+**Severity: high for the optimized engine**, which is the one `stages/02_run_model.py`
 uses and the one that fails silently; medium for LA, where the failure is loud
 but the message is useless.
 
@@ -448,7 +448,7 @@ rewritten — and the landing place should say something.
 **The optimized half is still only guarded, not fixed.** Its merges drop or
 keep unmatched rows silently; nothing in the engine itself objects. The
 mitigation is `src/validate_inputs.py` refusing the input, plus the unaccounted
-fraction reported by `01_check_inputs.py`, which is where an orphan flow's mass
+fraction reported by `stages/01_check_inputs.py`, which is where an orphan flow's mass
 shows up. Making the engine refuse as well would duplicate the validator, so it
 is left — recorded here rather than fixed, so the asymmetry is deliberate and
 visible.
@@ -467,7 +467,7 @@ true**, with their line numbers corrected — they had drifted.
 
 ### 3.1 No mass balance check anywhere — **BUILT**
 
-`src/mass_balance.py` reports it, `01_check_inputs.py` prints it, and
+`src/mass_balance.py` reports it, `stages/01_check_inputs.py` prints it, and
 `99_check_all.py` counts it as one of its ten checks. On `bev_electronics` the
 worst relative residual across five years is 2.8e-16. Both failures named below
 are checked: a total above 1 is reported as ERROR, and composition closure is
@@ -480,7 +480,7 @@ nothing records the shortfall.
 
 The meaningful check is per transferred resource, totalled over the output
 flows it reaches — see MODEL_MECHANICS.md §4 for why other groupings are not
-quantities. `01_check_inputs.py` computes it. On `basic_test`, totals range
+quantities. `stages/01_check_inputs.py` computes it. On `basic_test`, totals range
 [0, 0.66], none exceed 1, and the unaccounted fraction averages 0.78. That mass
 has no residual or loss flow: it leaves the system unrecorded.
 
@@ -497,7 +497,7 @@ See DESIGN_monte_carlo.md §3 for how this bears on the sum-to-1 question.
 `src/sampling.py` and `src/monte_carlo.py`, with 37 and 9 checks respectively.
 A coefficient carries `value_min` and `value_max` as a triangular, groups are
 made to sum to 1 by one of three rules (CASES.md, the TCs section), and
-`03_run_monte_carlo.py` produces percentiles, a sensitivity ranking and the
+`stages/03_run_monte_carlo.py` produces percentiles, a sensitivity ranking and the
 distribution figures. `DQS` and `CV` were never used and are not the mechanism.
 
 The original text follows, including the line about this being the main body of
@@ -838,7 +838,7 @@ exists to produce. Same family as §3.9: a unit that is never wrong by a little.
 
 ### 3.14 `SUM TO 1` printed `nan nan -> nan` rows — **FIXED 2026-09-02**
 
-Spotted by the user in `01_check_inputs.py` output. The section said *3 groups
+Spotted by the user in `stages/01_check_inputs.py` output. The section said *3 groups
 beyond 0.5 sd* and then listed eight lines, five of them blank:
 
     3 group(s) beyond 0.5 sd -- ...
@@ -868,7 +868,7 @@ different one.
 
 Asked for by the user: *"I want the sankey diagram also for the copper and each
 of the alloys."* They were supposed to exist already — `RUNNING.md` listed
-`<resource>.png`, one Sankey per resource — and `02_run_model.py` drew only
+`<resource>.png`, one Sankey per resource — and `stages/02_run_model.py` drew only
 `total.png`.
 
 One line in `src/plot_flows.py`:
@@ -946,7 +946,7 @@ quantities that both scale with the inflow.
 The subtitle now carries that number, so a reader asking *"which year, and would
 another one differ?"* gets both answers off the figure.
 
-**`03_run_monte_carlo.py` printed the wrong name in the same breath:**
+**`stages/03_run_monte_carlo.py` printed the wrong name in the same breath:**
 
 ```python
 f'on {worst["Stock/Flow ID"]} {worst["Layer 4"] or worst["Layer 2"]}'
@@ -1028,7 +1028,7 @@ called `depth` now.
     KeyError: 'combine'
 
 `combine` had been declared, given defaults, added to `SECTIONS`, validated,
-documented in its own comment blocks and read by `04_combine_cases.py`. It
+documented in its own comment blocks and read by `05_combine_cases.py`. It
 worked. The one thing it had not been added to was a dict written out by hand
 inside `describe`:
 
@@ -1063,6 +1063,171 @@ Confirmed the test fails against the old code before keeping it.
 Side effect worth noting: `documentation/PARAMETER_REFERENCE.md` had never
 carried the `combine` section, because the generator could not run. It does
 now.
+
+### 3.21 Every per-resource Sankey was drawn at twice the mass — **FIXED 2026-09-28**
+
+    F_collected, copper, 2070:   drawn 141,089,503 kg      true 70,544,752 kg
+
+Exactly 2x, on **every resource of every traction motor case** (copper,
+aluminium, steel, lamination, magnet) and **all twelve components of the
+battery**, in all three scenarios. Since the cases were built.
+
+`resource_of` gives each row the value of its own deepest filled layer, which
+is what lets one case mix depths (3.16). But a component named after the thing
+it is made of answers the same name twice:
+
+| Layer 2 | Layer 3 | `resource_of` | Value |
+|---|---|---|---|
+| `copper` | | copper | 70,544,752 |
+| `copper` | `copper` | copper | 70,544,752 |
+
+The child is the WHOLE of its parent, so the two rows carry the same mass by
+construction, and `mass()` summed both — under a docstring reading *"Total mass
+in a set of rows, without double counting the nesting"*. It handled the nesting
+correctly for a flow's aggregate, where it takes the shallowest depth, and not
+at all for a named resource.
+
+Upstream names a component after its material as a matter of course, so this is
+the normal case here and not a corner: `copper`/`copper`, `magnet`/`magnet`,
+`batteryPackCables`/`batteryPackCables`. The electronics cases escaped because
+theirs differ — `Wiring`/`copper`, `PCB`/`Ag`.
+
+**WHAT IT DID NOT TOUCH.** The `Recovered` sheet, `over_time`, `recovery_rate`,
+`spread`, `mode_vs_mean` and every `pdf_` figure read RECOVERED flows only, and
+no recovered flow in any of the nine cases holds a resource at two depths —
+checked, all of them. The damage is confined to the Sankeys, which is also why
+it lasted: the Sankey is the one figure nobody reconciles against a table.
+
+**HOW IT SURFACED.** By wiring `figure_for_draws` into 03 on 2026-09-28, at the
+user's instruction. The Monte Carlo Sankey prints each node's mean, so for the
+first time the picture carried numbers that could be checked against each
+other — and `F_cu_stream` at 123.5 M kg with 61.8 M leaving it does not
+balance. The deterministic Sankey had been drawing the same doubled masses for
+weeks with nothing on it to contradict them.
+
+**FIXED:** `shallowest_of` states the rule once -- match the resource, then keep
+only the shallowest depth among the rows that matched -- and both `mass` and
+`draws_for` go through it. `tests/test_generality.py` builds a frame with a
+component named after its material and pins all three cases; it fails against
+the old rule.
+
+### 3.22 The Sankey subtitle ran off the page, and interval labels collided — **FIXED 2026-09-28**
+
+Both are 3.21's figure seen at full size, and neither existed until a node
+carried three lines.
+
+The subtitle was one line of 12.5pt from x=20 on a 1180pt canvas: about 170
+characters, and the Monte Carlo subtitle -- which has to say that the ribbon is
+a MEAN and the interval is printed separately, because a ribbon cannot carry
+one -- is longer than that and lost its last clause. Truncating the sentence
+that explains what the figure cannot show is the worst possible place to
+truncate.
+
+A right margin of 150pt suited `name` over `value`. `[597,713,656.8 -
+670,589,993.6]` at 9pt is about 155pt on its own, so every interval was cut in
+half. And a gap of 16pt between nodes let two small ones print three lines each
+straight through one another.
+
+**FIXED:** the subtitle wraps at `SUBTITLE_CHARS` and the diagram starts below
+however many lines it took; a figure carrying intervals is 1400x880 with a
+300pt right margin and a 40pt gap. DECISIONS 17 -- a figure has to be readable
+at the size it is drawn.
+
+### 3.23 Copper had no account figure, in two places at once — **FIXED 2026-09-28**
+
+The battery and the electronics cases draw four whole-account figures per
+resource -- `account`, `losses`, `trapped`, `fate`. The traction motor cases
+drew none of them, for any resource, and said nothing about it.
+
+All four hang off `plot_monte_carlo.account()`, which needs three upstream
+arrays per resource: `collected`, `outflow` and `inflow`. Two separate things
+stopped it.
+
+**One, the export had no `outflow`.**
+
+    traction_recovery_draws/mix/     collected/  inflow/
+    battery_recovery_draws/S1/       collected/  inflow/  outflow/
+    element_draws/BAU/               collected/  inflow/  outflow/
+
+`account()` returns None the moment `outflow` is missing, and `outflow -
+collected` is the mass that left the fleet and never reached a recycler at all
+-- the band those figures exist to draw. Nothing here can compute it: it is a
+fleet quantity. Fixed upstream in `RAWCLICStockAndFlow/src/traction_export.py`,
+which now composes it from the three destinations that partition the outflow.
+
+**Two, `other_flow` could not address the resource.** It builds
+`<resource>__<domain>.npy`:
+
+| | copper's array | looked for |
+|---|---|---|
+| electronics | `Cu__PCB.npy`, an element in a component | `Cu__PCB.npy` ✓ |
+| traction | `__component____copper.npy`, copper IS the component | `copper__copper.npy` ✗ |
+
+04_03 exports copper, aluminium, lamination and steel as COMPONENTS, because
+that is where the recycling routes act (decided 2026-09-24). So every traction
+motor resource came back None from every flow -- `collected` included, before
+`outflow` was ever reached.
+
+**FIXED:** `Draws` keeps the case's `group_marker`, and `_other_path` falls
+back to `<group_marker>__<domain>.npy` when the resource IS its domain. That is
+the rule `Draws.mass` already applies one layer up: when the thing asked for is
+the group, the group's array is the answer. A resource that simply is not
+exported still comes back absent -- checked, so the fallback cannot answer a
+missing name with a component's mass.
+
+Verified on the real arrays: copper at 2070 now resolves to 70.47 kt collected
+and 72.48 kt inflow, against 70.54 kt in the run's own banner. With a staged
+`outflow` present, all four figures build.
+
+⚠️ **The figures stay absent until 04_03 is re-run**, because the export on
+disk is the old two-flow one. That run is the user's.
+
+### 3.24 The same double count in the ACCOUNT, where it did worse — **FIXED 2026-09-28**
+
+3.21 again, in `plot_monte_carlo`, found hours later and only because the
+account figures could finally be drawn at all (3.23). In the Sankey the defect
+doubled a number. Here it mixed two quantities that were wrong in DIFFERENT
+ways:
+
+| | rows | doubled? |
+|---|---|---|
+| `collected` | start flows, which hold the component row AND the material row | **yes** |
+| `recovered` | recovered flows, which hold one depth | no |
+
+and `lost = collected - recovered`. So copper, 2070, shredder route:
+
+    collected  140.94 kt      true  70.47
+    recovered   49.22 kt      true  49.22
+    lost        91.73 kt      true  21.26
+
+**Copper appeared to lose 91.7 kt of the 70.5 kt it had**, and the account
+still closed to 0.00e+00 -- because closure is by construction: `uncollected`
+is `outflow - collected` and the outflow was scaled by the same doubled ratio.
+A figure that reconciles with itself and not with the model.
+
+`recovery_rate` had it too, its denominator being the same start flows.
+
+**FIXED:** `resource_key` now also marks `own_depth` -- the shallowest depth
+among rows sharing (flow, year, resource) -- and `own(keys)` is ANDed into all
+twelve row selections in the module that sum mass. Grouping on (flow, year,
+resource) is what keeps it safe where a resource legitimately appears twice:
+copper in Wiring and copper in Motors are two rows at the SAME depth in one
+flow, and both are kept.
+
+Checked against the model afterwards, copper 2070, shredder, `mix`:
+
+    outflow      80.08     upstream array  80.16
+    collected    70.47     upstream array  70.54
+    recovered    49.22     Recovered sheet 49.12
+    lost         21.26     = collected - recovered
+    uncollected   9.61     = outflow - collected
+    closure    0.00e+00
+
+**THE LESSON, AND IT IS THE SECOND TIME TODAY.** Both of these survived because
+the figure carrying them had nothing on it to contradict. The Sankey balanced
+within itself; the account closed by construction. Neither was ever put beside
+the `Recovered` sheet, which was right the whole time. A figure that can only
+be checked against itself is not checked.
 
 ---
 

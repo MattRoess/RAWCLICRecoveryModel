@@ -24,8 +24,8 @@ So every case carries its own `source.csv`:
 
 and running it is naming it:
 
-    ./.venv/bin/python 02_run_model.py data_folder/car_composition
-    ./.venv/bin/python 02_run_model.py data_folder/bev_electronics_wiring
+    ./.venv/bin/python stages/02_run_model.py data_folder/car_composition
+    ./.venv/bin/python stages/02_run_model.py data_folder/bev_electronics_wiring
 
 Nothing in `src/params_schema.py` changes between those two.
 
@@ -46,6 +46,8 @@ keeps working exactly as before.
     groups            Wiring;Motors                  blank means all of them
     flow              {product}_collected            which upstream folder(s) to read
     draws             50000                          how many draws this case has
+    scenario_alias    *=BAU                          what this case calls the
+                                                     run's scenario; see below
 
 SEVERAL PRODUCTS IN ONE CASE
 ----------------------------
@@ -113,6 +115,7 @@ FALLBACK = {
     'draws': 'draws',
     'improvement_start': None,
     'improvement_end': None,
+    'scenario_alias': None,
 }
 
 # What a key means when the case does not say and there is no setting behind it.
@@ -123,6 +126,7 @@ DEFAULTS = {
     'child_layer': 'element',
     'improvement_start': '',      # blank: this case does not improve over time
     'improvement_end': '',
+    'scenario_alias': '',         # blank: this case's folders are named as the run is
 }
 
 
@@ -181,6 +185,37 @@ def read(case: str, params) -> dict:
             out[key] = getattr(params.data, fallback)
         else:
             out[key] = DEFAULTS[key]
+
+    # WHAT THIS CASE CALLS THE RUN'S SCENARIO, as `S1=BAU;S2=BAU;S3=BAU`, or
+    # `*=BAU` for every scenario at once. Semicolon-separated, like `groups`.
+    #
+    # WHY A CASE NEEDS THIS. A run is one scenario and the setting applies to
+    # every case in it, but the upstream stages do not share a vocabulary:
+    # 04_02 writes `element_draws/BAU` and 04_04 writes
+    # `battery_recovery_draws/S1|S2|S3`. Combining electronics with a battery
+    # was therefore impossible in either direction -- name BAU and the battery
+    # has no such folder, name S1 and the electronics have none.
+    #
+    # IT IS MEANT TO BE DELETED. A case whose upstream exports the run's own
+    # scenario names does not need a line here, and the day 04_02 exports
+    # S1/S2/S3 this line comes out of the electronics cases. It maps a NAME to
+    # a FOLDER and nothing else -- it cannot make one scenario's numbers stand
+    # in for another's without saying so in the case's own file.
+    alias = out['scenario_alias']
+    if isinstance(alias, str):
+        pairs = {}
+        for entry in alias.split(';'):
+            entry = entry.strip()
+            if not entry:
+                continue
+            if '=' not in entry:
+                raise SourceError(
+                    f"{path_for(case)}: scenario_alias is {alias!r}. Each entry "
+                    f"reads <run scenario>=<folder>, for example 'S1=BAU', and "
+                    f"'*=BAU' stands for every scenario.")
+            name, folder = entry.split('=', 1)
+            pairs[name.strip()] = folder.strip()
+        out['scenario_alias'] = pairs
 
     # `groups` is a list either way: 'Wiring;Motors' from a file, a tuple from
     # settings. Semicolon-separated because a comma would need quoting in CSV.

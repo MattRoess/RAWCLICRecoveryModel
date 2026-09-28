@@ -5,8 +5,7 @@
 Regenerates `params.xlsx` and `documentation/PARAMETER_REFERENCE.md` from the
 values in `src/params_schema.py`.
 
-    ./.venv/bin/python 00_parameters.py            # regenerate both
-    ./.venv/bin/python 00_parameters.py --check    # validate, write nothing
+    ./.venv/bin/python 00_parameters.py
 
 **To change a parameter, edit `src/params_schema.py`**, then run this to
 refresh the register. The spreadsheet and the Markdown reference are outputs:
@@ -32,7 +31,6 @@ from src.bootstrap import ensure_venv
 ensure_venv()
 
 
-import argparse
 import os
 import sys
 
@@ -44,13 +42,20 @@ REFERENCE_FILE = os.path.join('documentation', 'PARAMETER_REFERENCE.md')
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[1])
-    parser.add_argument('--check', action='store_true',
-                        help='validate the values and print them, writing nothing')
-    parser.add_argument('-p', '--path', default=PARAMS_FILE,
-                        help=f'register to write (default: {PARAMS_FILE})')
-    args = parser.parse_args(argv)
+    """
+    Validate the settings, print them, and regenerate the register.
 
+    NO ARGUMENTS, AND NOT BY OVERSIGHT. This project is run by pressing Run;
+    a switch that only exists on a command line is a switch the person running
+    this never sees.
+
+    WHAT `--check` USED TO DO IS NOW ALWAYS DONE. It validated, printed the
+    values in force and said whether the upstream draws were there, and wrote
+    nothing. All of that is worth seeing on every run -- the settings are the
+    thing this file exists to report -- so it is printed first and the register
+    is written afterwards. Writing it is harmless: both outputs are generated
+    and nothing reads them.
+    """
     try:
         params = current()
     except ParameterError as error:
@@ -59,18 +64,16 @@ def main(argv=None) -> int:
 
     rows = flatten(params)
 
-    if args.check:
-        print('src/params_schema.py is valid. Values in force:')
-        for _, _, key, value in rows:
-            print(f'  {key:<28} {value}')
-        # A path that does not exist is not a settings error -- the deterministic
-        # stages never open it -- but it is the single thing most worth knowing
-        # before starting a Monte Carlo run, so --check says so plainly.
-        print(f'\nUpstream draws\n  {data_status(params)}')
-        return 0
+    print('src/params_schema.py is valid. Values in force:')
+    for _, _, key, value in rows:
+        print(f'  {key:<28} {value}')
+    # A path that does not exist is not a settings error -- the deterministic
+    # stages never open it -- but it is the single thing most worth knowing
+    # before starting a Monte Carlo run, so this says so plainly.
+    print(f'\nUpstream draws\n  {data_status(params)}\n')
 
-    save(params, args.path)
-    print(f'{args.path}: regenerated ({len(rows)} parameters)')
+    save(params, PARAMS_FILE)
+    print(f'{PARAMS_FILE}: regenerated ({len(rows)} parameters)')
 
     os.makedirs(os.path.dirname(REFERENCE_FILE), exist_ok=True)
     with open(REFERENCE_FILE, 'w') as handle:

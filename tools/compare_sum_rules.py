@@ -17,7 +17,7 @@ all single numbers has no spread to redistribute. If a case has neither kind,
 this says so and stops rather than drawing two identical curves and letting you
 conclude the rule does not matter.
 
-Solving twice is the whole cost: about twice one `03_run_monte_carlo.py`.
+Solving twice is the whole cost: about twice one `stages/03_run_monte_carlo.py`.
 
     ./.venv/bin/python tools/compare_sum_rules.py --pick     choose from a list
     ./.venv/bin/python tools/compare_sum_rules.py <folder>   compare one case
@@ -69,6 +69,7 @@ def solve_once(folder: str, params, rule: str):
                        seed=params.monte_carlo.seed, tables=tables,
                        chunk=params.monte_carlo.chunk,
                        budget_gb=params.monte_carlo.memory_budget_gb,
+                       scenario=params.run.scenario,
                        rule=rule)
 
 
@@ -181,7 +182,8 @@ def draw(folder: str, results: dict, differing: list, params) -> list:
            colours,
            'the same case solved twice; only groups with no is_residual row can differ')
 
-    out_dir = figure_style.folder_for(params.figures.out_dir, folder)
+    out_dir = figure_style.folder_for(params.figures.out_dir, folder,
+                                      params.run.scenario)
     written = figure_style.write(figure, out_dir, 'compare_sum_rules',
                                  params.figures.enabled(), params.figures.dpi)
     plt.close(figure)

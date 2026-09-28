@@ -1,19 +1,60 @@
-# Running the two pipelines
+# Running the studies
 
-## 1. Choose the pipeline, in `src/params_schema.py`
+## 1. The short way: press Run on your study
 
-At the top of the file, `run.data_folder`:
+Three studies go through this model. Each has its own file. Press Run on it and
+it does stages 01, 02 and 03 over every case and every scenario that study
+covers — nothing to edit, no arguments.
 
-```python
-data_folder: str = 'data_folder/bev_electronics_wiring'  # 04_02, wiring + motors, materials
-# data_folder: str = 'data_folder/bev_electronics_boards' # 04_02, boards + sensors, elements
-# data_folder: str = 'data_folder/carcomposition_mockup'  # 04_01, whole cars, materials
+| press Run on | covers | passes |
+|---|---|---|
+| `02_electronics.py` | wiring + motors, boards + sensors | 2 |
+| `03_tractionmotors.py` | four routes × four magnet grades | 16 |
+| `04_batteries.py` | the pack, chemistries S1, S2, S3 | 3 |
+
+⚠️ **The number is the UPSTREAM stage that feeds it, not a step in a sequence
+here.** `04_02` in RAWCLICStockAndFlow exports the electronics, `04_03` the
+traction motors, `04_04` the batteries. The three are alternatives: you press
+one of them, never all three in order.
+
+Each one runs the whole pipeline itself and stops at the first stage that
+fails. The stages live in `stages/` now and are not what you press:
+
+```
+stages/01_check_inputs.py      the inputs, and what the constraint does to them
+stages/02_run_model.py         the deterministic answer, the Sankeys, the network
+stages/03_run_monte_carlo.py   the Monte Carlo, the workbook, the figures
 ```
 
-**One at a time.** They are different studies — different networks, different
-coefficients, different layers — and a result is reported for one of them, never
-for both together. To run the other, change this line and go through the steps
-again.
+They still run on their own if you want one of them alone — the study file is
+a convenience, not a gate.
+
+What each study covers — its case folders, its scenarios, the resources on its
+figures — is `STUDIES` in `src/params_schema.py`, written once. Added
+2026-09-28, because switching between the three meant editing that file between
+runs: several edits to answer one question, and a run started with the previous
+study's settings still in force looks exactly like a correct one.
+
+**This is not a command-line switch by another name.** `02_run_model.main` says
+why the stages take no arguments — *a switch that only exists on a command line
+is a switch the person running this never sees*. A file you press Run on is as
+visible as the setting it replaces, and it states the whole study in one place
+instead of three settings you have to remember to change together.
+
+## 1b. The long way: one case at a time
+
+`run.data_folder` still decides, when no study is named. It reads one folder or
+several separated by semicolons:
+
+```python
+data_folder: str = 'data_folder/bev_electronics_wiring'
+data_folder: str = 'data_folder/tractionmotor; data_folder/tractionmotor_shredder'
+```
+
+**Each pass is still one case.** They are different studies — different
+networks, different coefficients, different layers — and a result is reported
+for one of them, never for both added together. Naming several runs each of
+them in turn; it does not solve them as one.
 
 ## 2. Open each file in Positron and press Run, in order
 
@@ -22,10 +63,13 @@ No terminal, no arguments. Each one reads `run.data_folder` and does its part.
 | step | file | what it does | writes |
 |---|---|---|---|
 | 0 | `00_parameters.py` | checks the settings make sense; regenerates `params.xlsx` and `PARAMETER_REFERENCE.md` | those two files |
-| 1 | `01_check_inputs.py` | reports the totals, closure, coefficient coverage, and — since 2026-08-26 — a `SUM TO 1` section saying where the constraint pulls the answer away from what is written | nothing |
-| 2 | `02_run_model.py` | the deterministic answer, the Sankeys, the structure diagram | `output_data/solution_*.csv`, `figures/<case>/` |
-| 3 | `03_run_monte_carlo.py` | the Monte Carlo, the workbook, the distribution figures | `output_data/*.csv`, `recovery_results.xlsx`, `figures/<case>/` |
+| 1 | `stages/01_check_inputs.py` | reports the totals, closure, coefficient coverage, and — since 2026-08-26 — a `SUM TO 1` section saying where the constraint pulls the answer away from what is written | nothing |
+| 2 | `stages/02_run_model.py` | the deterministic answer, the Sankeys, the structure diagram | `output_data/solution_*.csv`, `figures/<case>/` |
+| 3 | `stages/03_run_monte_carlo.py` | the Monte Carlo, the workbook, the distribution figures | `output_data/*.csv`, `recovery_results.xlsx`, `figures/<case>/` |
 | 9 | `99_check_all.py` | ten checks: six test suites, then the pipeline and mass balance | nothing |
+
+A study file runs steps 1, 2 and 3 for you, and stops at the first one that
+fails, because a later stage cannot mean anything if an earlier one refused.
 
 **Steps 0 and 1 are optional.** `02` and `03` validate the inputs themselves and
 refuse a broken table, so nothing silently uses bad numbers if you skip them.
@@ -79,6 +123,9 @@ figures/<case>/
                                  every coefficient behind every arrow
     total.png                    the Sankey, all resources
     <resource>.png               one Sankey per resource
+                                 -- 02 draws these from the point solve, then
+                                 03 REDRAWS them from the draws, means with
+                                 each node's 95% interval (DECISIONS 27)
     over_time.png                median per resource per year, with the 95% band
     account.png                  THE WHOLE ACCOUNT, ON ONE AXIS: entering and
                                  leaving the fleet, reaching a recycler,
@@ -111,11 +158,17 @@ figures/<case>/
     sensitivity.png              which coefficient drives the answer
 ```
 
+**Six of them sit in the case's folder and the rest in `detail/`** --
+`over_time`, `recovery_rate`, `account`, `losses`, `total`, `pdf_all`. That is
+`ESSENTIAL` in `src/figure_style.py` (DECISIONS 30). Nothing stops being drawn;
+what changes is that the folder you open answers the question and the rest is
+one directory further in.
+
 **A folder per case**, with the same names in both, so the two pipelines cannot
 overwrite each other and their figures compare directly.
 
-The first three come from `02_run_model.py` and the rest from
-`03_run_monte_carlo.py`, so a folder holding only the Monte Carlo figures means
+The first three come from `stages/02_run_model.py` and the rest from
+`stages/03_run_monte_carlo.py`, so a folder holding only the Monte Carlo figures means
 02 has not been run since the case was last renamed or created.
 
 **No figure that reports a MASS sums the year axis any more.**

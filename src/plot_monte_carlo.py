@@ -40,6 +40,7 @@ from __future__ import annotations
 
 
 import itertools
+import os
 
 import numpy as np
 import pandas as pd
@@ -137,6 +138,72 @@ def every_other(years: list) -> list:
     return years[::2] if len(years) > 6 else years
 
 
+def resource_key(frame) -> str:
+    """
+    Add each row's own resource to `frame` and return the column's name.
+
+    A CASE DOES NOT HAVE ONE DEPTH, which is what `finest_layer` below assumes.
+    The traction motor resolves the magnet to elements -- Nd, Pr, Dy, Tb at
+    Layer 4 -- while copper, aluminium, steel and lamination stop at materials
+    in Layer 3. Picking one column for the whole case picks Layer 4, because the
+    rare earths fill it, and every metal row is then blank there: no copper
+    figure was drawn at all, and the metals never reached the headline table
+    either (2026-09-25, see src/report.resource_of).
+
+    Written onto the frame rather than returned as a Series so the seventeen
+    `keys[layer] == resource` comparisons in this module keep working unchanged.
+    Idempotent: called again on the same frame it recomputes in place.
+
+    IT ALSO MARKS `own_depth`, because matching the resource is not enough to
+    sum it. See `own`.
+    """
+    layers = [column for column in LAYERS if column in frame.columns]
+    if layers:
+        deepest = frame[layers[::-1]].astype(str)
+        out = deepest.iloc[:, 0].copy()
+        for column in deepest.columns[1:]:
+            out = out.where(out != '', deepest[column])
+        frame['resource'] = out.fillna('')
+        depth = (frame[layers].astype(str) != '').sum(axis=1)
+        shallowest = depth.groupby(
+            [frame['Stock/Flow ID'], frame['Year'].astype(str),
+             frame['resource']]).transform('min')
+        frame['own_depth'] = (depth == shallowest).to_numpy()
+    elif 'resource' not in frame.columns:
+        frame['resource'] = ''
+        frame['own_depth'] = True
+    return 'resource'
+
+
+def own(frame) -> np.ndarray:
+    """
+    Rows that are their resource's OWN depth, within their flow and year.
+
+    ⚠️ MATCHING THE RESOURCE IS NOT ENOUGH TO SUM IT. A component named after
+    the thing it is made of answers the same name twice -- a `copper` component
+    holding a `copper` material -- and the child is the whole of its parent, so
+    the two rows carry the same mass. Adding both doubles it.
+
+    Upstream does this as a matter of course: 04_03 exports copper, aluminium,
+    lamination, steel and magnet as components, 04_04 all twelve battery parts.
+    Only the electronics cases escape, because there a component and its
+    material have different names (`Wiring`/`copper`, `PCB`/`Ag`).
+
+    Found on 2026-09-28 in the Sankey (DEFECTS 3.21) and, the same day, here --
+    `account` read copper's collected mass as 140.94 kt against a true 70.47,
+    and because `lost` is `collected - recovered` while recovered flows hold
+    one depth only, copper appeared to lose 91.7 kt of the 70.5 it had. The
+    account still CLOSED, because closure is by construction.
+
+    Grouping on (flow, year, resource) is what makes it safe where a resource
+    legitimately appears twice: copper in Wiring and copper in Motors are two
+    rows at the SAME depth in the same flow, and both are kept and added.
+    """
+    if 'own_depth' not in frame.columns:
+        resource_key(frame)
+    return frame['own_depth'].to_numpy()
+
+
 def finest_layer(frame) -> str:
     """
     The deepest layer this case actually resolves.
@@ -187,12 +254,12 @@ def element_rows(run, flow: str, element: str) -> np.ndarray:
     """
     keys = run.keys
     return np.flatnonzero((keys['Stock/Flow ID'] == flow).to_numpy()
-                          & (keys[finest_layer(keys)] == element).to_numpy())
+                          & (keys[resource_key(keys)] == element).to_numpy())
 
 
 def totals_by_flow_and_element(run) -> dict[tuple[str, str], np.ndarray]:
     """{(flow, element): (draws,)} for every terminal flow and element."""
-    layer = finest_layer(run.keys)
+    layer = resource_key(run.keys)
     elements = sorted({e for e in run.keys[layer].unique() if e})
     out = {}
     for flow in terminal_flows(run):
@@ -222,7 +289,8 @@ def _band(values: np.ndarray) -> tuple[float, float, float, float, float]:
 #  1b. How it moves over the years
 # ----------------------------------------------------------------------
 
-def figure_over_time(run, deterministic: pd.DataFrame | None, theme: str, unit: str):
+def figure_over_time(run, deterministic: pd.DataFrame | None, theme: str,
+                     unit: str, resources=()):
     """
     Median recovered mass per year, per resource, with the 95% interval.
 
@@ -248,19 +316,26 @@ def figure_over_time(run, deterministic: pd.DataFrame | None, theme: str, unit: 
     years = sorted(int(y) for y in run.keys['Year'].unique())
     if len(years) < 2:
         return None                     # a trend through one point is a dot
-    layer = finest_layer(run.keys)
+    layer = resource_key(run.keys)
     recovered = recovered_flows(run, run.case)
     if not recovered:
         return None
 
     keys = run.keys
     series: dict[str, dict[str, np.ndarray]] = {}
-    for element in sorted({e for e in keys[layer].unique() if e}):
+    # ⚠️ THE RESOURCES THIS STUDY IS ABOUT. This drew every resource in the
+    # data whatever `figures.resources` said -- nine lines on the traction
+    # study, five of which are the bulk metals that come back either way. They
+    # are not the question here (DECISIONS 29) and they crowd the ones that
+    # are. Asked for on 2026-09-28: *"I am not interested in al, steel but REE
+    # and copper."* The metals remain on `spread`, `mode_vs_mean` and the
+    # total Sankey, which read every resource regardless.
+    for element in chosen(run, resources):
         median, low, high = [], [], []
         for year in years:
             rows = np.flatnonzero(
                 keys['Stock/Flow ID'].isin(recovered).to_numpy()
-                & (keys[layer] == element).to_numpy()
+                & (keys[layer] == element).to_numpy() & own(keys)
                 & (keys['Year'].astype(str) == str(year)).to_numpy())
             totals = (run.values[rows].sum(axis=0) if rows.size
                       else np.zeros(run.draws))
@@ -301,6 +376,21 @@ def figure_over_time(run, deterministic: pd.DataFrame | None, theme: str, unit: 
             panel.plot(years, s['deterministic'] * scale, color=colour,
                        linewidth=1.4, linestyle='--', alpha=0.9)
 
+    # ⚠️ A LOG MASS AXIS, so that every legend number can be READ OFF. On one
+    # shared linear axis running to copper's 55 kt, dysprosium's 928 kg lies on
+    # the zero line: the legend said `928 kg` where the reader could see
+    # nothing, which is the same fault as a title quoting what a figure cannot
+    # show. Removing the number would leave a flat invisible line with a name,
+    # so the axis changes instead. `spread.png` is log for exactly this reason.
+    #
+    # Only when the resources actually span orders of magnitude -- on a case
+    # whose resources are alike, a log axis makes a real difference look small.
+    positive = [v for s in series.values()
+                for v in (s['median'][0], s['median'][-1]) if v > 0]
+    logarithmic = bool(positive) and max(positive) / min(positive) >= 100
+    if logarithmic:
+        panel.set_yscale('log')
+
     panel.set_title('Recovered mass over time   (solid: median, with the 95% '
                     'interval.  dashed: the deterministic run)',
                     color=colours['title'], fontsize=12, fontweight='bold',
@@ -311,8 +401,10 @@ def figure_over_time(run, deterministic: pd.DataFrame | None, theme: str, unit: 
     panel.tick_params(labelsize=11)
     # No `1e6` in the corner and no `2,020` on the year axis: an offset is a
     # multiplication left for the reader, and a thousands separator on a year
-    # turns it into a quantity.
-    panel.ticklabel_format(style='plain', axis='y', useOffset=False)
+    # turns it into a quantity. A log axis has no ScalarFormatter to ask, and
+    # labels its decades itself.
+    if not logarithmic:
+        panel.ticklabel_format(style='plain', axis='y', useOffset=False)
     panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
     legend = panel.legend(fontsize=9, frameon=False, loc='upper left')
     for text in legend.get_texts():
@@ -399,6 +491,20 @@ def routes(run) -> dict[str, list[str]]:
     branches = sorted(set(split['Output_FlowID']))
     if len(branches) < 2:
         return {}
+
+    # ⚠️ A ROAD SPLIT SENDS THE SAME RESOURCE TWO WAYS. A network can divide at
+    # its first flow without there being any road: the shredder case divides
+    # into `F_cu_stream`, `F_al_stream`, `F_ndfeb_stream`, `F_steel_stream`,
+    # which are MATERIAL streams, each carrying a resource none of the others
+    # does. Read as roads they gave four, and the account figure then drew
+    # `recovered, ndfeb stream` for dysprosium at 0.3396 kt beside `recovered`
+    # at 0.3396 kt -- one number, twice, under two names.
+    # ⚠️ TESTED ON THE BRANCHES RECOVERED MATERIAL DESCENDS FROM, and on those
+    # only. My first attempt at this test included `F_loss_upstream`, which
+    # carries EVERY resource by construction, so it overlapped with all of them
+    # and the four streams were read as roads again.
+    carries = {branch: {str(r) for r in rows['TC_target_key'] if str(r)}
+               for branch, rows in split.groupby('Output_FlowID')}
     process = split['process'].iloc[0] if 'process' in split.columns else ''
 
     # Walk each recovered flow back up to the branch it descends from. Parents
@@ -413,6 +519,14 @@ def routes(run) -> dict[str, list[str]]:
             at = parent[at]
         if at in branches:
             on_road[at].append(flow)
+
+    # A road split sends the SAME resource more than one way. Branches that
+    # carry disjoint resources are material STREAMS, and a stream is not a
+    # choice -- see the note above.
+    travelled = [carries.get(b, set()) for b, flows in on_road.items() if flows]
+    if not any(a & b for i, a in enumerate(travelled)
+               for b in travelled[i + 1:]):
+        return {}
     return {names[b]: flows for b, flows in on_road.items() if flows}
 
 
@@ -431,7 +545,7 @@ def chosen(run, wanted) -> list[str]:
     puts a quantity that is not a material in a figure about materials.
     """
     from src.rest import REST
-    layer = finest_layer(run.keys)
+    layer = resource_key(run.keys)
     every = sorted({e for e in run.keys[layer].unique() if e and e != REST})
     if not wanted:
         return every
@@ -474,7 +588,7 @@ def figure_routes(run, theme: str, unit: str, resources=()):
     if len(years) < 2 or len(by_route) < 2:
         return None                # one road is not a comparison
 
-    layer = finest_layer(run.keys)
+    layer = resource_key(run.keys)
     keys = run.keys
 
     series: dict[str, dict] = {}
@@ -488,7 +602,7 @@ def figure_routes(run, theme: str, unit: str, resources=()):
             for year in years:
                 rows = np.flatnonzero(
                     keys['Stock/Flow ID'].isin(flows).to_numpy()
-                    & (keys[layer] == resource).to_numpy()
+                    & (keys[layer] == resource).to_numpy() & own(keys)
                     & (keys['Year'].astype(str) == str(year)).to_numpy())
                 columns.append(run.values[rows].sum(axis=0) if rows.size
                                else np.zeros(run.draws))
@@ -600,7 +714,7 @@ def figure_recovery_rate(run, deterministic: pd.DataFrame | None,
 
     from src.report import start_flows
     starts = start_flows(run.tcs)
-    keys, layer = run.keys, finest_layer(run.keys)
+    keys, layer = run.keys, resource_key(run.keys)
 
     def collected_in(year, resource: str | None) -> np.ndarray | None:
         """
@@ -632,7 +746,7 @@ def figure_recovery_rate(run, deterministic: pd.DataFrame | None,
         wanted = (keys['Stock/Flow ID'].isin(starts)
                   & (keys['Year'].astype(str) == str(year)))
         if resource is not None:
-            wanted &= (keys[layer] == resource)
+            wanted &= (keys[layer] == resource) & own(keys)
         rows = keys[wanted]
         if rows.empty:
             return None
@@ -658,7 +772,7 @@ def figure_recovery_rate(run, deterministic: pd.DataFrame | None,
             wanted = keys['Stock/Flow ID'].isin(recovered).to_numpy() & \
                      (keys['Year'].astype(str) == str(year)).to_numpy()
             if resource != 'every resource':
-                wanted &= (keys[layer] == resource).to_numpy()
+                wanted &= (keys[layer] == resource).to_numpy() & own(keys)
             rows = np.flatnonzero(wanted)
             total = (run.values[rows].sum(axis=0) if rows.size
                      else np.zeros(run.draws))
@@ -771,7 +885,7 @@ def figure_fate(run, theme: str, unit: str, resources=()):
 
     from src.report import start_flows
     starts, keys = start_flows(run.tcs), run.keys
-    layer = finest_layer(keys)
+    layer = resource_key(keys)
     recovered = recovered_flows(run, run.case)
     if not recovered:
         return None
@@ -787,7 +901,7 @@ def figure_fate(run, theme: str, unit: str, resources=()):
             def rows_of(flows):
                 return np.flatnonzero(
                     keys['Stock/Flow ID'].isin(flows).to_numpy()
-                    & (keys[layer] == resource).to_numpy()
+                    & (keys[layer] == resource).to_numpy() & own(keys)
                     & (keys['Year'].astype(str) == str(year)).to_numpy())
 
             collected = run.values[rows_of(starts)].sum(axis=0)
@@ -899,7 +1013,7 @@ def account(run, resource: str, domain: str | None = None) -> dict[str, np.ndarr
         return None
     from src.report import start_flows
     starts, keys = start_flows(run.tcs), run.keys
-    layer = finest_layer(keys)
+    layer = resource_key(keys)
     recovered_ids = recovered_flows(run, run.case)
     years = sorted(int(y) for y in keys['Year'].unique())
     domains = sorted({d for d in keys.loc[keys[layer] == resource,
@@ -914,7 +1028,7 @@ def account(run, resource: str, domain: str | None = None) -> dict[str, np.ndarr
     for year in years:
         def rows_of(flows):
             wanted = (keys['Stock/Flow ID'].isin(flows).to_numpy()
-                      & (keys[layer] == resource).to_numpy()
+                      & (keys[layer] == resource).to_numpy() & own(keys)
                       & (keys['Year'].astype(str) == str(year)).to_numpy())
             if domain is not None:
                 wanted &= (keys['Layer 2'] == domain).to_numpy()
@@ -960,12 +1074,12 @@ def _round_step(rough: float) -> float:
 
 
 def draw_account(panel, title: str, a: dict, roads: dict, years,
-                 scale: float, shown: str, colours):
+                 scale: float, shown: str, colours, unit: str = 'kg'):
     """
     ONE ACCOUNT ON ONE SET OF AXES. Returns the per-cent axis it adds.
 
     Extracted so the per-case figure and the combined figure across cases
-    (`04_combine_cases.py`) are the SAME picture rather than two that drift
+    (`05_combine_cases.py`) are the SAME picture rather than two that drift
     apart. The combined one hands in an account summed per draw across its
     cases; nothing here knows or cares which kind it was given.
 
@@ -984,9 +1098,16 @@ def draw_account(panel, title: str, a: dict, roads: dict, years,
         series = mean_of[key] if values is None else values
         if not np.isfinite(series).any():
             return
+        # ⚠️ THE LEGEND NAMES THE LINE AND NOTHING ELSE. It used to print each
+        # line's first and last value, and on a linear axis running to
+        # kilotonnes the first value is pressed flat against zero -- so the
+        # legend asserted `4.8 kg` where the reader can see nothing, and
+        # `0 kt` where the line plainly rises. Said on 2026-09-28: *"what you
+        # write which can not be seen in the figures has no place there."*
+        # The numbers are in the workbook's Recovered sheet, where they can be
+        # read exactly instead of estimated off a flattened axis.
         panel.plot(years, series * scale, color=colour, linewidth=width,
-                   linestyle=style, marker='o', markersize=3,
-                   label=f'{name}   {series[-1] * scale:,.0f} {shown} in {end}')
+                   linestyle=style, marker='o', markersize=3, label=name)
 
     # The 95% band of what leaves the fleet: the fleet's own uncertainty, which
     # every mass on this axis inherits and none of the others can show without
@@ -1039,11 +1160,23 @@ def draw_account(panel, title: str, a: dict, roads: dict, years,
     panel.set_ylim(0, step * 4)
     panel.set_yticks([step * n for n in range(5)])
 
-    panel.set_title(
-        f'{title}   in {end}: {mean_of["outflow"][-1] * scale:,.0f} {shown} '
-        f'left the fleet, {mean_of["collected"][-1] * scale:,.0f} reached a '
-        f'recycler, {mean_of["recovered"][-1] * scale:,.0f} came back',
-        color=colours['title'], fontsize=13, fontweight='bold')
+    # ⚠️ THE TITLE SAYS WHAT THE PANEL IS. It does not summarise it.
+    #
+    # It has carried two wrong statements in one day. First `Dy in 2070: 2 kt
+    # left the fleet, 1 reached a recycler, 0 came back` -- a snapshot on a
+    # figure about eleven years, rounded until dysprosium read as never coming
+    # back. Then `N% of it recovered` placed directly after `leaving the
+    # fleet`, where `it` reads as the outflow while the rate drawn is over
+    # COLLECTED: 24.3% against 21.4%, the wrong quantity, not a loose word.
+    #
+    # Both survived being looked at because NEITHER COULD BE CHECKED ON THE
+    # FIGURE: the mass axis is linear to kilotonnes, so the early years lie
+    # flat on zero and no reader can tell 2.83 t from nothing, or one
+    # denominator from another. A claim a figure cannot demonstrate does not
+    # belong on it -- it belongs where it can be read exactly, which is the
+    # workbook.
+    panel.set_title(f'{title}', color=colours['title'], fontsize=13,
+                    fontweight='bold')
     panel.set_xlabel('year', color=colours['meta'], fontsize=14)
     panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=14)
     # Every decade, not every point. The points are still drawn as markers, so
@@ -1091,7 +1224,7 @@ def account_legend(figure, for_legend, colours, rows_of: int,
         text.set_color(colours['meta'])
 
 
-def figure_account(run, theme: str, unit: str, resources=()):
+def figure_account(run, theme: str, unit: str, resources=(), only: str = ''):
     """
     THE WHOLE ACCOUNT OF A RESOURCE ON ONE SET OF AXES, so that every quantity
     can be compared against every other one directly.
@@ -1136,7 +1269,12 @@ def figure_account(run, theme: str, unit: str, resources=()):
     so the fleet's own uncertainty cancels where it should (DECISIONS 32) and
     no rate can exceed 100%.
     """
-    wanted = chosen(run, resources)
+    # ⚠️ ONE RESOURCE PER FIGURE when `only` names one. Six accounts in a grid
+    # came out 9,833 pixels wide and the panel titles were unreadable at any
+    # size a screen shows; the losses version was 19,166. Said on 2026-09-28:
+    # *"Have them in individual figures, so one can see them."* The grid is
+    # kept for the case that asks for one or two.
+    wanted = [only] if only else chosen(run, resources)
     by_road = routes(run)
     accounts = {r: a for r in wanted if (a := account(run, r)) is not None}
     if not accounts:
@@ -1151,7 +1289,7 @@ def figure_account(run, theme: str, unit: str, resources=()):
                 np.nanpercentile(draws, 2.5, axis=0),
                 np.nanpercentile(draws, 97.5, axis=0))
 
-    layer, keys = finest_layer(run.keys), run.keys
+    layer, keys = resource_key(run.keys), run.keys
     roads_for: dict[str, dict[str, np.ndarray]] = {}
     for resource in accounts:
         per_road = {}
@@ -1160,7 +1298,7 @@ def figure_account(run, theme: str, unit: str, resources=()):
             for year in years:
                 rows = np.flatnonzero(
                     keys['Stock/Flow ID'].isin(flows).to_numpy()
-                    & (keys[layer] == resource).to_numpy()
+                    & (keys[layer] == resource).to_numpy() & own(keys)
                     & (keys['Year'].astype(str) == str(year)).to_numpy())
                 columns.append(run.values[rows].sum(axis=0) if rows.size
                                else np.zeros(run.draws))
@@ -1188,7 +1326,7 @@ def figure_account(run, theme: str, unit: str, resources=()):
     for panel, (resource, a) in zip(panels, sorted(accounts.items())):
         rate_axis = draw_account(panel, resource, a,
                                  roads_for.get(resource, {}),
-                                 years, scale, shown, colours)
+                                 years, scale, shown, colours, unit)
         for_legend.append((panel, rate_axis))
 
     names = ', '.join(sorted(accounts))
@@ -1234,7 +1372,7 @@ def fleet_flows(run, resource: str):
     a = account(run, resource)
     if a is None:
         return None
-    keys, layer = run.keys, finest_layer(run.keys)
+    keys, layer = run.keys, resource_key(run.keys)
     domains = sorted({d for d in keys.loc[keys[layer] == resource,
                                           'Layer 2'].unique() if d})
     if not domains:
@@ -1266,7 +1404,7 @@ def fleet_flows(run, resource: str):
     return {'years': every, 'solved': solved, **out}
 
 
-def figure_trapped(run, theme: str, unit: str, resources=()):
+def figure_trapped(run, theme: str, unit: str, resources=(), only: str = ''):
     """
     WHAT THE FLEET IS HOLDING, WHAT IT GIVES BACK, AND WHAT IS GONE.
 
@@ -1294,7 +1432,10 @@ def figure_trapped(run, theme: str, unit: str, resources=()):
     Counting starts at the first exported year and what was already on the road
     then is NOT in it -- see `fleet_flows`.
     """
-    wanted = chosen(run, resources)
+    # One resource per figure when `only` names one -- see `figure_account`.
+    # Six in a grid came out 3,819 x 4,308 pixels, which is a poster, not a
+    # figure.
+    wanted = [only] if only else chosen(run, resources)
     series = {}
     for resource in wanted:
         found = fleet_flows(run, resource)
@@ -1302,7 +1443,7 @@ def figure_trapped(run, theme: str, unit: str, resources=()):
             continue
         a = account(run, resource)
         first = int(a['years'][0])
-        keys, layer = run.keys, finest_layer(run.keys)
+        keys, layer = run.keys, resource_key(run.keys)
         domains = sorted({d for d in keys.loc[keys[layer] == resource,
                                               'Layer 2'].unique() if d})
         raw = run.upstream.other_flow('collected', resource, domains, first,
@@ -1343,9 +1484,13 @@ def figure_trapped(run, theme: str, unit: str, resources=()):
         into = np.nanmean(s['inflow'], axis=1)
         out = np.nanmean(s['outflow'], axis=1)
         back = np.nanmean(s['recovered'], axis=1)
-        top.fill_between(years, out * scale, into * scale,
-                         where=(into >= out), color=PALETTE[0], alpha=0.18,
-                         linewidth=0, label='the gap: what the fleet absorbs')
+        # ⚠️ NO SHADED GAP BETWEEN INFLOW AND OUTFLOW. It was filled and
+        # labelled `the gap: what the fleet absorbs`, and being the largest
+        # block on the panel it read as a quantity somebody could have --
+        # which it is not. ONLY WHAT IS RECYCLED CAN BE USED AGAIN; the rest
+        # is either still driving or gone. Said on 2026-09-28, and the fill is
+        # gone rather than relabelled: the gap is still there to be read as the
+        # distance between two lines, without being dressed as a resource.
         top.plot(years, into * scale, color=colours['meta'], linewidth=1.6,
                  linestyle=(0, (1, 2)),
                  label=f'entering the fleet   {readable(into[-1], unit)} in {end}')
@@ -1383,10 +1528,14 @@ def figure_trapped(run, theme: str, unit: str, resources=()):
         if turned is not None:
             top.axvline(turned, color=colours['meta'], linewidth=1.0,
                         linestyle=(0, (3, 3)))
+            # ⚠️ ABOVE THE LINES IT IS ABOUT, not on them. Anchored 30 points
+            # over y=0 it landed exactly where the recovered and the share
+            # lines run, and three lines of text sat across both of them.
+            # Anchored to the top of the axis instead, where nothing is drawn.
             top.annotate(f'{turned}: the fleet begins\ngiving back more\nthan it takes',
-                         xy=(turned, 0), xytext=(-8, 30),
+                         xy=(turned, top.get_ylim()[1]), xytext=(-8, -12),
                          textcoords='offset points', color=colours['meta'],
-                         fontsize=11, ha='right')
+                         fontsize=11, ha='right', va='top')
         top.set_title(f'{resource}: the flows, per year',
                       color=colours['title'], fontsize=13, fontweight='bold')
         top.set_ylabel(f'per year ({shown}/yr)', color=colours['meta'], fontsize=13)
@@ -1455,7 +1604,7 @@ def losses(run, resource: str) -> dict[str, np.ndarray] | None:
     if a is None:
         return None
     from src.rest import flow_roles
-    keys, layer = run.keys, finest_layer(run.keys)
+    keys, layer = run.keys, resource_key(run.keys)
     years = [int(y) for y in a['years']]
     roles = flow_roles(run.case)
     process_of = dict(zip(run.tcs['Output_FlowID'], run.tcs.get(
@@ -1470,7 +1619,7 @@ def losses(run, resource: str) -> dict[str, np.ndarray] | None:
         for year in years:
             rows = np.flatnonzero(
                 (keys['Stock/Flow ID'] == flow).to_numpy()
-                & (keys[layer] == resource).to_numpy()
+                & (keys[layer] == resource).to_numpy() & own(keys)
                 & (keys['Year'].astype(str) == str(year)).to_numpy())
             columns.append(run.values[rows].sum(axis=0) if rows.size
                            else np.zeros(run.draws))
@@ -1483,7 +1632,7 @@ def losses(run, resource: str) -> dict[str, np.ndarray] | None:
             'outflow': a['outflow'], 'recovered': a['recovered']}
 
 
-def figure_losses(run, theme: str, unit: str, resources=()):
+def figure_losses(run, theme: str, unit: str, resources=(), only: str = ''):
     """
     WHERE IT GOES WHEN IT DOES NOT COME BACK, one wedge per reason.
 
@@ -1502,7 +1651,8 @@ def figure_losses(run, theme: str, unit: str, resources=()):
     grow with the fleet whatever recycling does; the shares are what a
     programme moves, and they are where an improvement shows.
     """
-    wanted = chosen(run, resources)
+    # One resource per figure when `only` names one -- see `figure_account`.
+    wanted = [only] if only else chosen(run, resources)
     series = {r: found for r in wanted if (found := losses(run, r)) is not None}
     series = {r: s for r, s in series.items() if s['reasons']}
     if not series:
@@ -1533,12 +1683,20 @@ def figure_losses(run, theme: str, unit: str, resources=()):
         # it is. The outflow is the denominator of the panel beside it, and the
         # title carries its number.
         end, biggest = years[-1], names[0]
-        total = sum(m[-1] for m in means) * scale
-        mass.set_title(
-            f'{resource}: why it did not come back   in {end}, '
-            f'{total:,.0f} {shown} of {np.nanmean(s["outflow"], axis=0)[-1] * scale:,.0f} '
-            f'lost, most of it {biggest}',
-            color=colours['title'], fontsize=12, fontweight='bold')
+        # ⚠️ THE SUMMARY IS THE FIGURE'S, NOT THE PANEL'S. Written as a panel
+        # title it was wider than the panel and ran through the title of the
+        # one beside it. A panel title says what the panel is; the header says
+        # what the figure found. And it is a SHAPE -- see the note on the
+        # account panel's title for why one year was the wrong thing to quote.
+        # The panel says what it is. The masses it used to quote -- 68.4 t in
+        # 2020 against 31 kt in 2070 -- cannot be told apart from zero on a
+        # linear stack running to kilotonnes, so they were a claim the figure
+        # could not support. They are exact in the workbook's Recovered and
+        # Contributions sheets. `most of it {biggest}` stays: the largest wedge
+        # IS visible, which is the whole test.
+        summary = f'most of it {biggest}'
+        mass.set_title(f'{resource}: how much, by reason',
+                       color=colours['title'], fontsize=12, fontweight='bold')
         mass.set_ylabel(f'lost ({shown})', color=colours['meta'], fontsize=13)
 
         with np.errstate(invalid='ignore', divide='ignore'):
@@ -1554,7 +1712,7 @@ def figure_losses(run, theme: str, unit: str, resources=()):
                 share.plot(years, median, color=colours_for[place],
                            linewidth=2.0, marker='o', markersize=3,
                            label=f'{name}   {median[0]:.0f} → {median[-1]:.0f}%')
-        share.set_title(f'{resource}: the same, as a share of what left the fleet',
+        share.set_title(f'{resource}: the same, as a share of the outflow',
                         color=colours['title'], fontsize=12, fontweight='bold')
         share.set_ylabel('% of the outflow', color=colours['meta'], fontsize=13)
 
@@ -1567,7 +1725,9 @@ def figure_losses(run, theme: str, unit: str, resources=()):
             for text in legend.get_texts():
                 text.set_color(colours['meta'])
 
-    header(figure, 'Why it does not come back', colours,
+    one = summary if len(series) == 1 else ''
+    header(figure, 'Why it does not come back'
+           + (f'   --   {one}' if one else ''), colours,
            f'{years_listed(run)}.  one wedge per reason; the reasons plus what '
            f'was recovered sum to the outflow, which is why they are MEANS.  '
            f'shares are medians with 95%, formed per draw')
@@ -1605,7 +1765,7 @@ def figure_pdf_grid(run, deterministic: pd.DataFrame | None, theme: str,
     Sharing one axis per year was honest and unreadable.
     """
     years = every_other(sorted(int(y) for y in run.keys['Year'].unique()))
-    layer = finest_layer(run.keys)
+    layer = resource_key(run.keys)
     recovered = recovered_flows(run, run.case)
     if not recovered or not years:
         return None
@@ -1617,7 +1777,7 @@ def figure_pdf_grid(run, deterministic: pd.DataFrame | None, theme: str,
         for year in years:
             rows = np.flatnonzero(
                 keys['Stock/Flow ID'].isin(recovered).to_numpy()
-                & (keys[layer] == element).to_numpy()
+                & (keys[layer] == element).to_numpy() & own(keys)
                 & (keys['Year'].astype(str) == str(year)).to_numpy())
             if rows.size:
                 per_year[year] = run.values[rows].sum(axis=0)
@@ -1726,7 +1886,7 @@ def figure_spread(run, theme: str, unit: str, most: int = 20,
     if not years:
         return None
     first, last = years[0], years[-1]
-    layer = finest_layer(run.keys)
+    layer = resource_key(run.keys)
     keys, values = run.keys, run.values
     ends = terminal_flows(run)
     if not ends:
@@ -1734,7 +1894,7 @@ def figure_spread(run, theme: str, unit: str, most: int = 20,
 
     def at(flow: str, element: str, year: int):
         rows = np.flatnonzero((keys['Stock/Flow ID'] == flow).to_numpy()
-                              & (keys[layer] == element).to_numpy()
+                              & (keys[layer] == element).to_numpy() & own(keys)
                               & (keys['Year'].astype(str) == str(year)).to_numpy())
         if not rows.size:
             return None
@@ -1867,14 +2027,15 @@ def figure_mode_vs_mean(run, deterministic: pd.DataFrame, theme: str, unit: str)
     if not years:
         return None
     last = years[-1]
-    keys, layer = run.keys, finest_layer(run.keys)
+    keys, layer = run.keys, resource_key(run.keys)
+    resource_key(deterministic)        # compared against `keys[layer]` below
     year_of = keys['Year'].astype(int).to_numpy()
     point_year = deterministic['Year'].astype(int).to_numpy()
 
     def gap(flow: str, element: str, year: int):
         """(percent away, deterministic mass, mean mass) for one year, or None."""
         rows = np.flatnonzero((keys['Stock/Flow ID'] == flow).to_numpy()
-                              & (keys[layer] == element).to_numpy()
+                              & (keys[layer] == element).to_numpy() & own(keys)
                               & (year_of == year))
         point_rows = deterministic[(deterministic['Stock/Flow ID'] == flow).to_numpy()
                                    & (deterministic[layer] == element).to_numpy()
@@ -2056,7 +2217,7 @@ def figure_sensitivity(run, theme: str):
 
 def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
              dpi: int, theme: str, unit: str = 'Mg', case: str = '',
-             resources=()) -> list[str]:
+             resources=(), scenario: str = '') -> list[str]:
     """
     Draw every Monte Carlo figure. Returns the paths written.
 
@@ -2068,7 +2229,7 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
     """
     import matplotlib.pyplot as plt
 
-    out_dir = folder_for(out_dir, case) if case else out_dir
+    out_dir = folder_for(out_dir, case, scenario) if case else out_dir
 
     # DRAWN ONE AT A TIME, hence the lambdas. Building the list eagerly built
     # every figure before writing any of them, so all 27 of the boards case's
@@ -2076,12 +2237,11 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
     # histogram of 200,000 draws. They were closed after writing, which looked
     # like enough right up until a case had more than a handful of resources.
     figures = [
-        ('over_time', lambda: figure_over_time(run, deterministic, theme, unit)),
+        ('over_time',
+         lambda: figure_over_time(run, deterministic, theme, unit, resources)),
         ('recovery_rate',
          lambda: figure_recovery_rate(run, deterministic, theme, unit)),
-        ('account', lambda: figure_account(run, theme, unit, resources)),
-        ('trapped', lambda: figure_trapped(run, theme, unit, resources)),
-        ('losses', lambda: figure_losses(run, theme, unit, resources)),
+
         ('routes', lambda: figure_routes(run, theme, unit, resources)),
         ('fate', lambda: figure_fate(run, theme, unit, resources)),
         ('pdf_all',
@@ -2101,13 +2261,60 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
     # At the finest layer the case resolves, NOT always Layer 4 -- 04_01 stops at
     # material and leaves Layer 4 empty, which produced no per-resource figures
     # at all rather than an error.
-    layer = finest_layer(run.keys)
+    # THE ACCOUNT AND THE LOSSES, ONE FILE EACH. Both used to be a grid of
+    # every chosen resource in a single image, which at six resources is
+    # unreadable at any size (see `figure_account`).
+    for resource in chosen(run, resources):
+        figures.append((f'account_{resource}',
+                        lambda resource=resource: figure_account(
+                            run, theme, unit, resources, only=resource)))
+        figures.append((f'losses_{resource}',
+                        lambda resource=resource: figure_losses(
+                            run, theme, unit, resources, only=resource)))
+        # WHAT THE FLEET IS HOLDING, and what is gone -- the stock the account
+        # leaves to be imagined. Asked for on 2026-09-28: *"how much is in the
+        # fleet etc. how much is lost over time."*
+        figures.append((f'fleet_{resource}',
+                        lambda resource=resource: figure_trapped(
+                            run, theme, unit, resources, only=resource)))
+
+    layer = resource_key(run.keys)
     for resource in chosen(run, resources):
         figures.append((f'pdf_{resource}',
                         # bound now, not at call time: a bare `resource` would
                         # be the last one for every entry in the list.
                         lambda resource=resource: figure_pdf(
                             run, resource, deterministic, theme, unit, layer=layer)))
+
+    # THE SANKEY, FROM THE DRAWS. 02 draws the same picture from one point
+    # solve, and it is the only figure set in the project carrying no
+    # uncertainty at all -- while the flow picture is exactly where a reader
+    # looks to find out where the copper went. `plot_flows.figure_for_draws`
+    # was written on 2026-09-25 and left wired into nothing; it is called here
+    # at the user's instruction on 2026-09-28, "yes wire it into 03, I want
+    # full MC".
+    #
+    # ONE YEAR, THE LAST, as `spread_last_year` and `mode_vs_mean` already are.
+    # A ribbon's width is a single number and cannot carry a range, so the
+    # figure draws MEANS -- the only central value that balances, because means
+    # add -- and prints each node's 95% interval under it. The subtitle says
+    # both limits out loud.
+    #
+    # WRITTEN UNDER THE NAMES 02 USES, so a case folder holds one Sankey per
+    # resource rather than a Monte Carlo one sitting beside a deterministic one
+    # with nothing but the subtitle to tell them apart. The stages run 02 then
+    # 03, so the Monte Carlo version is what survives a full pass. Run 02 on
+    # its own and the point-solve pictures come back.
+    from src import plot_flows
+
+    display = os.path.basename(str(case).rstrip('/')) or str(case)
+    last_year = max(int(year) for year in run.keys['Year'].unique())
+    for resource in [None] + chosen(run, resources):
+        figures.append((resource or 'total',
+                        # bound now, not at call time -- see the pdf loop above.
+                        lambda resource=resource: plot_flows.figure_for_draws(
+                            display, run, run.tcs, resource, unit, theme,
+                            last_year)))
 
     written = []
     for stem, draw in figures:
@@ -2134,7 +2341,7 @@ def recovered_rows(run, element: str, year, layer: str = 'Layer 4') -> np.ndarra
     recovered = recovered_flows(run, run.case)
     return np.flatnonzero(
         keys['Stock/Flow ID'].isin(recovered).to_numpy()
-        & (keys[layer] == element).to_numpy()
+        & (keys[layer] == element).to_numpy() & own(keys)
         & (keys['Year'].astype(str) == str(year)).to_numpy())
 
 
@@ -2195,7 +2402,11 @@ def figure_pdf(run, element: str, deterministic: pd.DataFrame | None,
 
 
 def _deterministic_recovered(deterministic, run, element: str, year,
-                             layer: str = 'Layer 4') -> float | None:
+                             layer: str = 'resource') -> float | None:
+    # The deterministic frame is built separately from `run.keys`, so it does
+    # not carry the resource column yet. Same rule, same result.
+    if layer == 'resource':
+        resource_key(deterministic)
     recovered = recovered_flows(run, run.case)
     rows = deterministic[(deterministic['Stock/Flow ID'].isin(recovered))
                          & (deterministic[layer] == element)

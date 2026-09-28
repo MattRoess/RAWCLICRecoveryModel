@@ -29,9 +29,9 @@ The individual stages, in order:
 | | |
 |---|---|
 | `00_parameters.py` | Regenerate `params.xlsx` from the settings. `--check` prints them. |
-| `01_check_inputs.py` | Validate the tables and report what they total to. |
-| `02_run_model.py` | Solve, and draw the Sankeys and the structure diagram. |
-| `03_run_monte_carlo.py` | Solve over many draws; write the summary, the workbook and the MC figures. |
+| `stages/01_check_inputs.py` | Validate the tables and report what they total to. |
+| `stages/02_run_model.py` | Solve, and draw the Sankeys and the structure diagram. |
+| `stages/03_run_monte_carlo.py` | Solve over many draws; write the summary, the workbook and the MC figures. |
 
 `tools/make_skeleton.py` is **not** a stage. It writes the TC rows that need a
 number, from the `processes` table, and is run when the network changes — not on

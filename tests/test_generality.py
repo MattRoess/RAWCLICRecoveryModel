@@ -429,6 +429,7 @@ def test_a_case_with_real_materials_solves_and_closes() -> None:
         solution = RecoveryModelOptimized(
             data_folder=case, layer_names=NAMES, tables=tables,
             working_unit=params.run.working_unit, years='',
+            scenario=params.run.scenario,
         ).solve_models_and_write_to_output()
         solution['Value'] = pd.to_numeric(solution['Value'])
 
@@ -547,6 +548,7 @@ def test_a_different_recovery_item_solves_and_closes() -> None:
         solution = RecoveryModelOptimized(
             data_folder=case, layer_names=NAMES, tables=tables,
             working_unit=params.run.working_unit, years='',
+            scenario=params.run.scenario,
         ).solve_models_and_write_to_output()
         solution['Value'] = pd.to_numeric(solution['Value'])
 
@@ -597,6 +599,7 @@ def test_children_can_be_materials_instead_of_elements() -> None:
         solution = RecoveryModelOptimized(
             data_folder=case, layer_names=NAMES, tables=tables,
             working_unit=params.run.working_unit, years='',
+            scenario=params.run.scenario,
         ).solve_models_and_write_to_output()
         solution['Value'] = pd.to_numeric(solution['Value'])
 
@@ -684,6 +687,7 @@ def test_a_workbook_case_solves_the_same_as_a_csv_case() -> None:
             return RecoveryModelOptimized(
                 data_folder=case, layer_names=NAMES, tables=tables,
                 working_unit=params.run.working_unit, years='',
+                scenario=params.run.scenario,
             ).solve_models_and_write_to_output()
 
         from_csv = solve()
@@ -739,14 +743,20 @@ def test_a_dead_layer_column_is_not_written() -> None:
             solution = RecoveryModelOptimized(
                 data_folder=case, layer_names=NAMES, tables=tables,
                 working_unit=params.run.working_unit, years='',
+                scenario=params.run.scenario,
             ).solve_models_and_write_to_output()
 
             assert 'Layer 4' in solution.columns, (
                 f'{child_layer}: the returned frame lost Layer 4, which the '
                 f'Monte Carlo merges on')
 
-            written = pd.read_csv(f'{case}/output_data/solution_optimized_model.csv',
-                                  keep_default_na=False, na_values=[])
+            # The solution lands under the scenario the run names, since
+            # 2026-09-17: output_path appends it so three scenarios accumulate
+            # instead of overwriting one another.
+            written = pd.read_csv(
+                os.path.join(case, 'output_data', params.run.scenario,
+                             'solution_optimized_model.csv'),
+                keep_default_na=False, na_values=[])
             has = 'Layer 4' in written.columns
             assert has == expected, (
                 f"{child_layer}: solution_optimized_model.csv "
@@ -787,7 +797,8 @@ def test_the_monte_carlo_runs_on_a_different_item() -> None:
         tables = load(params, params.run.data_folder, quiet=True)
         coefficients(case, tables['composition'])
 
-        run = solve_draws(case, NAMES, draws=200, seed=0, tables=tables, years='')
+        run = solve_draws(case, NAMES, draws=200, seed=0, tables=tables, years='',
+                          scenario=params.run.scenario)
         assert run.report['uncertain'], 'the ranges did not reach the sampler'
         assert run.values.std(axis=1).max() > 0, 'the Monte Carlo produced no spread'
         assert run.report['groups'] > 0, 'no constrained groups were found'
@@ -1163,7 +1174,8 @@ def test_the_sankey_names_the_combination_it_shows() -> None:
         from src.upstream import load
         tables = load(params, case, quiet=True)
         coefficients(case, tables['composition'])
-        chosen, entries = plot_flows.chosen_entry(case, tables)
+        chosen, entries = plot_flows.chosen_entry(case, tables,
+                                                  params.run.scenario)
         assert entries >= 1, 'no combinations at all'
         assert chosen, 'the chosen combination has no label'
     finally:
@@ -1341,6 +1353,260 @@ def test_every_parameter_section_reaches_params_xlsx():
     assert not blank, (
         f'{len(blank)} setting(s) reach params.xlsx with no explanation, '
         f'starting with {blank[0]} -- the comment above it is not being read')
+
+
+def test_an_element_keyed_case_propagates_its_draws() -> None:
+    """
+    An element-keyed case reproduces its exported arrays per draw, not on
+    average.
+
+    Until 2026-09-17 `Draws.propagates` was True only for the `material`
+    shape, so an element-keyed case fell back to broadcasting the MEAN share
+    across every draw -- and `account` returned None for it, which is how the
+    battery sat in `combine.cases` contributing nothing to a figure that
+    named it.
+
+    What is checked is not that it runs. The chained shares -- component of
+    product, material of component, element of material -- are multiplied back
+    out and compared against the .npy the export wrote, read off disk by name.
+    A row paired with the wrong component would cancel algebraically and show
+    up here.
+    """
+    from src import upstream as upstream_module
+    from src.monte_carlo import upstream_values
+    from src.upstream import load
+
+    params, case, root = build_everything()
+    try:
+        tables = load(params, case, quiet=True)
+        coefficients(case, tables['composition'])
+        drawn = tables['draws']
+
+        assert drawn.child_layer == 'element', drawn.child_layer
+        assert not drawn.resolves_materials, \
+            'this fixture exports no materials; the placeholder shape is the point'
+        assert drawn.propagates, \
+            'an element-keyed case with no named materials has to propagate'
+
+        model = RecoveryModelOptimized(
+            data_folder=case, layer_names=NAMES, tables=tables,
+            working_unit=params.run.working_unit, years='',
+            scenario=params.run.scenario)
+        entry = model.input_data[-1]
+        year = entry['Year']
+        _, shares = upstream_values(drawn, entry, None, 0, DRAWS)
+        assert shares is not None, 'the case did not propagate after all'
+
+        composition = entry['composition_df'].reset_index(drop=True)
+        folder = os.path.join(upstream_module.source_dir(params, case),
+                              params.data.upstream_flow)
+        groups = sorted(composition[composition['Layer 3'] == '']['Layer 2'].unique())
+        product = composition['Layer 1'].iloc[0]
+        whole = drawn.inflow(product, year, groups, 0, DRAWS)
+        index = int(np.searchsorted(drawn.years, int(year)))
+
+        checked = 0
+        for position, row in composition.iterrows():
+            if not row['Layer 4']:
+                continue
+            path = os.path.join(folder, f"{row['Layer 4']}__{row['Layer 2']}.npy")
+            if not os.path.exists(path):
+                continue                      # `rest`, which was never exported
+            exported = np.asarray(np.load(path), dtype=np.float64)[:DRAWS, index]
+
+            chain = shares[position]
+            for above in (composition[(composition['Layer 2'] == row['Layer 2'])
+                                      & (composition['Layer 3'] == '')].index,
+                          composition[(composition['Layer 2'] == row['Layer 2'])
+                                      & (composition['Layer 3'] == row['Layer 3'])
+                                      & (composition['Layer 4'] == '')].index):
+                if len(above):
+                    chain = chain * shares[above[0]]
+
+            rebuilt = whole * chain
+            worst = np.abs(rebuilt - exported).max() / max(exported.max(), 1e-30)
+            assert worst < 1e-9, (
+                f"{row['Layer 4']} in {row['Layer 2']}: the per-draw share "
+                f"rebuilds {rebuilt[:3]} against the exported {exported[:3]} "
+                f"-- worst {worst:.2e}")
+            checked += 1
+
+        assert checked >= 4, f'only {checked} element rows had an array to check'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_a_component_named_after_its_material_is_not_counted_twice():
+    """
+    A parent and its only child answer the same resource name. Count it once.
+
+    `resource_of` gives every row the value of its own deepest filled layer, so
+    a component `copper` holding a material `copper` answers `copper` on BOTH
+    rows -- and those two rows carry the SAME mass, the child being the whole
+    of its parent. Summing the matches doubles it.
+
+    Not hypothetical: every traction motor case is built this way, and so is
+    the battery, because upstream names a component after the thing it is made
+    of. Until 2026-09-28 every per-resource Sankey in stage 02 drew all of them
+    at exactly 2x -- copper at F_collected read 141.0 M kg against a true 70.5 M
+    -- and nothing caught it, because the headline tables read only recovered
+    flows, where the resource appears at one depth.
+
+    Both paths are checked: `mass` for the deterministic figure and `draws_for`
+    for the Monte Carlo one, which is the same rule twice and so is the same
+    mistake twice.
+    """
+    import numpy as np
+
+    from src.plot_flows import draws_for, mass
+
+    frame = pd.DataFrame([
+        # the component, and the material that is all of it
+        dict(Year=2050, **{'Stock/Flow ID': 'F_in', 'Layer 1': 'P',
+                           'Layer 2': 'copper', 'Layer 3': '', 'Layer 4': ''},
+             Value=100.0),
+        dict(Year=2050, **{'Stock/Flow ID': 'F_in', 'Layer 1': 'P',
+                           'Layer 2': 'copper', 'Layer 3': 'copper', 'Layer 4': ''},
+             Value=100.0),
+        # a component whose material has a different name, at two depths
+        dict(Year=2050, **{'Stock/Flow ID': 'F_in', 'Layer 1': 'P',
+                           'Layer 2': 'magnet', 'Layer 3': '', 'Layer 4': ''},
+             Value=30.0),
+        dict(Year=2050, **{'Stock/Flow ID': 'F_in', 'Layer 1': 'P',
+                           'Layer 2': 'magnet', 'Layer 3': '', 'Layer 4': 'Nd'},
+             Value=12.0),
+    ])
+
+    assert mass(frame, 'copper') == 100.0, (
+        f'copper drawn at {mass(frame, "copper")}, not 100: the component and '
+        f'the material inside it were added together')
+    assert mass(frame, 'Nd') == 12.0, 'an element at its own depth changed'
+    assert mass(frame, None) == 130.0, (
+        f'the total is {mass(frame, None)}, not 130: the aggregate must take '
+        f'the shallowest depth only')
+
+    class Run:
+        pass
+
+    run = Run()
+    run.keys = frame.drop(columns=['Value']).copy()
+    run.values = np.tile(frame['Value'].to_numpy()[:, None], (1, 8))
+
+    for resource, expected in [('copper', 100.0), ('Nd', 12.0), (None, 130.0)]:
+        drawn = draws_for(run, 'F_in', resource, 2050)
+        assert drawn is not None and float(drawn.mean()) == expected, (
+            f'draws_for({resource!r}) gives '
+            f'{None if drawn is None else float(drawn.mean())}, not {expected}')
+
+
+def test_other_flow_finds_a_resource_that_is_the_component_itself():
+    """
+    A resource exported AS a component is addressable in every upstream flow.
+
+    `other_flow` builds `<resource>__<domain>.npy`, which is right when the
+    resource is an element inside a component -- `Cu__PCB.npy`. 04_03 exports
+    copper, aluminium, lamination and steel as COMPONENTS, because that is
+    where the recycling routes act (2026-09-24), so copper's array is
+    `__component____copper.npy` and `copper__copper.npy` does not exist.
+
+    Asked the old way, every traction motor resource came back None from every
+    flow, and `account()` with it: no account, no losses, no trapped, no fate,
+    drawn for the battery and the electronics but not here. Found 2026-09-28.
+
+    The `__domain__` spelling is checked in the same test, because the fallback
+    must not change what already worked.
+    """
+    import numpy as np
+
+    from src.upstream import Draws
+
+    folder = tempfile.mkdtemp(prefix='other-flow-')
+    try:
+        for flow in ('collected', 'outflow'):
+            here = os.path.join(folder, flow)
+            os.makedirs(here)
+            # the component itself, and an element inside another component
+            np.save(os.path.join(here, '__component____copper.npy'),
+                    np.full((4, 2), 7.0))
+            np.save(os.path.join(here, 'Nd__magnet.npy'), np.full((4, 2), 0.5))
+        np.save(os.path.join(folder, 'collected', 'years.npy'),
+                np.array([2030, 2050]))
+
+        draws = Draws({}, np.array([2030, 2050]), 'element', 'F_collected', 4,
+                      source=folder, group_marker='__component__')
+
+        for flow in ('collected', 'outflow'):
+            whole = draws.other_flow(flow, 'copper', ['copper'], 2050, 0, 4)
+            assert whole is not None and float(whole.mean()) == 7.0, (
+                f'{flow}: copper is the component itself and was not found -- '
+                f'got {None if whole is None else float(whole.mean())}')
+            inside = draws.other_flow(flow, 'Nd', ['magnet'], 2050, 0, 4)
+            assert inside is not None and float(inside.mean()) == 0.5, (
+                f'{flow}: an element inside a component stopped resolving')
+
+        # The fallback is only for a resource that IS its domain. A name that
+        # simply is not exported must still come back as absent.
+        assert draws.other_flow('collected', 'gold', ['magnet'], 2050, 0, 4) is None, (
+            'a resource with no array was answered with the component mass')
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+def test_the_account_does_not_count_a_component_and_its_material_twice():
+    """
+    `own()` keeps one row per resource per flow per year: the shallowest.
+
+    The Sankey's version of this is checked in
+    `test_a_component_named_after_its_material_is_not_counted_twice`. This is
+    the same rule in `plot_monte_carlo`, where it decides the ACCOUNT -- and
+    there it did something worse than double a number. `collected` came from
+    start flows, which hold the component row and the material row; `recovered`
+    came from recovered flows, which hold one. So `lost = collected -
+    recovered` mixed a doubled quantity with an undoubled one, and copper
+    appeared to lose 91.7 kt of the 70.5 kt it had. The account still closed,
+    because closure is by construction.
+
+    Two rows at the SAME depth must still be added: copper in Wiring and copper
+    in Motors is one resource arriving twice, not one counted twice.
+    """
+    import numpy as np
+
+    from src.plot_monte_carlo import own, resource_key
+
+    keys = pd.DataFrame([
+        # a component named after its material: parent and child, same mass
+        {'Stock/Flow ID': 'F_in', 'Year': 2050, 'Layer 1': 'P',
+         'Layer 2': 'copper', 'Layer 3': '', 'Layer 4': ''},
+        {'Stock/Flow ID': 'F_in', 'Year': 2050, 'Layer 1': 'P',
+         'Layer 2': 'copper', 'Layer 3': 'copper', 'Layer 4': ''},
+        # the same resource inside two different components: both are real
+        {'Stock/Flow ID': 'F_in', 'Year': 2050, 'Layer 1': 'P',
+         'Layer 2': 'Wiring', 'Layer 3': 'cu', 'Layer 4': ''},
+        {'Stock/Flow ID': 'F_in', 'Year': 2050, 'Layer 1': 'P',
+         'Layer 2': 'Motors', 'Layer 3': 'cu', 'Layer 4': ''},
+        # another year, which must not be pooled with the first
+        {'Stock/Flow ID': 'F_in', 'Year': 2070, 'Layer 1': 'P',
+         'Layer 2': 'copper', 'Layer 3': '', 'Layer 4': ''},
+        {'Stock/Flow ID': 'F_in', 'Year': 2070, 'Layer 1': 'P',
+         'Layer 2': 'copper', 'Layer 3': 'copper', 'Layer 4': ''},
+    ])
+    layer = resource_key(keys)
+    mask = own(keys)
+    values = np.array([100.0, 100.0, 7.0, 3.0, 55.0, 55.0])
+
+    def total(resource, year):
+        rows = ((keys[layer] == resource).to_numpy() & mask
+                & (keys['Year'] == year).to_numpy())
+        return float(values[rows].sum())
+
+    assert total('copper', 2050) == 100.0, (
+        f"copper totals {total('copper', 2050)}, not 100: the component and "
+        f"the material inside it were both counted")
+    assert total('copper', 2070) == 55.0, 'the years were pooled'
+    assert total('cu', 2050) == 10.0, (
+        f"cu totals {total('cu', 2050)}, not 10: one resource arriving from "
+        f"two components must still be added")
 
 
 def main() -> int:

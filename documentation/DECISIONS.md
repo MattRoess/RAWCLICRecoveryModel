@@ -226,7 +226,7 @@ lives in a chat message is a decision that will be broken.
     same improvement is 84.1 to 94.8%. Decided 2026-09-04 -- *"the rest has to
     be excluded as it is waste"*.
 
-41. **Cases are added for the reader, never merged.** `04_combine_cases.py`
+41. **Cases are added for the reader, never merged.** `05_combine_cases.py`
     adds one metal across several case folders -- copper from the wiring and
     from the boards is the copper BEV electronics returns. Each case stays its
     own study (20): its own folder, network, coefficients and run. The addition
@@ -271,3 +271,116 @@ lives in a chat message is a decision that will be broken.
 
 26. **Document in the same commit as the change**, and add any new decision
     here.
+
+27. **Every figure is Monte Carlo and shows its uncertainty.** Stated twice on
+    2026-09-25 and settled on 2026-09-28 -- *"yes wire it into 03, I want full
+    MC"*. The Sankey was the last figure drawn from a single point solve, and
+    the flow picture is exactly where a reader goes to find out where the
+    copper went.
+
+    A Sankey cannot carry a range in a ribbon, so it draws the MEAN -- the only
+    central value that balances, because means add -- and prints each node's
+    95% interval under it. It is also one year out of eleven. Both limits are
+    said on the figure rather than left for the reader to discover.
+
+    03 writes the Sankeys under the same names 02 uses, so a case folder holds
+    ONE per resource. Run 02 alone and the point-solve versions come back; the
+    subtitle is what tells them apart.
+
+28. **A study is a file you press Run on, not a setting you edit.**
+    `02_electronics.py`, `03_tractionmotors.py`, `04_batteries.py`. **The
+    number is the UPSTREAM stage that feeds it** -- 04_02, 04_03, 04_04 in
+    RAWCLICStockAndFlow -- and not a step in a sequence here. The three are
+    alternatives; one gets pressed, never all three in order.
+
+    The pipeline stages moved to `stages/` the same day. The project root
+    shows what to run and nothing else.
+    Decided 2026-09-28 -- *"we are running electronics, battery and
+    tractionmotors using different parameters setting. This proves not
+    efficient."*
+
+    Each names its cases, its scenarios and its figure resources in `STUDIES`
+    in `src/params_schema.py`, in one place, so a run cannot be started with
+    the last study's settings still in force. The numbers follow the UPSTREAM
+    stage that feeds each one.
+
+    This does not reopen decision 23. A switch that exists only on a command
+    line is invisible; a file in the project root is not.
+
+29. **The traction motor study is about the MAGNET, ITS ELEMENTS, AND COPPER.**
+    Said more than once before it was written down here, which is why it is
+    here: *"I told you that I am interested in magnets, its elements and
+    copper... You should know this already!"* (2026-09-28).
+
+    Nd, Pr, Dy and Tb, the magnet they sit in, and copper. Those get the
+    per-resource figures -- the densities, the account, the losses, what is
+    trapped, the Sankey.
+
+    **Aluminium, steel and lamination are not dropped, they are not the
+    question.** They come back either way; the review's own numbers say the
+    shredder recovers MORE steel than careful dismantling, 0.72 against 0.60.
+    What the route decides is the magnet and the copper. The bulk metals stay
+    on the whole-case figures -- `spread`, `mode_vs_mean`, the total Sankey --
+    which read every resource regardless of the setting.
+
+    `over_time` did NOT honour this until 2026-09-28: it drew every resource in
+    the data, nine lines on the traction study, and I said otherwise before
+    checking. *"I am not interested in al, steel but REE and copper."* It
+    honours it now.
+
+    `figures.resources` is where this lives, per study, in `STUDIES`.
+
+30. **Six figures in the folder, the rest in `detail/`.** A traction motor run
+    wrote 512 figures -- 16 folders of 32 -- and finding the answer meant
+    knowing which filename to look for. *"I want to be able to see what is
+    essential and not diluted by hundreds of other figures"* (2026-09-28).
+
+    | | |
+    |---|---|
+    | `over_time` | what comes back per year, with its 95% band |
+    | `recovery_rate` | the share of what was collected |
+    | `account_<resource>` | in, out, recovered, lost, never collected |
+    | `losses_<resource>` | why it does not come back, and how much of each reason |
+    | `total` | the Sankey: where the mass went |
+    | `pdf_all` | every resource's distribution on one page |
+
+    **ONE RESOURCE PER FIGURE for the account and the losses.** Six in a grid
+    came out 9,833 pixels wide, and the losses version 19,166 -- unreadable at
+    any size a screen shows. *"Have them in individual figures, so one can see
+    them"* (2026-09-28).
+
+    **Nothing stops being drawn.** `src/figure_style.ESSENTIAL` names these;
+    every other stem lands in `detail/` beside them, so a new figure is detail
+    until somebody decides otherwise.
+
+31. **A study runs the scenarios that answer its question, not all of them.**
+    The traction study is `mix` only. Nd and Pr are byte-identical across SH,
+    UH and EH -- the workbook's didymium range covers all three -- so the
+    pinned grades move Dy and Tb and nothing else, while costing four times the
+    folders. `mix` draws the grade per draw, which is what a fleet is. Pin one
+    for the question it answers: *what if only EH is feasible.*
+
+32. **02 and 03 draw the same resources.** 02 drew a Sankey for every resource
+    in the data while 03 drew only those in `figures.resources`, so 02's
+    point-solve pictures stayed on disk beside 03's Monte Carlo ones,
+    indistinguishable but for their subtitles. Both read the setting now.
+
+33. **A title on a figure about years states the SHAPE, not one year.** The
+    account panels read *"Dy in 2070: 2 kt left the fleet, 1 reached a
+    recycler, 0 came back"* -- a snapshot on a figure whose whole subject is
+    eleven years of trajectory. *"I am not interested in 2070, but about the
+    general shape over the years"* (2026-09-28).
+
+    Two ends is the smallest honest summary of a shape:
+    `Dy 2020-2070: 2.83 t -> 1.58 kt leaving the fleet, 2 -> 24% of it
+    recovered`.
+
+34. **Every printed number carries its own unit** -- `src.units.readable`.
+    The same titles rounded to whole kilotonnes on a shared scale, so
+    dysprosium read `0 came back` while the curve under it plainly rose, and
+    the legend said `recovered 0 kt in 2070` on a line that had grown all
+    century. A number a reader can see is wrong is worse than no number.
+
+35. **A panel title says what the panel is; the figure header says what it
+    found.** The losses summary written as a panel title was wider than its
+    panel and ran through the title of the one beside it.

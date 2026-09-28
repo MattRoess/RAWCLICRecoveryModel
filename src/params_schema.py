@@ -28,6 +28,7 @@ addressable as `src.params_schema.Params` from every stage.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field, fields
 
 FORMATS = ('svg', 'png', 'pdf')
@@ -60,35 +61,81 @@ class RunParams:
     #                                                Au, Ag, Pd, Cu, Nd
     #    'data_folder/carcomposition_mockup'   04_01  whole cars, five
     #                                                drivetrains, as MATERIALS
+    #    'data_folder/battery'                 04_04  the pack, as ELEMENTS
+    #                                                within COMPONENTS
+    #    'data_folder/tractionmotor'           04_03  disassembly into the
+    #                                                hydrometallurgical long
+    #                                                loop
+    #    'data_folder/tractionmotor_shortloop' 04_03  disassembly into the
+    #                                                short loop, HD/HPMS
+    #    'data_folder/tractionmotor_shredder'  04_03  no disassembly: the
+    #                                                motor goes to the shredder
+    #    'data_folder/tractionmotor_split'     04_03  a share between the long
+    #                                                and the short loop
     #
-    #  ONE AT A TIME. They are different studies -- different networks,
-    #  different coefficients, different layers -- and a result is reported
-    #  for one of them, never for both together.
+    #  SEVERAL AT ONCE, SEPARATED BY SEMICOLONS. Naming more than one runs
+    #  every one of them, in the order written, exactly as a case set up with
+    #  scenarios runs all of its scenarios:
+    #
+    #      data_folder = 'data_folder/tractionmotor; data_folder/...shredder'
+    #
+    #  STILL ONE STUDY PER CASE. They are different networks with different
+    #  coefficients and different layers, so each one is solved, written and
+    #  reported on its own. Several in one run saves the four edits and four
+    #  presses it used to take -- it does not combine them into one answer.
+    #
+    #  THIS IS THE ONLY PLACE THAT SAYS WHICH. Every stage falls back to it,
+    #  and the folder argument the numbered scripts take is an override for a
+    #  one-off run, not a second place to keep the answer. Leaving it pointing
+    #  at a case that is not the one being worked on is how a run of the boards
+    #  gets mistaken for a run of the battery -- pressing Run passes no
+    #  argument, so the setting is what decides.
     #
     #  Nothing else changes when you switch: each case carries its own data
     #  and its own coefficients in its own folder.
     # ******************************************************************
-    # A folder holding an `input_data/`, written from the project root.
-    # `02_run_model.py --list` prints the folders that qualify.
+    # One folder holding an `input_data/`, written from the project root, or
+    # several separated by semicolons.
     # SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
-    data_folder: str = 'data_folder/bev_electronics_boards'
+    data_folder: str = ('data_folder/tractionmotor; '
+                        'data_folder/tractionmotor_shortloop; '
+                        'data_folder/tractionmotor_shredder; '
+                        'data_folder/tractionmotor_split')
 
-    # WHICH SCENARIO TO RUN.  Blank when the data has no scenario dimension,
-    # which is the case for every data folder in this repository today.
+    # WHICH SCENARIO TO RUN.  Blank runs every scenario the case declares.
     #
-    # ONE RUN IS ONE SCENARIO, across all its years. Scenarios are independent
-    # here -- this model is pure flow-through, with no stock carried between
-    # runs -- so nothing is gained by solving several at once, and under the
-    # Monte Carlo it costs: the memory budget is already the binding constraint
-    # (DESIGN_monte_carlo.md section 2). Separate runs also means five
-    # scenarios on five cores, and a failure that loses one rather than all.
+    # LEFT BLANK ON PURPOSE. A scenario is a property of the CASE, not of the
+    # settings: the reference cases carry no Scenario column at all, so naming
+    # one here makes `chosen_scenario` refuse them -- 26 tests, tried. Blank
+    # lets each case answer for itself, which is why `run.data_folder` alone
+    # does not decide a run.
+    #
+    # BLANK MEANS ALL OF THEM, one pass each, in the order the case lists them:
+    # the battery as S1, S2 and S3, the traction motor cases as EH, SH, UH and
+    # mix. Naming one here narrows the run to that one.
+    # See `src/upstream.scenarios_to_run`.
+    #
+    # 2026-09-25, CORRECTED. This used to say the battery was run with
+    # `--scenario S1` on the command line, and that a blank setting stopped the
+    # run and listed what it found rather than guessing. Neither is true any
+    # more: the numbered stages take no arguments at all, and blank has meant
+    # "all of them" since `scenarios_to_run` arrived.
+    #
+    # ONE PASS IS STILL ONE SCENARIO, across all its years. Scenarios are
+    # independent here -- this model is pure flow-through, with no stock carried
+    # between runs -- and solving several in one pass would cost: the memory
+    # budget is already the binding constraint (DESIGN_monte_carlo.md
+    # section 2). All of them from one press is a LOOP over passes, not one
+    # larger solve.
+    #
+    # THE CASE LOOP PUTS THIS BACK between cases. The scenario loop writes the
+    # current scenario into this field, so a run naming several cases restores
+    # whatever is set here before each one. Without that, every case after the
+    # first inherited the last scenario that ran and silently did only that one.
     #
     # Comparing scenarios is ANALYSIS, done afterwards on the output files. The
-    # model produces one scenario's numbers and stops there.
-    #
-    # If the data holds scenarios and this is left blank, the run stops and
-    # lists what it found rather than guessing.
-    # SAFE TO CHANGE: yes -- it must name a scenario present in inputs.csv.
+    # model produces each scenario's numbers and stops there.
+    # SAFE TO CHANGE: yes -- it must name a scenario the case's own data has.
     scenario: str = ''
 
     # WHICH YEARS TO RUN.  Blank means every year the data holds.
@@ -113,7 +160,15 @@ class RunParams:
     # problem in DESIGN_monte_carlo.md section 2, and the year axis is the most
     # direct lever on it.
     # SAFE TO CHANGE: yes -- it must match at least one year present in the data.
-    years: str = '2020-2070, 1'
+    #
+    # 2026-09-17: STEP 5, NOT 1, AND THE BATTERY IS WHY. Its upstream export
+    # (`battery_recovery_draws`) holds 11 years, 2020-2070 step 5, while the
+    # electronics export holds all 51. `05_combine_cases.py` refuses cases
+    # whose spans differ -- they are added year by year -- so every case that
+    # is combined has to run on the grid the battery has. Step 1 is still
+    # correct for a case run on its own; it cannot be combined with the
+    # battery until upstream exports the battery at every year.
+    years: str = '2020-2070, 5'
 
     # WHICH OF THE TWO ENGINES SOLVES THE SYSTEM: 'optimized' or 'LA'.
     # SAFE TO CHANGE: yes, but read this first. The two engines disagree beyond
@@ -174,8 +229,8 @@ class DataParams:
 
     Running the other one is then naming it, with nothing here touched:
 
-        ./.venv/bin/python 02_run_model.py data_folder/carcomposition_mockup
-        ./.venv/bin/python 03_run_monte_carlo.py data_folder/bev_electronics_wiring
+        ./.venv/bin/python stages/02_run_model.py data_folder/carcomposition_mockup
+        ./.venv/bin/python stages/03_run_monte_carlo.py data_folder/bev_electronics_wiring
 
     The values here are what a case gets if it says nothing. Keeping them is
     what lets an older case with no source.csv keep working; relying on them
@@ -426,7 +481,24 @@ class FigureParams:
     # resolves twenty-odd elements and a reader usually wants two.
     # SAFE TO CHANGE: yes. A name that no case has is ignored rather than
     # silently producing an empty figure.
-    resources: tuple[str, ...] = ('copper',)
+    #
+    # 2026-09-17: nickel, cobalt and lithium joined copper when the battery
+    # case arrived. Both spellings of copper are listed because the cases do
+    # not agree on it -- wiring resolves MATERIALS and calls it `copper`,
+    # boards and the battery resolve ELEMENTS and call it `Cu`. The other
+    # three are elements everywhere, so one spelling each.
+    #
+    # 2026-09-25: the rare earths and the other motor materials joined it. Until
+    # the mixed-depth fix this list matched nothing in the traction motor case
+    # -- it resolves copper at the MATERIAL layer and the figures only looked at
+    # the element layer -- so `chosen` fell back to "everything it can see",
+    # which was the four rare earths and nothing else. With the fix 'copper'
+    # matches, and a list of five would have narrowed the figures to copper
+    # alone and dropped the rare earths. Both belong in this study, so both are
+    # named.
+    resources: tuple[str, ...] = ('copper', 'Cu', 'Ni', 'Co', 'Li',
+                                  'Nd', 'Pr', 'Dy', 'Tb',
+                                  'aluminium', 'steel', 'lamination')
 
     def enabled(self) -> list[str]:
         """The formats switched on above, in a fixed order. Not a setting."""
@@ -436,7 +508,7 @@ class FigureParams:
 @dataclass
 class CombineParams:
     """
-    Several cases added together, for 04_combine_cases.py.
+    Several cases added together, for 05_combine_cases.py.
 
     ONE METAL ACROSS SEVERAL STREAMS. Each case stays its own case -- separate
     folder, separate coefficients, separate run, and nothing here merges them
@@ -454,25 +526,54 @@ class CombineParams:
     # being listed here once they have a case folder of their own.
     # SAFE TO CHANGE: yes. A folder that does not exist is named and refused.
     cases: tuple[str, ...] = ('data_folder/bev_electronics_wiring',
-                              'data_folder/bev_electronics_boards')
+                              'data_folder/bev_electronics_boards',
+                              'data_folder/battery')
 
-    # THE METAL, AS EACH CASE NAMES IT. The wiring case resolves materials and
-    # calls it `copper`; the boards case resolves elements and calls it `Cu`.
-    # They are the same metal, and this is the only place that says so -- every
-    # name listed is looked for in every case, and whichever one that case has
-    # is the one used.
-    # SAFE TO CHANGE: yes. A case with none of these names is reported as
-    # contributing nothing rather than silently counting zero.
-    resource: tuple[str, ...] = ('copper', 'Cu')
-
-    # What the metal is called in the title. The names above are how the data
-    # spells it; this is how a reader says it.
-    # SAFE TO CHANGE: yes.
-    label: str = 'copper'
+    # ******************************************************************
+    #  WHICH METALS ARE DRAWN.  Every one of them, every time 04 is run:
+    #  four metals x three scenarios is twelve sets of figures from one
+    #  press of Run. Add a metal by adding a line.
+    #
+    #      'how a reader says it': ('every spelling the data uses',)
+    #
+    #  THE SPELLINGS ARE A LIST BECAUSE THE CASES DISAGREE. Wiring resolves
+    #  MATERIALS and calls it `copper`; boards and the battery resolve
+    #  ELEMENTS and call it `Cu`. They are the same metal and this is the
+    #  only place that says so -- every spelling is looked for in every
+    #  case, and whichever one that case has is the one used. Nickel,
+    #  cobalt and lithium are elements everywhere, so one spelling each.
+    #
+    #  The label is what the figures are titled and named with, so
+    #  `nickel` gives nickel_combined.png and the rest of its set.
+    #
+    #  SAFE TO CHANGE: yes. A case with none of a metal's spellings is
+    #  reported as contributing nothing rather than silently counting zero.
+    # ******************************************************************
+    #
+    #  THE RARE EARTHS ARE NOT HERE, AND THAT IS DELIBERATE from 2026-09-25.
+    #  This figure ADDS cases -- wiring, boards and the battery are different
+    #  parts of one car -- and it runs over the BATTERY's scenarios, S1/S2/S3.
+    #  Neither fits the rare earths: they are not affected by a battery
+    #  chemistry scenario, and the traction motor cases that carry Pr and Tb
+    #  are four COMPETING ROUTES for the same motors, so adding them would
+    #  count one fleet four times. The wiring case already holds a `Motors`
+    #  group as well, which disagrees with the traction motor export by a
+    #  factor of three on total motor mass.
+    #
+    #  They are reported separately instead, by `tools/compare_routes.py`.
+    resources: dict[str, tuple[str, ...]] = field(default_factory=lambda: {
+        'copper':  ('copper', 'Cu'),
+        'nickel':  ('Ni',),
+        'cobalt':  ('Co',),
+        'lithium': ('Li',),
+    })
 
     # What the combined streams are called together, for the title.
+    # Updated 2026-09-17 when the battery joined `cases`: the figures were
+    # still titled 'BEV electronics' while drawing the battery's components
+    # alongside them.
     # SAFE TO CHANGE: yes.
-    whole: str = 'BEV electronics'
+    whole: str = 'BEV electronics and battery'
 
     # WHERE THE COMBINED FIGURE GOES. Not any one case's folder: it belongs to
     # none of them.
@@ -522,7 +623,12 @@ class Params:
             issues.append(f'dpi is {self.figures.dpi!r}, but must be a whole number '
                           f'above zero, such as 200')
 
-        if not self.run.data_folder:
+        # SEVERAL FOLDERS SEPARATED BY SEMICOLONS IS ONE VALID VALUE. Split
+        # it the same way `src/upstream.cases_to_run` does, and say which of
+        # them is wrong rather than quoting the whole line back.
+        folders = [part.strip() for part in self.run.data_folder.split(';')
+                   if part.strip()]
+        if not folders:
             issues.append('data_folder is empty -- it needs the name of a case folder')
 
         from src.units import AMBIGUOUS_UNITS, MASS_UNITS
@@ -555,15 +661,119 @@ class Params:
         return issues
 
 
+# ----------------------------------------------------------------------
+#  Studies: three recycling questions, each run by pressing Run on its own file
+# ----------------------------------------------------------------------
+#
+# ⚠️ THE SETTINGS ABOVE ARE THE DEFAULT, NOT THE ONLY ANSWER. Three studies run
+# through this model -- electronics, traction motors, batteries -- and each
+# wants a different `data_folder` and a different set of resources on its
+# figures. Switching between them meant editing this file, every time, which is
+# four edits to answer one question and the wrong edit to make in a hurry.
+#
+# A study is now named, once, here, and chosen by pressing Run on its wrapper:
+#
+#     02_electronics.py      -> STUDIES['electronics']
+#     03_tractionmotors.py   -> STUDIES['tractionmotors']
+#     04_batteries.py        -> STUDIES['batteries']
+#
+# The wrapper sets `RECOVERY_STUDY` and runs 01, 02 and 03. `current()` reads
+# it, so EVERY stage honours it however it imported `current` -- which matters,
+# because they import the name directly and patching this module would not
+# reach them.
+#
+# This does not reintroduce a command-line switch (02_run_model.main says why
+# there is none). A switch nobody sees is the problem; a file you press Run on
+# is as visible as the setting it replaces, and it says in one place what the
+# whole study is.
+#
+# The numbering follows the UPSTREAM stage that feeds each study: 04_02 exports
+# the electronics, 04_03 the traction motors, 04_04 the batteries.
+STUDY_VARIABLE = 'RECOVERY_STUDY'
+
+STUDIES: dict[str, dict] = {
+    'electronics': {
+        'run.data_folder': ('data_folder/bev_electronics_wiring; '
+                            'data_folder/bev_electronics_boards'),
+        'run.scenario': '',
+        'figures.resources': ('copper', 'alalloy', 'fealloy',
+                              'Ag', 'Au', 'Pd', 'Cu', 'Ni'),
+    },
+    'tractionmotors': {
+        # The four routes. `tractionmotor_mixed` is deliberately not here yet --
+        # it is built but not verified, and adding it is one name.
+        'run.data_folder': ('data_folder/tractionmotor; '
+                            'data_folder/tractionmotor_shortloop; '
+                            'data_folder/tractionmotor_shredder; '
+                            'data_folder/tractionmotor_split'),
+        # ⚠️ `mix` ONLY, AND ON PURPOSE. Running all four grades is four times
+        # the folders and four times the figures to answer one narrow
+        # question. Nd and Pr are BYTE-IDENTICAL across SH, UH and EH -- the
+        # workbook's didymium range applies to all three -- so only Dy and Tb
+        # differ, and `mix` already draws the grade per draw, which is what a
+        # fleet is. Set this to 'EH' for the one question the pinned grades
+        # answer: what if only EH is feasible, because of China.
+        'run.scenario': 'mix',
+        # ⚠️ THE MAGNET, ITS ELEMENTS, AND COPPER. Those are what this study is
+        # about, said more than once and finally written down as DECISIONS 29.
+        # Naming all nine resources here weighted aluminium, steel and
+        # lamination the same as neodymium, which is not the question: the
+        # bulk metals come back either way, and what the route decides is the
+        # magnet and the copper.
+        #
+        # The bulk metals are NOT gone. `spread`, `spread_last_year`,
+        # `mode_vs_mean` and the whole-case Sankey read every resource whatever
+        # this says, so they still carry all nine -- which is the handful of
+        # figures about the rest that was asked for.
+        'figures.resources': ('magnet', 'Nd', 'Pr', 'Dy', 'Tb', 'copper'),
+    },
+    'batteries': {
+        'run.data_folder': 'data_folder/battery',
+        'run.scenario': '',          # blank: S1, S2 and S3
+        'figures.resources': ('Cu', 'Ni', 'Co', 'Li'),
+    },
+}
+
+
+class StudyError(ValueError):
+    """Raised when a study is named that this file does not define."""
+
+
+def apply_study(params: Params, name: str) -> Params:
+    """
+    Put one study's settings onto `params`. Named so it can be tested.
+
+    Every key must already exist. A study that sets a name nothing reads is a
+    study that silently does not take effect, which is the failure this whole
+    mechanism exists to remove.
+    """
+    if name not in STUDIES:
+        raise StudyError(
+            f'{name!r} is not a study. This file defines '
+            f'{", ".join(sorted(STUDIES))}.')
+    for key, value in STUDIES[name].items():
+        section_name, _, field_name = key.partition('.')
+        section = getattr(params, section_name, None)
+        if section is None or not hasattr(section, field_name):
+            raise StudyError(
+                f"study {name!r} sets {key!r}, which is not a setting. "
+                f"Nothing would read it.")
+        setattr(section, field_name, value)
+    return params
+
+
 def current() -> Params:
     """
-    The settings above, checked.
+    The settings above, checked -- with a study applied if one was named.
 
     Every stage calls this rather than building Params itself, so a mistaken
     edit is reported once and clearly at the start of a run, naming the setting
     and what it should have been.
     """
     params = Params()
+    chosen = os.environ.get(STUDY_VARIABLE, '').strip()
+    if chosen:
+        params = apply_study(params, chosen)
     issues = params.validate()
     if issues:
         raise ParameterError(

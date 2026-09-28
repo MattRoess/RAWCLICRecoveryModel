@@ -3,7 +3,7 @@ src/model_run.py
 ================
 
 Solving a case and drawing its figures. The stage that calls this is
-`02_run_model.py`; the logic lives here because a file whose name starts with
+`stages/02_run_model.py`; the logic lives here because a file whose name starts with
 a digit cannot be imported by another file.
 
 What is solved, with which engine, and which figures are drawn are all settings
@@ -18,6 +18,8 @@ import pandas as pd
 from src import plot_flows, plot_structure
 from src.params_schema import Params
 from src.upstream import load as load_upstream
+import os
+
 from src.recovery_model_LA import RecoveryModelLA
 from src.recovery_model_optimized import RecoveryModelOptimized
 
@@ -43,8 +45,15 @@ def solve_and_draw(folder: str, params: Params, show_table: bool = True) -> pd.D
     # second version of the truth, and it goes stale the moment upstream re-runs.
     tables = load_upstream(params, folder)
 
+    # THE SCENARIO IS PASSED, NOT LOOKED UP. The engine's fallback builds a
+    # Params() of its own, which cannot see one set on the params this was
+    # handed -- and a stage that walks the scenarios sets it there. Left to the
+    # fallback, every scenario after the first was refused for naming a
+    # scenario its own data did not carry, which is the same second source of
+    # truth that 03 and plot_flows were fixed for.
     model = ENGINES[params.run.engine](data_folder=folder, layer_names=LAYER_NAMES,
-                                       tables=tables)
+                                       tables=tables,
+                                       scenario=params.run.scenario)
     solution = model.solve_models_and_write_to_output()
 
     print(f'\nCase   : {folder}')
@@ -52,7 +61,11 @@ def solve_and_draw(folder: str, params: Params, show_table: bool = True) -> pd.D
     if show_table:
         print()
         print(solution.to_string(index=False))
-    print(f'\n{len(solution)} rows written to {folder}/output_data/')
+    # WHERE IT ACTUALLY WENT. `output_path` appends the scenario, so this said
+    # output_data/ while the file landed in output_data/S1/ -- a line that
+    # sends a reader to the wrong folder is worse than no line.
+    print(f'\n{len(solution)} rows written to '
+          f'{os.path.dirname(model.output_path("solution.csv"))}/')
 
     print()
     plot_flows.draw(folder, params, tables)

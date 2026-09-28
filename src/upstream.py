@@ -86,12 +86,102 @@ PARTS_TOLERANCE = 1e-3
 
 
 def source_dir(params, folder: str = '') -> str:
-    """Where the draws for this case's scenario live."""
+    """
+    Where the draws for this case's scenario live.
+
+    A case may rename the run's scenario to the folder its own upstream stage
+    wrote -- `scenario_alias` in its source.csv, see src/source.py. Without one
+    the run's name is the folder's name, which is how every case worked before
+    2026-09-17 and how they all work again once upstream agrees on the names.
+    """
     from src import source as source_module
-    upstream_dir = (source_module.read(folder, params)['upstream_dir'] if folder
+    described = source_module.read(folder, params) if folder else {}
+    upstream_dir = (described['upstream_dir'] if folder
                     else params.data.inflow_draws_dir)
+
+    scenario = params.run.scenario or 'BAU'
+    alias = described.get('scenario_alias') or {}
+    if alias:
+        scenario = alias.get(params.run.scenario, alias.get('*', scenario))
+
     return os.path.normpath(os.path.join(
-        params.data.upstream_root, upstream_dir, params.run.scenario or 'BAU'))
+        params.data.upstream_root, upstream_dir, scenario))
+
+
+def scenarios_available(params, folder: str) -> list[str]:
+    """
+    Every scenario this case's upstream export holds, in name order.
+
+    Empty when the case has no scenario dimension to speak of: not an upstream
+    case, no export directory, or a `scenario_alias` sending every name to one
+    folder -- which is how the electronics declare that their draws are one set
+    however they are asked for.
+    """
+    if not is_upstream_case(params, folder):
+        return []
+    from src import source as source_module
+
+    described = source_module.read(folder, params)
+    if described.get('scenario_alias'):
+        return []
+
+    root = os.path.normpath(os.path.join(params.data.upstream_root,
+                                         described['upstream_dir']))
+    if not os.path.isdir(root):
+        return []
+    return sorted(name for name in os.listdir(root)
+                  if not name.startswith('.')
+                  and os.path.isdir(os.path.join(root, name)))
+
+
+def cases_to_run(params) -> list[str]:
+    """
+    Which cases a stage covers. Every numbered stage asks this.
+
+    A RUN THAT NAMES SEVERAL CASES DOES ALL OF THEM. `run.data_folder` reads
+    one folder or several separated by semicolons, exactly as `groups` and
+    `scenario_alias` do in a case's own source table:
+
+        data_folder = 'data_folder/battery'
+        data_folder = 'data_folder/tractionmotor; data_folder/tractionmotor_shredder'
+
+    Asked for 2026-09-25: four traction motor cases had to be run by editing
+    the setting between each one, which is four edits and four presses to
+    answer one question. Scenarios already worked this way -- "a case set up as
+    scenarios runs as all of them" -- and there was no reason cases did not.
+
+    ⚠️ ONE PASS IS STILL ONE CASE. Nothing here solves two at once. The stage
+    sets `run.data_folder` to the current one inside its loop, the same way it
+    already sets `run.scenario`, so everything downstream sees a single case
+    and needs no change.
+    """
+    raw = (params.run.data_folder or '').strip()
+    return [part.strip() for part in raw.split(';') if part.strip()]
+
+
+def scenarios_to_run(params, folder: str, named=None) -> list[str]:
+    """
+    Which scenarios a stage covers. Every numbered stage asks this.
+
+    A CASE THAT IS SET UP AS SCENARIOS RUNS AS ALL OF THEM. The battery is
+    exported as S1, S2 and S3 and no single one of them is the answer, so
+    pressing Run on 01, 02, 03 or 04 does the whole set. `run.scenario` narrows
+    it to one; a case with no scenario dimension gives one pass with the setting
+    as it stands, exactly as before.
+
+    `named` is what `--scenario` used to fill. The stages take no arguments now
+    and none of them passes it -- it is left here as the override hook, not as
+    something any run uses.
+
+    One pass is still one scenario. Nothing here solves two at once -- that is
+    deliberate and DESIGN_monte_carlo.md section 2 says why. This decides how
+    many passes a command makes, not what a pass does.
+    """
+    if named:
+        return list(named)
+    if (params.run.scenario or '').strip():
+        return [params.run.scenario]
+    return scenarios_available(params, folder) or ['']
 
 
 def is_upstream_case(params, folder: str) -> bool:
@@ -110,7 +200,15 @@ def is_upstream_case(params, folder: str) -> bool:
 
 def read_draws(folder: str, flow: str, group_marker: str = '__domain__'):
     """Every array upstream wrote for one flow, memory-mapped."""
-    years_path = os.path.join(folder, 'years.npy')
+    # WHERE years.npy SITS DEPENDS ON THE STAGE THAT WROTE IT. 04_02 writes one
+    # at the scenario root for all three flows; 04_04 writes one inside each
+    # flow folder beside the arrays it describes. Both are the same 11 or 51
+    # years -- checked on the battery export 2026-09-17, all nine identical --
+    # so this looks beside the arrays first and falls back to the root. Reading
+    # only the root is why the battery case could never be run.
+    years_path = os.path.join(folder, flow, 'years.npy')
+    if not os.path.exists(years_path):
+        years_path = os.path.join(folder, 'years.npy')
     if not os.path.exists(years_path):
         raise UpstreamError(
             f'No upstream draws at {folder}.\n'
@@ -129,6 +227,8 @@ def read_draws(folder: str, flow: str, group_marker: str = '__domain__'):
     domain_mass, element_mass, widths = {}, {}, {}
     for path in sorted(glob.glob(os.path.join(flow_dir, '*.npy'))):
         stem = os.path.basename(path)[:-4]
+        if stem == 'years':
+            continue                   # the 04_04 layout keeps it beside the arrays
         # Split on the LAST '__': the domain files are named '__domain____Motors',
         # which begins with the separator, so splitting from the front loses them.
         left, _, right = stem.rpartition('__')
@@ -542,6 +642,19 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
         material_suffix=described['material_suffix'],
         child_layer=described['child_layer'])
 
+    # THE SCENARIO IS PART OF THE DATA, NOT JUST PART OF THE PATH. It used to
+    # choose the folder the draws were read from and was then thrown away, so
+    # the frames this builds had no Scenario column -- and `chosen_scenario`
+    # refuses a run whose setting names a scenario the data does not carry.
+    # `run.scenario` was therefore unusable for every upstream case, which in
+    # turn meant the per-scenario output folder (`output_path`) and the
+    # per-scenario figure folder could never fire and three scenarios wrote
+    # over each other. The battery is the first case with more than one.
+    scenario = (params.run.scenario or '').strip()
+    if scenario:
+        inflow['Scenario'] = scenario
+        composition['Scenario'] = scenario
+
     if not quiet:
         span = (f'{keep_years[0]}' if len(keep_years) == 1
                 else f'{keep_years[0]}-{keep_years[-1]} ({len(keep_years)} years)')
@@ -572,7 +685,8 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
 
     return {'inputs': inflow, 'composition': composition,
             'draws': Draws(per_product, years, described['child_layer'],
-                           described['inflow_flow_id'], draws, source=source)}
+                           described['inflow_flow_id'], draws, source=source,
+                           group_marker=described['group_marker'])}
 
 
 class Draws:
@@ -601,18 +715,50 @@ class Draws:
     """
 
     def __init__(self, per_product, years, child_layer, flow_id, draws,
-                 source: str = ''):
+                 source: str = '', group_marker: str = '__domain__'):
         self.source = source
         self.per_product = per_product
         self.years = years
         self.child_layer = child_layer
         self.flow_id = flow_id
         self.draws = draws
+        # How the export spells "the group itself" -- `__domain__` for 04_02,
+        # `__component__` for 04_03. Needed by `other_flow`, which has to build
+        # a file name for a flow it did not load.
+        self.group_marker = group_marker
         self._means: dict[tuple, float] = {}
 
     @property
+    def resolves_materials(self) -> bool:
+        """Whether any exported array names a material as well as an element."""
+        return any(len(child) > 1
+                   for _, elements in self.per_product.values()
+                   for child, _ in elements)
+
+    @property
     def propagates(self) -> bool:
-        return self.child_layer == 'material'
+        """
+        Whether this case's shares can be reproduced per draw.
+
+        The `material` shape always can: the parent's mass and the child's are
+        each one exported array.
+
+        The `element` shape can too, 2026-09-17, AS LONG AS THE EXPORT NAMES NO
+        MATERIALS. Layer 3 is then a placeholder for the whole component -- the
+        battery's is its component's own name, the synthetic panel's carries
+        `material_suffix` -- so the middle level is an identity and the elements
+        hang off the component directly. Nothing has to be resolved out of
+        overlapping exports and `_material_and_element_rows` is not reproduced.
+
+        AN ELEMENT-KEYED CASE THAT DOES NAME MATERIALS STILL CANNOT. There the
+        placeholder is the part of the component NOT inside a named material --
+        an element's total minus the parts of it that were resolved -- and
+        getting that right per draw means reproducing that function exactly.
+        The first case that needs it should do that, not this property.
+        """
+        if self.child_layer == 'material':
+            return True
+        return self.child_layer == 'element' and not self.resolves_materials
 
     def _at(self, array, year, start, stop) -> np.ndarray:
         index = int(np.searchsorted(self.years, int(year)))
@@ -675,19 +821,69 @@ class Draws:
             return None
         total = None
         for domain in domains:
-            path = os.path.join(self.source, flow, f'{resource}__{domain}.npy')
-            if not os.path.exists(path):
+            path = self._other_path(flow, resource, domain)
+            if path is None:
                 continue
             piece = self._at(np.load(path, mmap_mode='r'), year, start, stop)
             total = piece if total is None else total + piece
         return total
 
+    def _other_path(self, flow: str, resource: str, domain: str) -> str | None:
+        """
+        The file holding one resource's mass in `flow`, or None.
+
+        `<resource>__<domain>.npy` is the usual spelling: an element inside a
+        component, `Cu__PCB.npy`.
+
+        ⚠️ A RESOURCE CAN BE THE COMPONENT ITSELF, and then there is no such
+        file. 04_03 exports copper, aluminium, lamination and steel as
+        COMPONENTS -- that is where the recycling routes act, decided
+        2026-09-24 -- so copper's array is `__component____copper.npy` and
+        `copper__copper.npy` was never written. Asked the old way, every
+        traction motor resource came back None from every flow, and with it the
+        whole-account figures: no account, no losses, no trapped, no fate,
+        drawn for the battery and the electronics but not here.
+
+        Falling back to the group's own array is the same rule `mass` applies
+        one layer up (`if not layer3: domain_mass.get(layer2)`): when the thing
+        asked for IS the group, the group's array is the answer.
+        """
+        named = os.path.join(self.source, flow, f'{resource}__{domain}.npy')
+        if os.path.exists(named):
+            return named
+        if resource != domain:
+            return None
+        whole = os.path.join(self.source, flow,
+                             f'{self.group_marker}__{domain}.npy')
+        return whole if os.path.exists(whole) else None
+
     def mass(self, product: str, year, layer2: str, layer3: str,
-             start: int, stop: int) -> np.ndarray | None:
-        """One composition row's own mass per draw, or None if it is not exported."""
+             start: int, stop: int, layer4: str = '') -> np.ndarray | None:
+        """
+        One composition row's own mass per draw, or None if it is not exported.
+
+        Three levels, because an element-keyed case has three: the component,
+        the material inside it, and the element inside that. A material-keyed
+        case fills only the first two and `layer4` stays blank, which is the
+        call this had before and the same two lookups it did.
+        """
         domain_mass, element_mass = self.per_product[product]
         if not layer3:
             array = domain_mass.get(layer2)
             return None if array is None else self._at(array, year, start, stop)
-        array = element_mass.get(((layer3,), layer2))
+
+        if not layer4:
+            array = element_mass.get(((layer3,), layer2))
+            if array is not None:
+                return self._at(array, year, start, stop)
+            # A PLACEHOLDER MATERIAL IS NOT EXPORTED, because it is not a
+            # material -- it is the part of the component upstream did not
+            # resolve into one. `propagates` only allows the element shape when
+            # nothing was resolved, so here it is the whole component.
+            if self.child_layer == 'element':
+                array = domain_mass.get(layer2)
+                return None if array is None else self._at(array, year, start, stop)
+            return None
+
+        array = element_mass.get(((layer4,), layer2))
         return None if array is None else self._at(array, year, start, stop)

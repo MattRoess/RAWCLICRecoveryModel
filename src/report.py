@@ -98,11 +98,11 @@ def finest_layer(summary: pd.DataFrame) -> str:
     """
     The deepest layer this case actually resolves.
 
-    NOT always Layer 4. 04_02 resolves elements within a placeholder material,
-    so Layer 4 is the answer; 04_01 stops at material, so Layer 4 is empty
-    everywhere and Layer 3 is. Assuming Layer 4 gave an empty headline sheet
-    and a KeyError rather than a wrong number, which is the good failure, but
-    reading it from the data is the right one.
+    NOT always Layer 4. 04_02 resolves elements within a placeholder material;
+    04_01 stops at material, so Layer 4 is empty everywhere and Layer 3 is.
+
+    ⚠️ ONE DEPTH FOR THE WHOLE CASE, which is why `recovered` no longer uses
+    this. See `resource_of`.
     """
     for column in ('Layer 4', 'Layer 3', 'Layer 2'):
         if column in summary.columns and (summary[column] != '').any():
@@ -110,15 +110,56 @@ def finest_layer(summary: pd.DataFrame) -> str:
     return 'Layer 2'
 
 
-def recovered(summary: pd.DataFrame, tcs: pd.DataFrame, case: str) -> pd.DataFrame:
+def resource_of(frame: pd.DataFrame) -> pd.Series:
     """
-    The headline: recovered mass per resource per year, at the finest layer the
-    case resolves -- element for 04_02, material for 04_01.
+    What each row is a quantity OF: the value of its own deepest filled layer.
+
+    A CASE DOES NOT HAVE ONE DEPTH. The traction motor resolves the magnet to
+    elements -- Nd, Pr, Dy, Tb at Layer 4 -- and copper, aluminium, steel and
+    lamination to materials at Layer 3. Asking `finest_layer` for one answer
+    gives Layer 4, because the rare earths fill it, and every metal row then
+    has a blank in that column.
+
+    2026-09-25: that is exactly what happened. Copper, aluminium and steel were
+    solved correctly, reached their recovered flows, and were then dropped by a
+    `summary[layer] != ''` filter before anything was reported -- 0.6% of the
+    recovered mass was being shown. Copper alone is nineteen times the whole
+    rare-earth output by weight and has its own figure upstream.
+
+    Reading the depth PER ROW is the same rule the mass balance already uses:
+    each flow totalled at its own depth, never at one depth chosen for all.
+    """
+    layers = [column for column in LAYERS if column in frame.columns]
+    if not layers:
+        return pd.Series([''] * len(frame), index=frame.index)
+    # Deepest first, so the first non-empty value found is the row's own.
+    deepest = frame[layers[::-1]].astype(str)
+    out = deepest.iloc[:, 0].copy()
+    for column in deepest.columns[1:]:
+        out = out.where(out != '', deepest[column])
+    return out.fillna('')
+
+
+def recovered(summary: pd.DataFrame, tcs: pd.DataFrame, case: str,
+              run=None) -> pd.DataFrame:
+    """
+    The headline: mass recovered per resource per year, at each row's own depth.
 
     Recovered means reaching a terminal flow that is not a loss. The gap to the
     deterministic run is given as a percentage of the mean, because that is the
     number that says whether the Monte Carlo changed the answer or only put
     error bars on it.
+
+    INTERVALS COME FROM THE DRAWS WHEN A RESOURCE ARRIVES BY SEVERAL FLOWS.
+    Adding the p50s of two flows does not give the median of their sum, and the
+    same goes for the interval bounds -- only the mean adds. Where a group has
+    one row the two agree exactly and the percentile columns are used directly;
+    where it has more, `run` supplies the draws, they are summed per draw, and
+    the percentiles are taken from that. The split case needs this: it sends the
+    magnet down both loops, so every rare earth arrives by two flows.
+
+    Without `run` a multi-row group cannot be done correctly, so its interval is
+    left empty rather than filled with a number that adds percentiles.
     """
     # Which flows count as recovered is stated in processes.csv, not guessed
     # from the name -- a handoff to a separate recovery model is neither
@@ -126,25 +167,95 @@ def recovered(summary: pd.DataFrame, tcs: pd.DataFrame, case: str) -> pd.DataFra
     from src.rest import recovered_flows
     keep = recovered_flows(case, tcs)
 
-    layer = finest_layer(summary)
-    label = {'Layer 4': 'element', 'Layer 3': 'material'}.get(layer, 'component')
+    frame = summary[summary['Stock/Flow ID'].isin(keep)].copy()
+    frame['resource'] = resource_of(frame)
+    frame = frame[frame['resource'] != '']
+
+    # Position in the draw array, for the groups that need it. `summarise`
+    # builds the summary from `run.keys` in order, so row i of the summary is
+    # row i of `run.values`; the merge that adds `deterministic` is a left join
+    # on unique keys and keeps that order.
+    draws = None
+    if run is not None and getattr(run, 'values', None) is not None:
+        if len(run.values) == len(summary):
+            draws = run.values
+            frame['position'] = [summary.index.get_loc(i) for i in frame.index]
 
     rows = []
-    for (year, resource), group in summary[
-            summary['Stock/Flow ID'].isin(keep) & (summary[layer] != '')
-            ].groupby(['Year', layer]):
+    for (year, resource), group in frame.groupby(['Year', 'resource']):
         mean = group['mean'].sum()
         point = group['deterministic'].sum()
+        if len(group) == 1 or draws is None:
+            low, mid, high = (group['p2_5'].sum(), group['p50'].sum(),
+                              group['p97_5'].sum())
+            exact = len(group) == 1
+        else:
+            total = draws[group['position'].to_numpy()].sum(axis=0)
+            low, mid, high = np.percentile(total, [2.5, 50, 97.5])
+            exact = True
         rows.append({
-            'Year': year, label: resource,
-            'mean': mean, 'p2.5': group['p2_5'].sum(), 'p50': group['p50'].sum(),
-            'p97.5': group['p97_5'].sum(),
+            'Year': year, 'resource': resource, 'flows': len(group),
+            'mean': mean, 'p2.5': low if exact else np.nan,
+            'p50': mid if exact else np.nan,
+            'p97.5': high if exact else np.nan,
             'deterministic': point,
             'deterministic vs mean %': (100.0 * (point - mean) / mean) if mean else np.nan,
-            'relative spread %': (100.0 * (group['p97_5'].sum() - group['p2_5'].sum()) / mean)
-                                 if mean else np.nan,
+            'relative spread %': (100.0 * (high - low) / mean)
+                                 if mean and exact else np.nan,
         })
-    return pd.DataFrame(rows).sort_values([label, 'Year'])
+    return pd.DataFrame(rows).sort_values(['resource', 'Year'])
+
+
+def contributions(summary: pd.DataFrame, tcs: pd.DataFrame, case: str,
+                  run=None) -> pd.DataFrame:
+    """
+    WHAT MADE UP EACH TOTAL: one row per contributing flow, not per resource.
+
+    `recovered` answers "how much Nd came back". This answers "from where" --
+    the split case recovers Nd down both loops and the headline total says only
+    that it arrived, which is the question asked on 2026-09-25: "I want to know,
+    what contributed to the total!!".
+
+    Each row carries the feeding flow as well as the recovered one, so the chain
+    is readable without opening the coefficient table: F_recycled_magnet is
+    reached from F_magnet_short, F_nd from F_ree_oxides.
+
+    THE SHARE IS OF MEANS, and means add exactly -- that is the one central
+    value that does. The intervals are each flow's own; they are NOT shares and
+    do not sum to the total's interval, which is why the total is reported by
+    `recovered` from the summed draws rather than from this sheet.
+    """
+    from src.rest import recovered_flows
+    keep = recovered_flows(case, tcs)
+
+    frame = summary[summary['Stock/Flow ID'].isin(keep)].copy()
+    frame['resource'] = resource_of(frame)
+    frame = frame[frame['resource'] != '']
+
+    # Which flow feeds each recovered one. A recovered flow reached from two
+    # different places for the SAME resource cannot be told apart in this
+    # table, so say so rather than printing one of them.
+    feeds = {}
+    for (target, key), group in tcs.groupby(['Output_FlowID', 'TC_target_key']):
+        sources = sorted(set(group['Input_FlowID']))
+        feeds[(target, key)] = (sources[0] if len(sources) == 1
+                                else ' + '.join(sources))
+
+    totals = frame.groupby(['Year', 'resource'])['mean'].sum()
+    rows = []
+    for _, row in frame.iterrows():
+        whole = totals.get((row['Year'], row['resource']), 0.0)
+        rows.append({
+            'Year': row['Year'], 'resource': row['resource'],
+            'recovered flow': row['Stock/Flow ID'],
+            'fed by': feeds.get((row['Stock/Flow ID'], row['resource']), ''),
+            'mean': row['mean'],
+            'share of total %': (100.0 * row['mean'] / whole) if whole else np.nan,
+            'p2.5': row['p2_5'], 'p50': row['p50'], 'p97.5': row['p97_5'],
+            'deterministic': row['deterministic'],
+        })
+    out = pd.DataFrame(rows)
+    return out.sort_values(['resource', 'Year', 'recovered flow']) if len(out) else out
 
 
 def by_flow(summary: pd.DataFrame) -> pd.DataFrame:
@@ -178,7 +289,10 @@ def write(path: str, params, run, summary: pd.DataFrame, tcs: pd.DataFrame,
     """Write the workbook. Returns the sheet names written."""
     sheets = {
         'Overview': overview(params, run),
-        'Recovered': recovered(summary, tcs, case or params.run.data_folder),
+        'Recovered': recovered(summary, tcs, case or params.run.data_folder,
+                               run=run),
+        'Contributions': contributions(summary, tcs,
+                                       case or params.run.data_folder),
         'By flow': by_flow(summary),
         'Mass balance': mass_balance(summary, tcs),
         'Distribution': drop_unused_layers(summary),

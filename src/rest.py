@@ -95,6 +95,27 @@ REST = 'rest'
 # Below this it is rounding in a hand-written table, not missing data.
 TOLERANCE = 1e-9
 
+# How far they may EXCEED 1 before the table is refused. A different question
+# from the one above, and it needs a different number, which is why it is not
+# the same constant: falling short by 1e-9 is a rounded table, but exceeding 1
+# by 1e-9 used to be a refusal, and an upstream composition is COMPUTED, not
+# typed.
+#
+# MEASURED 2026-09-17, after the composition workbook was corrected. The
+# workbook's own rows sum to their component to 3.3e-16 -- exact. What the
+# recovery model receives runs up to 2.3e-4 over, because the chain that
+# derives it interpolates between capacity anchors and stores the arrays as
+# float32. There is nothing left to correct at the source; the arithmetic is
+# the arithmetic.
+#
+# 1e-3 IS NOT A FINELY BALANCED CHOICE. The two real defects found that day --
+# the NMC anodes at 1.0123 and battLiMFP's cathode at 1.0115, both of them a
+# share written without its siblings being reduced -- sit a factor of 50 above
+# it, and would still be refused. Nothing is rescaled either way: a total
+# within this band is treated as complete, so the rest is zero rather than
+# negative.
+OVERSHOOT_TOLERANCE = 1e-3
+
 
 class RestError(ValueError):
     """Raised when the known parts of a parent exceed the whole."""
@@ -156,7 +177,7 @@ def add_rest(composition: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
         for key, total in totals.items():
             key = key if isinstance(key, tuple) else (key,)
 
-            if total > 1.0 + TOLERANCE:
+            if total > 1.0 + OVERSHOOT_TOLERANCE:
                 raise RestError(
                     f"composition.csv: the parts of {' / '.join(str(k) for k in key if k)} "
                     f"sum to {total:g}, which is more than the whole. A rest cannot be "

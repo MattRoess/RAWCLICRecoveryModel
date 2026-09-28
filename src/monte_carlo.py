@@ -508,39 +508,68 @@ def upstream_values(draws_source, entry, structure, start: int, stop: int):
     layer1 = composition['Layer 1'].to_numpy()
     layer2 = composition['Layer 2'].to_numpy()
     layer3 = composition['Layer 3'].to_numpy()
+    layer4 = (composition['Layer 4'].to_numpy() if 'Layer 4' in composition.columns
+              else np.array([''] * len(composition)))
     composition_values = np.zeros((len(composition), width))
     derived: list[int] = []
 
-    # ---- the parents, and their share of the product ----------------------
-    parent: dict[tuple, np.ndarray] = {}
-    for position in np.flatnonzero(layer3 == ''):
-        own = draws_source.mass(layer1[position], year, layer2[position], '',
-                                start, stop)
-        above = raw.get(layer1[position])
-        if own is None or above is None:
-            derived.append(int(position))
-            continue
-        parent[(layer1[position], layer2[position])] = own
-        composition_values[position] = np.divide(
-            own, above, out=np.zeros(width), where=above > 0)
+    # ONE PASS PER LEVEL, NOT TWO. A material-keyed case fills two layers and
+    # an element-keyed one fills three -- component, the material inside it,
+    # the element inside that -- and each row is a share of the level above.
+    # Walking two levels treated an element-keyed case's Layer 4 rows as
+    # children of the product's component, looked them up under the
+    # placeholder material's name, found nothing, and handed every one of them
+    # to the leftover rule. The levels are walked in order so that each one's
+    # parent is already known when it is reached.
+    #
+    # `parent` is keyed by the row's own path, so a level asks for exactly the
+    # row above it: ('BEV',) for a component, ('BEV', 'anode') for a material.
+    parent: dict[tuple, np.ndarray] = {(product,): array
+                                       for product, array in raw.items()}
+    levels = [
+        (np.flatnonzero((layer3 == '') & (layer4 == '')),
+         lambda i: (layer1[i],),
+         lambda i: (layer1[i], layer2[i]),
+         lambda i: (layer2[i], '', '')),
+        (np.flatnonzero((layer3 != '') & (layer4 == '')),
+         lambda i: (layer1[i], layer2[i]),
+         lambda i: (layer1[i], layer2[i], layer3[i]),
+         lambda i: (layer2[i], layer3[i], '')),
+        (np.flatnonzero(layer4 != ''),
+         lambda i: (layer1[i], layer2[i], layer3[i]),
+         lambda i: (layer1[i], layer2[i], layer3[i], layer4[i]),
+         lambda i: (layer2[i], layer3[i], layer4[i])),
+    ]
 
-    # ---- the children, as a share of their own parent ---------------------
-    for position in np.flatnonzero(layer3 != ''):
-        own = draws_source.mass(layer1[position], year, layer2[position],
-                                layer3[position], start, stop)
-        above = parent.get((layer1[position], layer2[position]))
-        if own is None or above is None:
-            derived.append(int(position))         # `rest`, and anything unexported
-            continue
-        composition_values[position] = np.divide(
-            own, above, out=np.zeros(width), where=above > 0)
+    for positions, above_key, own_key, lookup in levels:
+        for position in positions:
+            position = int(position)
+            own = draws_source.mass(layer1[position], year,
+                                    *lookup(position)[:2], start, stop,
+                                    lookup(position)[2])
+            above = parent.get(above_key(position))
+            if own is None or above is None:
+                derived.append(position)      # `rest`, and anything unexported
+                continue
+            parent[own_key(position)] = own
+            composition_values[position] = np.divide(
+                own, above, out=np.zeros(width), where=above > 0)
 
     # ---- whatever is left of each parent ---------------------------------
+    # SIBLINGS ARE THE ROWS AT THE SAME LEVEL UNDER THE SAME PARENT. Matching
+    # on the component alone put an element-keyed case's elements and its
+    # materials in one pool, so a placeholder's remainder was computed against
+    # rows one level down from it.
+    depth = np.where(layer4 != '', 3, np.where(layer3 != '', 2, 1))
     for position in derived:
-        siblings = np.flatnonzero((layer1 == layer1[position])
-                                  & (layer2 == layer2[position])
-                                  & (layer3 != '')
-                                  & (np.arange(len(composition)) != position))
+        same = ((layer1 == layer1[position])
+                & (depth == depth[position])
+                & (np.arange(len(composition)) != position))
+        if depth[position] >= 2:
+            same &= (layer2 == layer2[position])
+        if depth[position] >= 3:
+            same &= (layer3 == layer3[position])
+        siblings = np.flatnonzero(same)
         known = composition_values[siblings].sum(axis=0) if siblings.size \
             else np.zeros(width)
         composition_values[position] = np.clip(1.0 - known, 0.0, None)

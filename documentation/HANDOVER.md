@@ -1,8 +1,102 @@
 # Handover
 
-Current as of **2026-09-16**. Rewritten from the ground up on 2026-08-21 and
+## ⚠️ GIT: THIS RESOLVES ON THURSDAY. IT IS ONE STRAIGHT LINE.
+
+**The history is split across the two Mac Minis and the remote is three weeks
+behind.** Nothing is lost; it is in two places that have not met.
+
+    origin/main      2040ccd   2026-09-16   "Handover: the battery case..."
+    the other Mini   2040ccd + about 20 commits, 09-17 to 09-25, NEVER PUSHED
+                     (cb3f0ca .. a4a2d5c -- the traction motor work)
+    this Mac         2040ccd + e6eb1ec, one commit holding the SAME content
+                     as those twenty, plus all of 2026-09-28. Committed
+                     locally, NOT pushed, on purpose.
+
+⚠️ **`e6eb1ec` is a safety copy, not history.** It must not reach `origin`
+before the other Mini pushes, or the two versions of the same work end up side
+by side and the line stops being straight.
+
+### Step 1 -- THURSDAY, on the other Mini
+
+Thursday is when that machine is worked on. Nothing before then.
+
+    git status                 # commit anything outstanding first
+    git push origin main       # its twenty commits go up, with their messages
+
+### Step 2 -- then, on this Mini (the iCloud tree)
+
+    git fetch origin
+    git reset --mixed origin/main    # history becomes theirs; FILES UNTOUCHED
+    git add -A
+    git commit -m "..."              # exactly 2026-09-28's work, one commit
+    git push origin main
+
+`--mixed` is the whole trick: it moves HEAD to their history and leaves the
+working tree alone, so what is left staged is precisely the difference between
+their 09-25 state and today's -- which IS today's work.
+
+### The result
+
+    2040ccd -- their twenty commits (09-17..09-25) -- one commit (09-28)
+
+One straight line. No branch, no merge, no force.
+
+### The safety copy on GitHub
+
+Pushed 2026-09-28 so that three weeks of work is not sitting on two machines
+until Thursday:
+
+    refs/backup/icloud-2026-09-28   ->  b9ad5d1
+
+⚠️ **It is NOT a branch.** It sits outside `refs/heads/`, so it does not show in
+the branch list, nothing tracks it, and `refs/heads/main` is untouched at
+2040ccd. **The two steps above are unaffected and need no force.** Delete it
+once step 2 has pushed:
+
+    git push origin :refs/backup/icloud-2026-09-28
+
+### Why it broke
+
+`.git` was moved out of iCloud on 2026-09-22 because iCloud corrupted it. That
+was done ON THE OTHER MINI. What synced here was the one-line pointer file; the
+directory it points at, `~/gitdirs/`, was never created on this machine, so
+every git command here failed from 09-22 until 09-28. Restarting Positron
+cannot fix it -- the directory was absent, not locked. It is attached now and
+will not need doing again:
+
+    ~/gitdirs/RAWCLICRecoveryModel.git   core.worktree -> the iCloud tree
+
+**The rule this exists to serve, from RAWCLICStockAndFlow's handover:** *machines
+exchange work by push and pull, not by iCloud. Commit and push on one Mac, pull
+on the other.*
+
+---
+
+Current as of **2026-09-28**. Rewritten from the ground up on 2026-08-21 and
 updated since; git has the older text. The newest entries are at the foot of
 this file.
+
+**READ THE 09-28 ENTRY AT THE FOOT FIRST.** The Sankey is drawn from the draws
+now, and wiring it up exposed that every per-resource Sankey had been drawing
+twice the real mass -- every traction motor case, every battery scenario, since
+they were built. No table was affected. **Re-run 03 before trusting any figure
+or workbook on disk**: they also predate the `Contributions` sheet.
+
+**THEN READ THE 09-25 ENTRY, STARTING WITH THE DEFECT AT ITS HEAD.** Copper, aluminium and steel were being
+solved correctly and then dropped before anything was reported -- the headline
+table showed 0.56% of the recovered mass and 140 tests passed throughout. It is
+fixed, but **every workbook and figure on disk predates the fix**, so re-run 03
+before trusting any sheet you find there.
+
+The four traction-motor cases -- the recycling work -- are the only cases here
+whose coefficients come from a real source document rather than a placeholder.
+They were finished on 09-24 and 09-25 and now all run from one press.
+
+**IF YOU READ ONE THING ABOUT THE BATTERY, READ THE 09-17 ENTRY.** The battery case
+went from unrunnable to running that day, the composition it is fed was
+corrected at its source, and how a run is started changed: the parameter file
+now says the case, the scenarios and the metals, and every numbered stage runs
+the whole set.
 
 **What is left to do is in NEXT, immediately below: the coefficients, and
 nothing else.** The rest of this document is why things are the way they are,
@@ -52,11 +146,11 @@ is a steel frame on one route and LFP's iron phosphate cathode on the other.
 The pack is dismantled two ways: the housing with the cables and terminals to a
 shredder, the cells to their own liquid route.
 
-**Updated 2026-09-16. It is now 17 processes, 18 flows, 87 TC rows, and 65 of
-them are written.** What is left is **11 hydrometallurgy rates**, and they are
-the only numbers in this case that nobody else has already answered. The rest
-came from precedent or from definition -- see the 09-16 entry at the foot of
-this file.
+**Updated 2026-09-17. It is now 17 processes, 18 flows, 87 TC rows, and all 87
+are written.** The last 22 cells -- the 11 hydrometallurgy rates -- were
+measured and entered by the user from his own research. The rest came from
+precedent or from definition. **Nothing in this case is outstanding**; see the
+09-16 and 09-17 entries at the foot of this file.
 
 Its inflow arrives as `<upstream>/data/processed/battery_recovery_draws/`, 11
 years 2020-2070, kilotonnes, summed over the chemistries. Two of those
@@ -81,7 +175,7 @@ matters -- which is how people learn to scroll past warnings.
   so on every open. Filtered at the three places `src/case_tables.py` opens a
   workbook, by that one message from that one library. Not a blanket filter:
   pandas and numpy warnings have twice been the first sign of a real defect here.
-- `validate()` runs once per engine, and `03_run_monte_carlo.py` builds four.
+- `validate()` runs once per engine, and `stages/03_run_monte_carlo.py` builds four.
   A warning is about the TABLE, so saying it again tells nobody anything.
   `src/validate_inputs.py` now says each one once per run.
 
@@ -151,7 +245,7 @@ it was.
 Two things the fix had to get right, both pinned by tests:
 
 - **The FRAME returned by an engine keeps every layer.**
-  `03_run_monte_carlo.py` merges the deterministic answer onto the Monte Carlo
+  `stages/03_run_monte_carlo.py` merges the deterministic answer onto the Monte Carlo
   one using all four, so dropping before returning breaks the join rather than
   tidying a file.
 - **Only TRAILING layers go.** An empty layer with a filled one beneath it is a
@@ -462,7 +556,7 @@ at. It was **deleted on 2026-08-24** along with the `data.import_case` and
 `data.import_year` settings that existed only to serve it. It had already been
 deleted once, restored, and then left out of the pipeline, which is a fair sign
 that its real job was answering "what will the model solve?" — a question the
-`01_check_inputs.py` report and the figures now answer from the draws
+`stages/01_check_inputs.py` report and the figures now answer from the draws
 themselves.
 
 Four modules still *can* read those files, as a fallback when a caller has not
@@ -507,7 +601,7 @@ Two consequences worth knowing before you touch a table:
   different memory settings agree exactly. What conditioning *does* give up is
   composing separately invoked runs of different widths; nothing in the
   pipeline does that.
-- **`01_check_inputs.py` has a `SUM TO 1` section.** A group's modes sum to 1
+- **`stages/01_check_inputs.py` has a `SUM TO 1` section.** A group's modes sum to 1
   by construction, but its *means* need not — a triangular's mean is
   `(min + mode + max)/3`. Where they disagree the constraint has to move the
   answer away from what is written. It reports that per group as an offset in
@@ -874,7 +968,7 @@ started without saying so first.
   parts exceeding the whole.
 - **A coarse TC scales the resource's whole subtree**; a fine one does not.
   All TCs writing into one output flow must target the same layer, or nesting
-  breaks — measured at 82 Mg on a shared loss flow. `01_check_inputs.py` checks
+  breaks — measured at 82 Mg on a shared loss flow. `stages/01_check_inputs.py` checks
   this.
 - **`rest` is derived, not written.** Per parent per year, `parent − Σ known
   children`, and it defaults to *unrecovered*. That is what makes every recovery
@@ -1039,6 +1133,7 @@ The tools, none of which is a numbered step and all of which read the case from
 | `tools/make_skeleton.py` | the TC rows a case needs. Merges, so it is safe to re-run |
 | `tools/make_carcomposition_tcs.py` | the 04_01 table. Overwrites, and refuses once a row has been edited |
 | `tools/compare_engines.py` | the two engines against each other |
+| `tools/compare_scenarios.py` | a case's scenarios side by side, after each has been run |
 
 The input file format is specified in `../doc/User guide.docx` (Harmjan de
 Vries, 21-11-2024), still accurate on the schema. It does not describe model
@@ -1067,10 +1162,10 @@ is now MEMORY-MAPPED to a file in the case's `output_data/` whenever it exceeds
 already fills it one year at a time, so only the pages being written stay
 resident; `plan()` sizes a chunk instead of raising; `MonteCarloRun.close()`
 deletes the file once the summary and figures are written, and
-`03_run_monte_carlo.py` calls it. Nothing above that changed and no figure
+`stages/03_run_monte_carlo.py` calls it. Nothing above that changed and no figure
 knows. Wiring at every year (51 years, 200,000 draws) runs in 2:48.
 
-**`04_combine_cases.py` now writes three figures**, all copper, both cases
+**`05_combine_cases.py` now writes three figures**, all copper, both cases
 added per draw:
 
 | figure | what it shows |
@@ -1193,6 +1288,9 @@ Cu 0.60 → 0.85, Al 0.50 → 0.72, Fe 0.50 → 0.72. Definitional rows do not m
 
 ### Two things left, and both are the user's
 
+**Both were closed on 2026-09-17. Kept here because the reasoning still stands;
+read the 09-17 entry for what they became.**
+
 1. **The 11 hydrometallurgy rates.** No other case in this project uses
    hydrometallurgy, so there is no precedent to borrow. Lithium appears twice —
    from the cathode and from the electrolyte — and they need not be the same
@@ -1211,3 +1309,724 @@ Cu 0.60 → 0.85, Al 0.50 → 0.72, Fe 0.50 → 0.72. Definitional rows do not m
 Draws the wiring with every coefficient beside its arrow, reads `TCs` and
 nothing else, needs no result and solves nothing. It is the fastest way to see
 what is still `nan`.
+
+---
+
+## 2026-09-17 — the two sheets had been swapped, and the case is now complete
+
+**`TCs` and `TCs_improved` had their contents exchanged.** The working copy was
+compared against 2040ccd row by row: the 2030 sheet carried the 2060 numbers and
+the 2060 sheet the 2030 ones, across the 19 shredder rows and the `source`
+column of all 36 dismantling rows. The case therefore got **worse** with time --
+copper off the pack cables and cell terminals 0.85 in 2030 falling to 0.60 in
+2060, aluminium and iron 0.72 falling to 0.50 -- while the electronics cases
+those rates were borrowed from run 0.60 → 0.85 and 0.50 → 0.72. Seven recovered
+rows fell across the ramp. None should.
+
+**Nothing in the arithmetic complained, and nothing here would have.** Both
+sheets still summed to 1 in all 45 groups, every value still sat inside its
+bounds, every key still matched its partner in the same order. A swap of two
+tables with the same shape is invisible to every check this repository owns.
+What caught it was the `source` column: the 2030 sheet said *"the same shredder
+in 2060"*. **There is still no assertion that a recovered flow cannot fall from
+`TCs` to `TCs_improved`** -- that is the test this defect asks for, and it is
+not written yet.
+
+Corrected. Every value and every key in the case is now exactly what 2040ccd
+holds, except the 22 cells the user entered.
+
+**The 11 hydrometallurgy rates are in, and they are the user's own research.**
+He entered them himself and said so: *"I did for this an independent research."*
+The 09-16 instruction not to fill them is discharged. Both ends of the ramp:
+
+| resource | 2030 | 2060 |
+|---|---|---|
+| cathode Li | 0.85 | 0.96 |
+| electrolyte Li | 0.85 | 0.96 |
+| cathode Ni | 0.95 | 0.99 |
+| cathode Co | 0.95 | 0.99 |
+| cathode Mn | 0.90 | 0.98 |
+| cathode Fe | 0.80 | 0.94 |
+| cathode P | 0.80 | 0.94 |
+| anode graphite | 0.50 | 0.70 |
+| anode collector Cu | 0.85 | 0.92 |
+| anode collector Al | 0.72 | 0.85 |
+| cathode collector Al | 0.72 | 0.85 |
+
+Each of those 22 cells carries a `source` saying it is his own research and
+naming the year it applies to. **Replace that wording with the actual reference
+when there is one** -- it records who entered the number, not where it was
+measured.
+
+**The 2060 dismantling rate is decided: it does not improve.** The user,
+2026-09-17: *"there will be never a 100% dismanteling."* 95 / 98 / 100 holds in
+2060 as well, and all 36 dismantling rows in `TCs_improved` now say that is the
+decision rather than *"no 2060 rate chosen yet"*. This case is the one that does
+not follow Motors, Wiring and PCB in improving its disassembly, and the reason
+is physical, not an omission.
+
+**Lithium arrives on two roads and the model treats them as PARALLEL, not as
+steps.** `cathodeActiveMaterial → F_li` and `batteryCellElectrolyte → F_li` are
+two separate sum-to-1 groups: each routes its own component's lithium, and the
+two add into the same recovered flow. Nothing in this model can express one
+process feeding another -- a coefficient is always the fraction of THIS
+component's element reaching THIS flow. So one measured whole-cell yield on both
+rows is a correct reading, which is what the case now holds.
+
+**How much the electrolyte rate can matter, measured.** On the S1 collected
+draws, `Li__batteryCellElectrolyte` against `Li__cathodeActiveMaterial`, mean
+over 200,000 draws: the electrolyte holds **3.6%** of the collected lithium and
+the cathode 96.4%, steady across all 11 years (2070: 3.40 kt against 86.92 kt).
+Taking the electrolyte rate to zero would move recovered lithium by 3.6%. If the
+research number turns out to be a black-mass leach yield rather than a whole-cell
+one, that is the size of the error it can cause.
+
+**One claim in the 09-16 entry above was wrong.** It presents the 11
+hydrometallurgy rates as empty in both sheets. At 2040ccd, 7 of the 11 already
+carried a 2060 value in `TCs_improved` -- 0.85, 0.95, 0.95, 0.90, 0.85, 0.85,
+0.72 -- every one of them still labelled `EMPTY -- to be provided. No value is
+written`. Those are the values that landed in `TCs` when the sheets were
+swapped. Nothing in this file says where they came from.
+
+**Also repaired, and it predates the swap:** the 24 dismantling rows in `TCs`
+carried `EMPTY -- to be provided. No value is written` while holding 0.98. They
+now say what their 12 loss partners have always said -- *"assumed: 95/98/100%
+dismantled, the rest cannot be separated"*. No `source` cell in either sheet is
+blank now, and none claims to be empty while holding a number.
+
+---
+
+## 2026-09-17 — the battery runs, and the parameter file says how
+
+Twenty-five commits. The case was unrunnable at the start of the day and had
+never been solved once; it now runs all three scenarios at 200,000 draws and
+joins the combined figures. What follows is in the order it was found, because
+each thing was hidden behind the one before it.
+
+### The two sheets had been swapped
+
+`TCs` held the 2060 numbers and `TCs_improved` the 2030 ones, across the 19
+shredder rows and the `source` column of all 36 dismantling rows. The case got
+**worse** with time -- pack cable copper 0.85 in 2030 falling to 0.60 in 2060,
+against 0.60 → 0.85 in the electronics cases it borrowed them from.
+
+**Nothing in the arithmetic complained.** Both tables summed to 1 in all 45
+groups, every value sat inside its bounds, every key matched in the same order.
+A swap of two same-shaped tables is invisible to every check here. What gave it
+away was the `source` column: the 2030 sheet said *"the same shredder in 2060"*.
+
+`test_regression.py` now refuses a recovered flow that falls from `TCs` to
+`TCs_improved`, with a second test on a swapped pair so weakening the first
+cannot leave a suite that passes on four healthy cases. Only a **recovered**
+flow can be asserted -- `F_in_car` legitimately falls, and less of it is the
+improvement -- so the case's own `role` column decides.
+
+### Three things refused the case, none of them its coefficients
+
+1. **`years.npy` is not always at the scenario root.** 04_02 writes one per
+   scenario for all three flows; 04_04 writes one inside each flow folder. The
+   reader knew only the first layout and refused the battery before reading a
+   single array, which is why it had never been run. Both layouts hold the same
+   years -- all nine of the battery's are identical -- so the flow folder is
+   tried first and the root second.
+2. **The stranding check assumed every resource reaches every flow.** True of a
+   case whose branches all carry the same components, false of a pack that
+   sends the housing to a shredder and the cells to a liquid route. It asked
+   for cable copper to have an exit from the cell road. `_what_reaches` follows
+   the coefficients now, from the flows mass enters by, ON WHOLE COMPOSITION
+   ROWS -- following it layer by layer makes the check silent instead, because
+   an element moved by a component-keyed row never appears to have moved.
+3. **The fraction check had no tolerance.** An upstream composition is computed,
+   not typed. 1e-3 now, and the measurement is in the comment.
+
+### The composition was wrong at its source, and was fixed there
+
+The recovery model was refusing a negative `rest`. The cause was two defects in
+`RAWCLICVehicleBattery`'s workbook, both of the same shape -- a share changed
+without its siblings being reduced:
+
+| | was | is |
+|---|---|---|
+| the two NMC anodes, C | 1.0123 of the anode | `C := c-p - Si` |
+| `battLiMFP` cathode | Mn and Fe at 1.479x stoichiometry | the five rows partition `c-p` |
+
+The LMFP one was found by asking why lithium looked short. It was not: oxygen
+and phosphorus were short by the same 0.7395 while manganese and iron sat at
+exactly twice it -- a full formula unit each instead of the half that
+LiMn(0.5)Fe(0.5)PO4 carries, normalised back to 100% afterwards. **The lithium
+override in `params_schema` was a patch on that symptom and has been removed**;
+lithium arrives at 4.408% on its own. **LMFP manganese and iron demand falls by
+about a third.**
+
+**What is left over is float32 and nothing else.** The workbook's rows sum to
+their component to 3.3e-16; what this model receives runs up to 2.3e-4 over,
+because the chain interpolates between capacity anchors and stores float32. So
+`rest.py` gained `OVERSHOOT_TOLERANCE = 1e-3`, separate from the 1e-9 that says
+how far a parent may fall SHORT -- a different question deserving a different
+number. The two defects above sit a factor of 50 above it and are still
+refused, which is pinned by a test both ways.
+
+⚠️ **BELOW ABOUT 5,000 DRAWS THAT TOLERANCE IS TRIPPED.** The overshoot is
+sampling noise: 2.3e-4 at 200,000 draws, about 1.4e-3 at 2,000. A low-draw run
+is refused on arithmetic, not on data. Scale the tolerance with the draw count
+before loosening it; loosening costs the guard that caught 1.0115.
+
+### Scenarios: the battery has three, and the run is one press
+
+The battery is exported as S1, S2 and S3 and no single one of them is the
+answer. Four things had to change for that to work:
+
+- **The scenario was thrown away after picking a folder.** `upstream.load`
+  stamps it on the frames now, so `run.scenario` is usable at all for an
+  upstream case.
+- **THE SCENARIO HAD TWO SOURCES OF TRUTH.** The stages set it on the params
+  they walk; the engine built a `Params()` of its own and could not see it.
+  Every construction passes it now -- `model_run`, `plot_flows` twice,
+  `monte_carlo`, 03 twice -- AND every caller of `solve_draws`, which builds an
+  engine too. That second list is where this bit twice: three of its five
+  callers were wrong.
+- **Results and figures are per scenario.** `output_data/<scenario>/` and
+  `figures/<case>/<scenario>/`. Before, the third run overwrote the first.
+- **A case may rename the run's scenario.** `scenario_alias` in its own
+  `source.csv`: the electronics carry `*=BAU`, because 04_02 writes one folder
+  while 04_04 writes three. Delete the line the day 04_02 exports scenarios.
+
+**All four numbered stages now run every scenario the case has**, resolved once
+in `upstream.scenarios_to_run`: `--scenario` wins, then `run.scenario`, then the
+case's own export. One pass is still one scenario; this decides how many passes
+a command makes, not what a pass does.
+
+### The parameter file is the interface
+
+The user runs by pressing Run in Positron. A setting that exists only on the
+command line does not exist. So:
+
+- `run.data_folder` is `data_folder/battery`, the case being worked on.
+- `combine.resources` replaced `combine.resource` + `combine.label`: a mapping
+  of label to every spelling the data uses. Pressing Run on 04 draws **four
+  metals across three scenarios**, twelve sets of figures, nothing typed.
+- **04 was the only numbered stage without the `ensure_venv` bootstrap.** It
+  worked for as long as it happened to be started with `./.venv/bin/python` and
+  died on `import matplotlib` the first time Positron ran it. Pressing Run on
+  04 had never been possible.
+
+⚠️ **POSITRON KEEPS ONE PYTHON SESSION ALIVE.** After anything under `src/`
+changes, restart it or the old modules are still in `sys.modules`. A whole
+evening was lost to a failure that had already been fixed on disk.
+
+### An element-keyed case propagates its draws
+
+`Draws.propagates` was true only for the `material` shape, so the battery
+broadcast a MEAN share across every draw and `account` returned `None` for it --
+it sat in `combine.cases` contributing nothing to a figure that named three
+cases. It propagates now WHEN THE EXPORT NAMES NO MATERIALS, which is the
+battery: Layer 3 is a placeholder for the whole component, so the middle level
+is an identity. An element-keyed case that DOES name materials still refuses;
+that needs `_material_and_element_rows` reproduced per draw.
+
+Measured: all 19 exported Layer-4 rows rebuild from the chained shares to
+**2.7e-16**, and the battery contributes 380 kt of copper in 2070 against the
+381 kt its own run reports.
+
+### The figures
+
+New: **`<metal>_recovered.png`**, the total and each stream, which is the only
+figure that answers where a metal comes back from -- the question as soon as a
+run holds more than one case. And **`tools/compare_scenarios.py`**, a case's
+scenarios side by side.
+
+**UNCERTAINTY COMES FROM THE DRAWS, NEVER FROM ADDING INTERVALS.** Percentiles
+of the sum per draw, not the sum of two cases' percentiles; a ratio pooled per
+draw, not a ratio of two medians. `compare_scenarios` SOLVES each scenario for
+this reason -- a saved summary keeps percentiles and drops the draws, and there
+is no way back. **It changes the answer**: pooled battery recovery went
+49.4→64.1% to 59.1→77.0% and the scenario ordering flipped. Only nickel and
+cobalt separate the scenarios; aluminium, iron and phosphorus overlap entirely.
+
+`with_the_bev` and `lost` are **two stacked panels** now, not one panel with a
+twin axis. One panel could not carry a band on both totals: the axes are tied
+so their zeros align, so making room for one band rescales the other. Filled,
+the two bands were the same grey and crossed; dashed, they read as more lines;
+ruled to fit, the left axis doubled. Split, each has its own band and the dash
+code is gone -- colour means stream and nothing else.
+
+Also: ten stream colours, because four wrapped and put `wiring` and
+`currentCollectorAnode` in the same green; a legend that wraps at five; and
+`_short` splits camelCase and strips the metal BY SHAPE -- matching the literal
+word `copper` meant every nickel legend read "nickel in wiring".
+
+### Open
+
+- **`tools/compare_scenarios.py` reads `figures.resources`**, not
+  `combine.resources`. Two lists of metals, and they can drift.
+- **The combine re-solves wiring and boards for every scenario**, and their
+  alias makes those answers identical -- two thirds of the work in a
+  three-scenario run. Not cached on purpose: a combine that quietly reused
+  another scenario's solve would be the hardest kind of wrong to notice.
+- **On a metal the battery dominates, the stream line hides under the total.**
+  Nickel's `cathode active material` is the total, so its legend entry has no
+  visible line. Drawing the total beneath the streams would fix it and cost the
+  "total is the topmost line" convention.
+
+
+---
+
+## 2026-09-24 — the traction motor, and the first real coefficients
+
+**Two cases, both running, and every coefficient traceable to a published
+source.** That is new here: the electronics cases still say `PLACEHOLDER
+(Claude, not data)`, and the battery's came from a paper read by hand. These
+came from a document written for this purpose.
+
+### What the source is
+
+Two files, handed over today, in `~/Downloads/TractionMotor/`:
+
+| | |
+|---|---|
+| `RAWCLIC_BEV_Motor_Recycling_Report_V1.md` | 959 lines, EMPA / RAWCLIC, September 2026 |
+| `RAWCLIC_BEV_Motor_Recycling_TC_V1.xlsx` | 9 sheets, 2030 and 2060 × two routes |
+
+⚠️ **The report and the workbook disagree about how much is known, and the
+workbook is the one that looks like data.** The report's own finding 9 is *"No
+evidence-supported full-chain TC exists for 2030 or 2060"* and its §5.2 table is
+almost entirely `NR`. The workbook then fills those cells with Min|Mode|Max
+anyway. It labels them as scenario assumptions, legitimately — but anyone
+reading only the workbook will not notice that its numbers are a construction.
+**Every coefficient in both cases is a scenario assumption. None is measured.**
+
+### The two routes, and what actually separates them
+
+The fork is at the magnet, not at the motor:
+
+| 2030 | disassembly | shredder | |
+|---|---|---|---|
+| Nd, Pr, Dy, Tb | 0.41 | 0.016 | **26×** |
+| Cu | 0.64 | 0.59 | 1.1× |
+| Al | 0.66 | 0.61 | 1.1× |
+| **electrical steel** | 0.60 | **0.72** | **0.8×** |
+
+**Shredding is not the bad route.** It recovers copper and aluminium within
+10% of disassembly and recovers *more* steel, because laminations report
+cleanly to the ferrous fraction where careful dismantling loses some. What it
+destroys is the magnet. By 2060 the magnet gap narrows from 26× to **2.4×**,
+but only because the review's 2060 shredder is a different process —
+controlled shredding after demagnetisation, inline magnetic separation, then
+hydrometallurgy of the concentrate.
+
+### The cases
+
+| | |
+|---|---|
+| `data_folder/tractionmotor` | Route A, selective disassembly. 39 TC rows, 20 processes |
+| `data_folder/tractionmotor_shredder` | Route B, shredding. 27 TC rows, 16 processes |
+
+Both are **generated**, not hand-edited: `tools/build_tractionmotor_case.py`
+and `tools/build_tractionmotor_shredder_case.py`. Re-running either rebuilds
+its workbook from the coefficients written at the top of the script, so the
+chain from source document to case is one file to read.
+
+`TCs` is the review's **2030** column and `TCs_improved` its **2060** column,
+so the report's two horizons became the improvement window rather than two more
+cases.
+
+**The check that matters:** both cases reproduce the review's own end-to-end
+coefficients to rounding, for every material and both horizons, with nothing
+fitted to make that happen. Disassembly 2030 Nd 0.406 against 0.41 and Cu 0.636
+against 0.64; 2060 Nd 0.648 against 0.65. Shredder 2030 Cu 0.588 against 0.59;
+2060 Nd 0.265 against 0.26.
+
+### One deliberate departure from the workbook
+
+Its 2030 shredder sheet gives the magnet chain as **0.02**, which is the *step*
+value quoted as the chain: upstream capture and feed are not applied to it,
+although they are applied to copper, aluminium and steel on that same sheet,
+and although the 2060 sheet **does** apply them to the magnet. Applied
+consistently the 2030 magnet chain is **0.0157**, and that is what the case
+uses. Written at the top of the shredder builder.
+
+### The upstream, which did not exist this morning
+
+The recovery model reads `.npy` draw arrays. `04_03_tractionmotors.py` computed
+a 200 000-long distribution for every flow and year and then discarded it,
+writing only percentile CSVs. `RAWCLICStockAndFlow/src/traction_export.py` now
+writes the draws:
+
+```
+data/processed/traction_recovery_draws/<grade>/<flow>/
+    years.npy                        2020-2070, 11 years
+    __component____<material>.npy    (200 000, 11) float32
+    <element>__magnet.npy            Nd, Pr, Dy, Tb
+```
+
+72 arrays, 604 MB, four grade folders, two flows.
+
+### Why grade is a scenario and route is a case
+
+The scenario axis picks an **upstream folder and nothing else** —
+`scenario_alias` "maps a NAME to a FOLDER". It cannot change a coefficient. So
+treatment is a case and what-arrives is a scenario:
+
+| what varies | mechanism |
+|---|---|
+| route | case folder |
+| magnet grade | scenario / upstream folder |
+| 2030 → 2060 | `TCs` → `TCs_improved` |
+
+⚠️ **And SH/UH/EH is nothing like the battery's S1/S2/S3.** S1/S2/S3 change
+*which elements exist* — an LFP pack has no nickel. The magnet grades change
+**two numbers**: Nd and Pr are byte-identical in all three classes, because the
+workbook's 0.29–0.32 didymium applies to every one. Only Dy, Tb and the iron
+that compensates move.
+
+| share of magnet | SH | UH | EH |
+|---|---|---|---|
+| Nd | 0.2559 | 0.2559 | 0.2559 |
+| Pr | 0.0489 | 0.0489 | 0.0489 |
+| Dy | 0.0551 | 0.0751 | 0.0900 |
+| Tb | 0.0025 | 0.0050 | 0.0050 |
+
+So the default is the **`mix`** folder, which draws the grade class per draw —
+a fleet is a mixture, and averaging the three would build a magnet that exists
+nowhere, since the SH and EH dysprosium ranges do not overlap. `SH`, `UH` and
+`EH` are pinned and exist for exactly one question the user asked: *what if
+only EH is feasible, because of China*. That is `run.scenario = 'EH'` and
+nothing else changes.
+
+**This rests on one assumption worth stating**: that no transfer coefficient
+depends on concentration — that hydrometallurgy does not recover dysprosium
+better from a 9% feed than a 5% feed. The documents report flat fractions per
+element, so nothing there contradicts it, but it is an assumption.
+
+### Four things that went wrong, and how each was caught
+
+None was found by reading carefully. Each needed something to fail.
+
+1. **`Input_layer_key` names the PARENT of `TC_target_key`.** A row moving a
+   component is keyed at the *product*, whatever flow it leaves. Keyed at the
+   component itself it matched nothing — the checker named all five groups
+   stranded, by name.
+2. **The metals target the MATERIAL layer, not the element layer.** Copper,
+   aluminium and both steels have no element arrays upstream, so their mass
+   never reaches the element layer and there is no `rest` there to catch it.
+   Aimed at `element`/`rest` they came out as **zero recovered** while the
+   magnet worked, because the magnet *does* have element children.
+3. **One flow per stream, and separate loss flows.** A shared shredder flow let
+   the magnet leave at the element layer while the metals left at the material
+   layer; the checker found the magnet stranded at material depth. And one
+   shared loss flow written at two layers breaks the nesting invariant.
+4. ⚠️ **The export was in kilograms where the contract is kilotonnes, and
+   NOTHING FAILED.** The traction total at 2050 read 9.43e8 against the
+   battery's 4281. It was caught only by comparing magnitudes with the battery
+   — 943 kt against 4281 kt is a ~100 kg motor against a ~400 kg pack, which is
+   right. **A factor of a million that survived every structural check.** If
+   another upstream is ever added here, compare its magnitude against the
+   battery before trusting anything.
+
+### Where to continue
+
+`run.data_folder` is left at **`data_folder/tractionmotor_shredder`** and
+`run.scenario` at **`mix`**.
+
+1. **Monte Carlo**, `stages/03_run_monte_carlo.py`, both cases, all four grade
+   folders. The point of the whole chain and not yet run once.
+2. **Combination figures**, `05_combine_cases.py` — the two routes on one
+   panel is the comparison the user has been driving at all day.
+3. **The second fork is still unmodelled.** Inside disassembly the review has
+   short-loop hydrogen decrepitation (HD/HPMS) as an alternative to
+   hydrometallurgy: it keeps the alloy intact, skips elemental separation
+   entirely, and returns Dy and Tb *where they already are*. The workbook gives
+   it no end-to-end coefficient, so neither does the case. It changes the
+   **shape** of the recovered output, not only the amount.
+4. Copper, aluminium and both steels **stay materials** — decided 2026-09-24.
+   Not a gap.
+
+---
+
+## 2026-09-25 — all four cases from one run, and a reporting defect that hid 99% of the mass
+
+Fifteen commits, `cb3f0ca` to `a4a2d5c`. The four cases were finished and run;
+then a defect was found that had been silently dropping most of what the model
+recovers, in every case, since the traction motor work began.
+
+### READ THIS FIRST: copper, aluminium and steel were solved and never reported
+
+The headline `Recovered` table and every per-resource figure showed **Dy, Nd,
+Pr, Tb and nothing else** — about **0.56% of the recovered mass**. Copper alone
+is nineteen times the whole rare-earth output by weight, and it has its own
+four-panel figure upstream (`04_03_1_copper.png`, asked for on 2026-09-21).
+
+Recovered mass in 2050, `tractionmotor`/`mix`, mean of the draws:
+
+| | kt | was reported |
+|---|---|---|
+| steel (lamination 229.3 + steel 242.1) | 471.4 | no |
+| aluminium | 136.5 | no |
+| copper | 47.0 | no |
+| Nd / Dy / Pr / Tb | 2.5 / 0.68 / 0.47 / 0.04 | yes |
+
+**One assumption, in three files.** `finest_layer()` answers with a single
+layer column for a whole case, and this case MIXES DEPTHS: the magnet resolves
+to elements at Layer 4, while copper, aluminium, steel and lamination stop at
+materials in Layer 3. Layer 4 wins because the rare earths fill it, and then
+`summary[layer] != ''` deletes every metal row. `src/plot_flows.py` was explicit
+about it, falling back to Layer 4 whenever flows disagreed — read as protecting
+the *"no output flow is written at mixed layers"* check, but that check forbids
+ONE FLOW mixing layers, not a case whose different flows sit at different
+depths, which is exactly what this is.
+
+Fixed in `5027967`: each row is asked for its own depth (`report.resource_of`,
+`plot_monte_carlo.resource_key`, `plot_flows.resource_of`), the same rule the
+mass balance already used. `figures.resources` also had to grow — before the
+fix its five names matched nothing here so the figure code fell back to "all";
+after it, the old list would have narrowed every figure to copper alone.
+
+⚠️ **This was not found by testing.** 140 tests passed throughout. It was found
+because the user asked where the copper figure was.
+
+### All four cases run from one press
+
+`run.data_folder` now reads several folders separated by semicolons, as
+`groups` and `scenario_alias` already do. `src/upstream.cases_to_run` splits it
+and stages 01, 02, 03 and 99 loop over it (`9283475`).
+
+Each case **puts `run.scenario` back before it starts**. The scenario loop
+writes into that field, so without the restore every case after the first
+inherited the last scenario that ran — the first case did all four grades and
+the other three silently did only `mix`. Found by running it.
+
+### Contributions: what made up each total
+
+`Recovered` says how much Nd came back, not from where. `Contributions`
+(`7fb58bf`) gives one row per contributing flow with its own interval and its
+share. Split case, 2050: **Nd is 64.5% long loop (1.664 kt) and 35.5% short
+loop (0.917 kt)**. Shares are of MEANS, which add exactly; the intervals are
+each flow's own and do NOT sum to the total's.
+
+Intervals for a resource arriving by several flows now come from the **draws**.
+Adding two flows' p50s is not the median of their sum. Measured on Nd in 2050:
+the naive percentile sum puts p2.5 **5.4% low** and p97.5 **4.7% high**. Single
+-flow groups are unaffected — both agree exactly.
+
+### Figures
+
+`a5cdda0`: every y axis in 04 is pinned to **kt** (`AXIS_UNIT`) and a rate axis
+carries `/year`. It mixed Mt and kt, and half the panels labelled an annual
+flow with a bare mass unit.
+
+`752abcc`: `_one_panel` claimed "both panels share a scale, so a height in one
+compares with a height in the other". They share the UNIT. Each panel is ruled
+to its own data, so the heights do NOT compare. The claim went, the behaviour
+stayed.
+
+`a4a2d5c`: **`plot_flows.figure_for_draws`** — the Sankey from the draws
+instead of one point solve. Ribbons are means (the only central value that
+balances: means add), each node prints its 95% interval. **NOT WIRED INTO ANY
+STAGE.** 02 still draws the deterministic ones. Decided jointly: it stays a
+tool. Its limits are real and it does not remove them — one year out of eleven,
+and a ribbon cannot carry a range (`F_loss_ree` is 277,622 with an interval of
+150,737–436,888, a factor of 2.9, drawn as one fixed width).
+
+### The standing rule, stated twice today
+
+**Every figure must be Monte Carlo generated and show uncertainty ranges.** All
+02 figures fail it — `replay()` re-runs the model on point values, so every
+Sankey and `structure.png` is a single number with nothing behind it. 03's
+figures pass (`spread`, `mode_vs_mean` and `sensitivity` carry no band because
+uncertainty IS their subject). 04 bands the total only, by choice.
+
+**Check the stock-and-flow for what is significant** before calling a case
+reported. The upstream export says which resources exist; the upstream FIGURES
+say which ones matter.
+
+### Where to continue
+
+`run.data_folder` is all four traction motor cases, `run.scenario` blank
+(= all four grades). 01 and 02 verified over all 16 passes, exit 0. 03 was run
+by the user at 15:00–15:18.
+
+1. **Re-run 03.** Its summaries are from 15:18, BEFORE the mixed-depth fix, so
+   every workbook on disk still has the four-rare-earth `Recovered` sheet and
+   no `Contributions`. Nothing is wrong with the numbers in them; the sheets
+   are just missing most of their rows.
+2. **Audit 03's figures** for ranges, one by one. This was agreed as the next
+   task and is not started.
+3. **04 does not cover this work.** `combine.cases` is wiring + boards +
+   battery; `combine.resources` is copper, nickel, cobalt, lithium. No traction
+   motor case and no rare earth. Note that 04 ADDS cases — parts of one car —
+   whereas the four traction motor cases are the same motors down competing
+   routes, so they must be COMPARED, not summed. That figure does not exist.
+4. **The schema figure still quotes the chain of modes** (0.406, 0.674, 0.265).
+   That is not the mode of the result and not any percentile — the
+   deterministic run sits 1.5% from the mean on the median flow and 19.1% out
+   at worst. Restate from the draws or label it for what it is.
+5. `scenarios_to_run`'s `named` parameter is a leftover from `--scenario`; no
+   stage passes it. Documented as the override hook it is, not removed.
+
+## 2026-09-28 — the Sankey is Monte Carlo now, and it was drawing double
+
+Asked for in one line: *"yes wire it into 03, I want full MC"*.
+
+### What was wired
+
+`plot_flows.figure_for_draws` was written on 09-25 and called by nothing --
+not a stage, not a tool, not a test. `plot_monte_carlo.draw_all` now calls it
+for the total and for every resource `chosen` covers, in the LAST year, and
+writes them under the names 02 uses. So a full pass (02 then 03) leaves one
+Sankey per resource and it is the Monte Carlo one. DECISIONS 27.
+
+Each node prints its mean and its 95% interval; the ribbon width is the mean,
+because means add and the picture has to balance. Both limits -- a ribbon
+cannot carry a range, and this is one year of eleven -- are on the figure.
+
+⚠️ **`magnet.png` and `rest.png` stay deterministic.** 03 draws what
+`figures.resources` names, and that list has no `magnet`; `rest` is excluded on
+purpose (it is waste, not a material). Those two files keep whatever 02 wrote,
+in a folder where everything else is Monte Carlo, and only the subtitle says
+so. Add `'magnet'` to `figures.resources` to close half of it.
+
+### What it exposed: every per-resource Sankey was drawn at 2x
+
+    F_collected, copper, 2070:   drawn 141,089,503 kg      true 70,544,752 kg
+
+Every resource of every traction motor case, and all twelve components of the
+battery, in all three scenarios, since the cases were built. `resource_of`
+gives a row the value of its own deepest filled layer, so a component `copper`
+holding a material `copper` answers `copper` on both rows -- and the child is
+the whole of its parent, so they carry the same mass. `mass()` added them, under
+a docstring promising it did not.
+
+**It did not reach any table.** The `Recovered` sheet and every recovered-flow
+figure read flows where each resource sits at one depth -- checked across all
+nine cases. Only the Sankeys were wrong, and the Sankey is the one figure
+nobody reconciles against a table, which is why it survived.
+
+**It surfaced because the Monte Carlo version prints numbers.** `F_cu_stream`
+at 123.5 M kg with 61.8 M leaving it does not balance. The deterministic
+Sankey had been drawing the same doubled masses for weeks with nothing on it to
+contradict them. DEFECTS 3.21, and 3.22 for the caption that ran off the page
+and the interval labels that collided.
+
+### Copper's account figures, and why there were none
+
+The battery and electronics cases draw `account`, `losses`, `trapped` and
+`fate` per resource. The traction motor cases drew none of them, silently. All
+four hang off `account()`, and two separate things stopped it -- the traction
+export had no `outflow` folder, and `other_flow` could not address a resource
+exported AS a component (`__component____copper.npy`, where it looked for
+`copper__copper.npy`). Both are fixed: DEFECTS 3.23 here, and
+`RAWCLICStockAndFlow` 2026-09-28 for the export.
+
+**04_03 was re-run the same day** and the export is now three flows, 108
+arrays, 950 MB, same nine array names in each, all `(200000, 11)`. Copper has
+its account, losses, trapped and fate figures, the same four the battery and
+the electronics cases have.
+
+⚠️ **Drawing them found the double count a third time** -- `account()` read
+copper's collected mass as 140.94 kt against a true 70.47, and because
+`recovered` comes from flows holding ONE depth while `collected` comes from
+flows holding two, copper appeared to lose 91.7 kt of the 70.5 it had. It
+closed to 0.00e+00 the whole time, because closure is by construction.
+DEFECTS 3.24. Fixed with `own()`, applied at all twelve row selections that sum
+mass.
+
+⚠️ **The collected share is a FIXED 0.88**, identical in every draw, year and
+resource -- `sd 5.3e-08`. The battery's is drawn (`04_04_batteries.FLOWS`
+notes 03_02 draws those shares); 04_03's is not. So "never collected" on these
+figures is a flat 12% of the outflow with no band of its own, which the figure
+draws honestly as a flat line. This is upstream open item 4.1d -- 04_03's
+vehicle counts are deterministic -- showing up in a new place.
+
+### Where to continue
+
+Unchanged from the 09-25 list except that these figures now need the re-run
+too:
+
+0. **Re-run 04_03 upstream**, which now exports `outflow`. Until then copper
+   has no account figure and neither does anything else.
+1. **Re-run 03.** Still the first thing here. Every workbook on disk is missing its
+   `Contributions` sheet -- the code writes eight sheets, the files hold seven
+   -- and now every Sankey on disk is a doubled deterministic one.
+2. **Audit 03's figures for ranges**, one by one. Not started. `account`,
+   `trapped`, `losses` and `fate` return None for all four traction cases,
+   because they need `run.upstream.propagates` and the traction export does not
+   carry the inflow/outflow arrays. `routes` returns None correctly -- each
+   case is one road, and the road comparison is `tools/compare_routes.py`.
+3. **`compare_routes.py` covers the four rare earths only.** Copper, aluminium
+   and steel differ by route too -- 0.64 against 0.59 for copper -- and are not
+   compared anywhere.
+4. The schema figure still quotes the chain of modes. Unchanged.
+
+---
+
+
+---
+
+## 2026-09-28 (later) — three studies to press, and the stages out of the way
+
+**The project root now shows what to run and nothing else:**
+
+    00_parameters.py          the settings, checked, and the two files it writes
+    02_electronics.py   \
+    03_tractionmotors.py > the three studies -- press ONE of them
+    04_batteries.py     /
+    05_combine_cases.py       adds cases together; its own settings
+    99_check_all.py           the suites, then the pipeline and a mass balance
+    stages/                   01, 02, 03 -- run by the study files, not by you
+
+⚠️ **The study numbers are the UPSTREAM stage that feeds each one** -- 04_02,
+04_03, 04_04 -- not steps in a sequence here. The three are alternatives.
+
+`combine_cases` was `04_` until 2026-09-28 and became `05_` the same day: on
+the reading above its `04` claimed an upstream stage that does not feed it, and
+it sat next to `04_batteries.py` meaning something else. Nothing feeds it -- it
+adds cases this model has already solved.
+
+The stages kept their numbered names inside `stages/`, so every mention of
+`03_run_monte_carlo.py` in these documents still finds the file. They still run
+on their own.
+
+
+
+*"at the moment we are running in recovery electronics, battery and
+tractionmotors using different parameters setting. This proves not efficient."*
+
+| press Run on | covers | passes |
+|---|---|---|
+| `02_electronics.py` | wiring + motors, boards + sensors | 2 |
+| `03_tractionmotors.py` | four routes x four magnet grades | 16 |
+| `04_batteries.py` | the pack, S1 / S2 / S3 | 3 |
+
+Each runs 01, 02 and 03 and stops at the first failure. What a study covers is
+`STUDIES` in `src/params_schema.py` -- case folders, scenario, and the
+resources its figures draw -- written once. `current()` reads the
+`RECOVERY_STUDY` variable the wrapper sets; the stages import `current` BY NAME,
+so patching the module would not reach them and an environment variable does.
+`src/study.py` runs the stages as subprocesses, the way `99_check_all.py`
+already does, so what runs is the stage itself and not an in-process imitation.
+
+DECISIONS 28, and it does not reopen 23: a switch that exists only on a command
+line is invisible, a file in the project root is not.
+
+One thing the traction study fixes on the way past: `magnet` is now in its
+figure resources, so 03 draws its Sankey from the draws. Left out, 03 skipped it
+and 02's deterministic one stayed on disk looking current.
+
+### ⚠️ A correction to the entry above
+
+**The stages ignore arguments.** `02_run_model.main` says so and means it. So
+`02_run_model.py data_folder/tractionmotor_mixed` did NOT run that case -- it
+ran the four in `run.data_folder`, which is why it printed
+`tractionmotor_split`. The claim earlier today that 01 had validated
+`tractionmotor_mixed` was wrong for the same reason: it validated the four
+configured cases.
+
+**Checked properly afterwards, and it does pass**: 99 TC rows, 45 processes,
+structure OK, nothing stranded, every resource totalling 1, exit 0. Four
+sum-to-1 groups sit 0.82 sd from 1 -- the shredder chain's four magnet fates,
+imported unchanged -- which the checker itself reports as not an error.
+
+`tractionmotor_mixed` is deliberately NOT in `STUDIES['tractionmotors']` yet.
+Adding it is one name in that list, once the disassembly share is a number
+somebody chose rather than the placeholder in
+`tools/build_tractionmotor_mixed_case.py`.

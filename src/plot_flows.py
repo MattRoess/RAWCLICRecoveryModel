@@ -27,6 +27,7 @@ Two things this has to get right, both of which a naive script gets wrong:
 """
 import os
 
+import numpy as np
 import pandas as pd
 from matplotlib.patches import PathPatch, Rectangle
 from matplotlib.path import Path
@@ -52,7 +53,8 @@ def describe(entry: dict) -> str:
     return ' / '.join(parts) if parts else 'the only combination'
 
 
-def chosen_entry(folder: str, tables: dict | None = None) -> tuple[str, int]:
+def chosen_entry(folder: str, tables: dict | None = None,
+                 scenario: str | None = None) -> tuple[str, int]:
     """
     Which combination the Sankeys describe, and how many there are.
 
@@ -63,7 +65,7 @@ def chosen_entry(folder: str, tables: dict | None = None) -> tuple[str, int]:
     different one.
     """
     model = RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES,
-                                   tables=tables)
+                                   tables=tables, scenario=scenario)
     return describe(model.input_data[-1]), len(model.input_data)
 
 
@@ -80,7 +82,8 @@ def unit_drawn(params: Params) -> str:
     return params.run.working_unit
 
 
-def replay(folder: str, tables: dict | None = None):
+def replay(folder: str, tables: dict | None = None,
+           scenario: str | None = None):
     """
     Re-run the model's process loop, recording the mass on every edge.
 
@@ -89,7 +92,7 @@ def replay(folder: str, tables: dict | None = None):
     The combination replayed is the one `chosen_entry` names.
     """
     model = RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES,
-                                   tables=tables)
+                                   tables=tables, scenario=scenario)
     entry = model.input_data[-1]
     inflows, composition, tcs = entry['inflows_df'], entry['composition_df'], entry['tcs_df']
 
@@ -122,6 +125,9 @@ def finest_layer(frame: pd.DataFrame) -> str:
 
     `src/plot_monte_carlo.py` has the same function for the same reason. The fix
     was applied there and not here.
+
+    ⚠️ ONE DEPTH FOR A WHOLE FRAME, which a mixed case does not have. Use
+    `resource_of` to ask row by row.
     """
     for column in ('Layer 4', 'Layer 3', 'Layer 2'):
         if column in frame.columns and (frame[column].astype(str) != '').any():
@@ -129,22 +135,84 @@ def finest_layer(frame: pd.DataFrame) -> str:
     return 'Layer 2'
 
 
+def resource_of(frame: pd.DataFrame) -> pd.Series:
+    """
+    What each row is a quantity OF: the value of its own deepest filled layer.
+
+    A CASE CAN MIX DEPTHS. The traction motor resolves the magnet to elements
+    at Layer 4 and copper, aluminium, steel and lamination to materials at
+    Layer 3. `finest_layer` has to answer with one column for the frame, and
+    for that case it answers Layer 4 -- so every metal row reads blank and
+    silently leaves the figure. That is why 02 drew Nd, Pr, Dy, Tb and nothing
+    else: no copper Sankey at all (2026-09-25).
+    """
+    layers = [column for column in LAYERS if column in frame.columns]
+    if not layers:
+        return pd.Series([''] * len(frame), index=frame.index)
+    deepest = frame[layers[::-1]].astype(str).replace('nan', '')
+    out = deepest.iloc[:, 0].copy()
+    for column in deepest.columns[1:]:
+        out = out.where(out != '', deepest[column])
+    return out.fillna('')
+
+
+def layer_holding(frame: pd.DataFrame, element: str) -> str:
+    """Which layer column actually carries `element`, for the subtitle."""
+    for column in ('Layer 4', 'Layer 3', 'Layer 2'):
+        if column in frame.columns and (frame[column].astype(str) == element).any():
+            return column
+    return 'Layer 3'
+
+
+def shallowest_of(frame: pd.DataFrame, resource: str | None):
+    """
+    A mask for one resource's own rows: the shallowest depth it appears at.
+
+    ⚠️ A RESOURCE CAN MATCH AT TWO DEPTHS AT ONCE, and then summing the matches
+    counts its mass twice. `resource_of` gives each row the value of its own
+    deepest filled layer, so a component called `copper` holding a material
+    called `copper` answers `copper` on BOTH rows -- the parent and its only
+    child -- and they carry the same mass by construction.
+
+    That is not a corner case. Every traction motor case is built this way
+    (copper, aluminium, steel, lamination, magnet) and so is the battery (all
+    twelve components), because upstream names a component after the thing it
+    is made of. Found 2026-09-28 by wiring the Monte Carlo Sankey into 03: the
+    picture balanced within itself and then failed to match the model --
+    F_collected read 141.0 M kg of copper against a true 70.5 M.
+
+    The fix is the nesting rule this module already applies to a flow's
+    aggregate (MODEL_MECHANICS §1): a deeper row is a SUB-QUANTITY of its
+    parent, never an addition to it, so take the shallowest depth among the
+    rows that match and leave the rest alone. Where a resource appears at one
+    depth only -- every element case, and every recovered flow in all nine
+    cases -- this changes nothing.
+
+    `resource` of None means the flow's own total, which is the same rule with
+    nothing to match on.
+    """
+    depths = depth_of(frame)
+    if resource is None:
+        return depths == depths.min()
+    match = resource_of(frame) == resource
+    if not match.any():
+        return match
+    return match & (depths == depths[match].min())
+
+
 def mass(frame: pd.DataFrame, element: str | None) -> float:
     """
     Total mass in a set of rows, without double counting the nesting.
 
-    For an element figure, take element-depth rows for that element. Otherwise
-    take the shallowest depth present, which is that flow's own aggregate.
+    For an element figure, that element's own rows; otherwise the shallowest
+    depth present, which is that flow's own aggregate. Both go through
+    `shallowest_of`, which is where the rule is written down.
     """
     if frame is None or len(frame) == 0:
         return 0.0
     frame = frame.copy()
     frame['Value'] = pd.to_numeric(frame['Value'])
-    if element is not None:
-        return float(frame.loc[frame[finest_layer(frame)] == element,
-                               'Value'].sum())
-    depths = depth_of(frame)
-    return float(frame.loc[depths == depths.min(), 'Value'].sum())
+    return float(frame.loc[shallowest_of(frame, element), 'Value'].sum())
 
 
 def assign_columns(nodes: list[str], links: list[tuple]) -> dict[str, int]:
@@ -161,11 +229,42 @@ def assign_columns(nodes: list[str], links: list[tuple]) -> dict[str, int]:
     return column
 
 
-def render(nodes, links, column, title, subtitle, theme: str):
+# How much subtitle fits on one line, and how far apart the lines sit. 12.5pt
+# DejaVu Sans on a 1180pt canvas with a 20pt margin each side takes about 170
+# characters; 150 leaves room for the wide glyphs a resource name can bring.
+SUBTITLE_CHARS = 150
+SUBTITLE_STEP = 17
+
+
+def render(nodes, links, column, title, subtitle, theme: str,
+           intervals=None):
     """Lay out and draw the Sankey. Node height and ribbon width are mass."""
-    width, height = 1180, 620
-    left, right, top, bottom = 20, 150, 76, 30
-    node_width, gap = 16, 16
+    # TALLER WHEN EVERY NODE CARRIES THREE LINES. At 620 the name, the
+    # mean and the interval overlapped their neighbours wherever two
+    # small flows sat together.
+    # AN INTERVAL LABEL IS THREE LINES AND A LONG ONE. `[597,713,656.8 -
+    # 670,589,993.6]` at 9pt is about 155pt wide on its own, so the 150pt right
+    # margin that suited a two-line label cut every interval in half, and a gap
+    # of 16 let two small nodes print their three lines straight through each
+    # other. Both are only visible once the Monte Carlo Sankey is drawn, which
+    # is why they surfaced on 2026-09-28 and not before.
+    width = 1400 if intervals else 1180
+    height = 880 if intervals else 620
+    left, right, top, bottom = 20, (300 if intervals else 150), 76, 30
+    node_width = 16
+    gap = 40 if intervals else 16
+
+    # THE SUBTITLE WRAPS, and the diagram starts below however many lines it
+    # took. It used to be one line at 12.5pt from x=20 on a 1180pt canvas, so
+    # anything past about 170 characters simply ran off the right edge -- the
+    # Monte Carlo subtitle, which has to state that the ribbon is a mean and
+    # the interval is printed separately, is longer than that and lost its last
+    # clause. A figure has to be readable at the size it is drawn
+    # (DECISIONS 17), and a caption that explains what a ribbon cannot show is
+    # not the part to truncate.
+    import textwrap
+    lines = textwrap.wrap(subtitle, SUBTITLE_CHARS) or ['']
+    top += SUBTITLE_STEP * (len(lines) - 1)
 
     columns = {}
     for node in nodes:
@@ -203,7 +302,9 @@ def render(nodes, links, column, title, subtitle, theme: str):
 
     figure, axes, colours = canvas(width, height, theme)
     label(axes, left, 24, title, 17, colours['title'], 'bold')
-    label(axes, left, 48, subtitle, 12.5, colours['sub'])
+    for line_number, line in enumerate(lines):
+        label(axes, left, 48 + SUBTITLE_STEP * line_number, line, 12.5,
+              colours['sub'])
 
     colour = {node: PALETTE[i % len(PALETTE)] for i, node in enumerate(sorted(nodes))}
 
@@ -231,8 +332,20 @@ def render(nodes, links, column, title, subtitle, theme: str):
         axes.add_patch(Rectangle((x, y), node_width, size, facecolor=colour[node],
                                  edgecolor='none'))
         text_x = x + node_width + 7
-        label(axes, text_x, y + size / 2 - 5, node, 12, colours['node'])
-        label(axes, text_x, y + size / 2 + 8, f'{nodes[node]:,.1f}', 10.5, colours['meta'])
+        # THE INTERVAL GOES ON THE LABEL, because a ribbon cannot carry one.
+        # Its width is the mean and the mean alone; without the numbers beside
+        # it the figure would state a precision the run does not have.
+        if intervals and node in intervals:
+            low, high = intervals[node]
+            label(axes, text_x, y + size / 2 - 11, node, 12, colours['node'])
+            label(axes, text_x, y + size / 2 + 2, f'{nodes[node]:,.1f}',
+                  10.5, colours['meta'])
+            label(axes, text_x, y + size / 2 + 14,
+                  f'[{low:,.1f} - {high:,.1f}]', 9, colours['sub'])
+        else:
+            label(axes, text_x, y + size / 2 - 5, node, 12, colours['node'])
+            label(axes, text_x, y + size / 2 + 8, f'{nodes[node]:,.1f}',
+                  10.5, colours['meta'])
 
     return figure
 
@@ -260,10 +373,12 @@ def figure_for(case: str, edges, flows, element: str | None, unit: str, theme: s
         # material rows, announced an element depth it does not have. `mass()`
         # was already reading the deepest layer each frame fills; only the
         # sentence was stuck on Layer 4.
-        depth = max((finest_layer(frame) for frame in flows.values()
+        # THE LAYER THIS RESOURCE SITS AT, not one chosen for the case.
+        # A mixed case has both: Nd at Layer 4, copper at Layer 3.
+        depth = max((layer_holding(frame, element) for frame in flows.values()
                      if frame is not None and len(frame)), default='Layer 3')
         title = f'{case} — {element} through the recovery system'
-        subtitle = (f'{which}{depth} rows only -- the deepest this case resolves. '
+        subtitle = (f'{which}{depth} rows only -- the depth this resource sits at. '
                     f'Node and ribbon size are mass '
                     f'in {unit}. {len(nodes)} flows, {len(links)} transfers.')
     else:
@@ -272,6 +387,121 @@ def figure_for(case: str, edges, flows, element: str | None, unit: str, theme: s
                     f'is not double counted. Mass in {unit}. '
                     f'{len(nodes)} flows, {len(links)} transfers.')
     return render(nodes, links, assign_columns(list(nodes), links), title, subtitle, theme)
+
+
+def draws_for(run, flow: str, resource: str | None, year) -> np.ndarray | None:
+    """
+    The draws behind one node: a flow's mass, for one resource, in one year.
+
+    Returns (draws,) or None when the flow holds nothing there. Rows are summed
+    PER DRAW, which is the whole point -- the interval of a sum is not the sum
+    of its parts' intervals.
+    """
+    keys = run.keys
+    same_year = keys['Year'].astype(str).to_numpy() == str(year)
+    is_flow = (keys['Stock/Flow ID'] == flow).to_numpy()
+    here = np.flatnonzero(is_flow & same_year)
+    if not here.size:
+        return None
+    # The shallowest depth, for the aggregate AND for a named resource: a
+    # component called `copper` and the material inside it both answer
+    # `copper`, and adding them counts the same mass twice. See
+    # `shallowest_of`, which states the rule and where it came from.
+    rows = here[shallowest_of(keys.iloc[here], resource).to_numpy()]
+    if not rows.size:
+        return None
+    return run.values[rows].sum(axis=0)
+
+
+def figure_for_draws(case: str, run, tcs, element: str | None, unit: str,
+                     theme: str, year, shows: str = '', of_many: int = 1):
+    """
+    The same Sankey, drawn from the Monte Carlo instead of one point solve.
+
+    ⚠️ WHAT A SANKEY CANNOT DO. A ribbon's width is a single number, so this
+    figure shows MEANS and prints each node's 95% interval beside it. It is also
+    ONE YEAR out of eleven. Both limits are the figure's, not the model's, and
+    2026-09-25 is when they were said out loud: "they are only good for 1 year
+    and they do not show uncertainties".
+
+    MEANS ARE THE RIGHT CENTRAL VALUE HERE, and the only one that would work:
+    means add, so what enters a node still equals what leaves it and the picture
+    balances exactly. Medians would not -- the ribbons into a node would not sum
+    to the node -- and the deterministic run this replaces is every coefficient
+    at its mode, which is neither.
+
+    EDGES COME FROM THEIR TARGET. A transfer s -> t carrying resource r is that
+    resource's whole content of t, because nothing else feeds it: checked across
+    all four traction motor cases, every node fed from several places separates
+    by resource. Where that does not hold the edge is dropped rather than
+    guessed, and the subtitle says how many.
+    """
+    nodes, intervals, shares = {}, {}, {}
+    for flow in dict.fromkeys(list(tcs['Input_FlowID']) + list(tcs['Output_FlowID'])):
+        drawn = draws_for(run, flow, element, year)
+        if drawn is None or float(drawn.mean()) <= 1e-12:
+            continue
+        nodes[flow] = float(drawn.mean())
+        low, high = np.percentile(drawn, [2.5, 97.5])
+        intervals[flow] = (float(low), float(high))
+
+    # AN EDGE IS ITS TARGET'S CONTENT, when nothing else feeds that target.
+    # Deriving it from the coefficient's own target key does not work: upstream
+    # of the separation the chain is carried by COMPONENT-keyed coefficients
+    # (F_collected -> F_motor moves `magnet`, not `Nd`), so an element figure
+    # built from TC keys drew only the last two steps and left every node
+    # before them stranded. The mass of Nd crossing that edge is simply the Nd
+    # in F_motor, because F_motor has one source.
+    inbound = {}
+    for source, target in dict.fromkeys(zip(tcs['Input_FlowID'], tcs['Output_FlowID'])):
+        inbound.setdefault(target, []).append(source)
+
+    links, ambiguous = [], 0
+    for (source, target) in dict.fromkeys(zip(tcs['Input_FlowID'],
+                                              tcs['Output_FlowID'])):
+        if source not in nodes or target not in nodes:
+            continue
+        if len(inbound[target]) == 1:
+            drawn = draws_for(run, target, element, year)
+            total = float(drawn.mean()) if drawn is not None else 0.0
+        else:
+            # Several sources: take only the resources THIS one delivers. Every
+            # such node in the four traction motor cases separates cleanly --
+            # copper from F_cu_stream, aluminium from F_al_stream, lamination
+            # and steel from F_steel_stream.
+            mine = tcs[(tcs['Input_FlowID'] == source)
+                       & (tcs['Output_FlowID'] == target)]
+            wanted = {str(r) for r in mine['TC_target_key'] if str(r)}
+            if element is not None:
+                wanted &= {element}
+            total = 0.0
+            for resource in sorted(wanted):
+                others = tcs[(tcs['Output_FlowID'] == target)
+                             & (tcs['TC_target_key'].astype(str) == resource)]
+                if others['Input_FlowID'].nunique() > 1:
+                    ambiguous += 1      # two sources, one resource: not separable
+                    continue
+                drawn = draws_for(run, target, resource, year)
+                if drawn is not None:
+                    total += float(drawn.mean())
+        if total > 1e-12:
+            links.append((source, target, total))
+    if not links:
+        return None
+
+    which = f'{shows}. ' if shows else ''
+    if of_many > 1:
+        which = f'{shows} — one of {of_many} in this run. '
+    what = element or 'all materials'
+    note = (f'  {ambiguous} transfer(s) not separable by resource and left out.'
+            if ambiguous else '')
+    title = f'{case} — {what} through the recovery system, {year}'
+    subtitle = (f'{which}Monte Carlo, {run.values.shape[1]:,} draws. Ribbon width '
+                f'is the MEAN; the 95% interval is printed under each node, '
+                f'because a ribbon cannot carry one. One year of the run. '
+                f'Mass in {unit}. {len(nodes)} flows, {len(links)} transfers.{note}')
+    return render(nodes, links, assign_columns(list(nodes), links), title,
+                  subtitle, theme, intervals=intervals)
 
 
 def draw(folder: str | None = None, params: Params | None = None,
@@ -286,20 +516,28 @@ def draw(folder: str | None = None, params: Params | None = None,
     # See unit_drawn: reading it from the inputs column was out by 1e6.
     unit = unit_drawn(params)
 
-    shows, of_many = chosen_entry(folder, tables)
-    edges, flows = replay(folder, tables)
+    shows, of_many = chosen_entry(folder, tables, params.run.scenario)
+    edges, flows = replay(folder, tables, params.run.scenario)
     case = os.path.basename(folder.rstrip('/'))
 
     elements = [None]
     if params.figures.element_figures:
-        deepest = {finest_layer(f) for f in flows.values()}
-        # One layer across the case, or the sets would not be comparable between
-        # flows. A case mixing depths is refused at load (validate_inputs,
-        # "no output flow is written at mixed layers"), so this is a guard
-        # against that check being removed, not against real data.
-        layer = sorted(deepest)[0] if len(deepest) == 1 else 'Layer 4'
-        elements += sorted({e for f in flows.values()
-                            for e in f[layer].astype(str).unique() if e})
+        # THE RESOURCES THIS STUDY IS ABOUT, not every one in the data. 02 drew
+        # a Sankey for all nine traction resources while 03 redrew only the six
+        # named in `figures.resources`, so three of 02's point-solve pictures
+        # stayed on disk beside six Monte Carlo ones, indistinguishable except
+        # by their subtitles. Narrowing here keeps the two stages in step.
+        wanted = tuple(params.figures.resources or ())
+        # EVERY RESOURCE, AT WHATEVER DEPTH IT SITS. The old code picked one
+        # layer for the case and fell back to Layer 4 when flows disagreed.
+        # That fallback was read as protecting the "no output flow is written
+        # at mixed layers" check, but that check forbids ONE FLOW mixing
+        # layers, not a case whose different flows sit at different depths --
+        # which is what the traction motor is. The fallback silently dropped
+        # copper, aluminium, steel and lamination from every figure.
+        found = sorted({e for f in flows.values()
+                        for e in resource_of(f).unique() if e})
+        elements += [e for e in found if e in wanted] or found
 
     print(f'{folder}: {len(flows)} flows, {len(edges)} transfers, '
           f'showing {shows}' + (f' of {of_many} combinations' if of_many > 1 else ''))
@@ -309,7 +547,8 @@ def draw(folder: str | None = None, params: Params | None = None,
         if figure is None:
             continue
         stem = element or 'total'
-        for path in write(figure, folder_for(params.figures.out_dir, case), stem,
+        for path in write(figure, folder_for(params.figures.out_dir, case,
+                                            params.run.scenario), stem,
                           params.figures.enabled(), params.figures.dpi):
             print(f'  wrote {path}')
         import matplotlib.pyplot as plt

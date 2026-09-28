@@ -111,6 +111,74 @@ def _known_keys(composition: pd.DataFrame) -> dict[str, set[str]]:
             for name, column in zip(LAYER_NAMES, LAYERS)}
 
 
+def _what_reaches(paths: list[tuple], tcs: pd.DataFrame,
+                  entered: set) -> dict[str, set]:
+    """
+    Which composition rows actually arrive in each flow, by following the
+    coefficients. Returned as {flow: {position in `paths`, ...}}.
+
+    Everything the composition defines enters at the flows mass enters by, and
+    from there a row reaches a flow only if some coefficient MOVES it there.
+
+    WHY THIS EXISTS -- 2026-09-17
+    -----------------------------
+    `_check_nothing_strands` used to assume every resource reached every flow.
+    That is true of a case whose branches all carry the same components, and
+    false of the battery: dismantling sends the housing one way and the cells
+    the other, and the two carry disjoint components. The check asked for cable
+    copper to have an exit from the cell road and for cathode lithium to have
+    one from the shredder -- 19 resources reported as stranding mass that never
+    arrives. Any case that branches would have hit the same wall.
+
+    A COARSER ROW CARRIES ITS FINER ONES. A coefficient keyed at the component
+    layer moves every element inside that component, so reachability is
+    followed on whole composition rows and projected onto a layer afterwards.
+    Following it layer by layer instead reports nothing, because the element
+    that a component-keyed row carried never appears to have moved at all.
+
+    A COEFFICIENT OF EXACTLY 0 MOVES NOTHING, so it does not make a row reach
+    anywhere: that is the row saying the road is not taken, and this check
+    exists to protect mass that is actually there. A BLANK coefficient is
+    treated as open -- a number nobody has written yet must not switch a check
+    off, and an unfilled table is refused elsewhere anyway.
+    """
+    depth_of = {name: depth for depth, name in enumerate(LAYER_NAMES)}
+    values = (pd.to_numeric(tcs['value'], errors='coerce')
+              if 'value' in tcs.columns else None)
+
+    moves = []
+    for position, (_, row) in enumerate(tcs.iterrows()):
+        layer = str(row['TC_target_layer']).strip()
+        if layer not in depth_of:
+            continue                       # reported already as an unknown layer
+        if values is not None and values.iloc[position] == 0:
+            continue
+        moves.append((str(row['Input_FlowID']).strip(),
+                      str(row['Output_FlowID']).strip(),
+                      depth_of[layer],
+                      str(row['TC_target_key']),
+                      str(row['Input_layer_key'])))
+
+    reach = {flow: set(range(len(paths))) for flow in entered}
+    moving = True
+    while moving:                          # a fixed point; the graph is tiny
+        moving = False
+        for source, target, depth, key, parent_key in moves:
+            arrived = reach.setdefault(target, set())
+            for index in list(reach.get(source, ())):
+                path = paths[index]
+                if path[depth] != key:
+                    continue
+                if parent_key and '*' not in parent_key:
+                    parent = path[depth - 1] if depth else ''
+                    if parent != parent_key:
+                        continue
+                if index not in arrived:
+                    arrived.add(index)
+                    moving = True
+    return reach
+
+
 def _check_nothing_strands(processes: pd.DataFrame | None,
                            composition: pd.DataFrame,
                            tcs: pd.DataFrame) -> list[Problem]:
@@ -135,6 +203,11 @@ def _check_nothing_strands(processes: pd.DataFrame | None,
     row costs nothing. This one is the same join read the other way round, and
     it costs the answer.
 
+    WHICH RESOURCES ARRIVE IS FOLLOWED, NOT ASSUMED. `_what_reaches` walks the
+    coefficients from the flows mass enters by. Before 2026-09-17 this took
+    every resource in the composition against every flow, which a branching
+    case fails for no reason -- see that function.
+
     THE MATCHING RULE IS THE ENGINE'S
     ---------------------------------
     A row covers a resource when its target key names the resource and its
@@ -147,7 +220,18 @@ def _check_nothing_strands(processes: pd.DataFrame | None,
         return []
 
     flows_with_an_exit = {str(flow).strip() for flow in processes['Input_FlowID']}
+    # WHERE MASS ENTERS: a flow the processes table names as an input and never
+    # as an output. The mirror of how terminal flows are found, and for the same
+    # reason -- no flow name is written in this file. A table that names none
+    # keeps the old assumption rather than leaving the check with nothing to do.
+    outputs = ({str(flow).strip() for flow in processes['Output_FlowID']}
+               if 'Output_FlowID' in processes.columns else set())
+    entered = (flows_with_an_exit - outputs) or flows_with_an_exit
+
     depth_of = {name: depth for depth, name in enumerate(LAYER_NAMES)}
+    paths = [tuple(str(row[column]) for column in LAYERS)
+             for _, row in composition.iterrows()]
+    reach = _what_reaches(paths, tcs, entered)
 
     problems = []
     for flow in sorted(flows_with_an_exit):
@@ -172,13 +256,14 @@ def _check_nothing_strands(processes: pd.DataFrame | None,
             # The resources this layer defines: rows whose deepest filled layer
             # is this one. A deeper row is a sub-quantity of one of them and is
             # carried along by whatever moves its parent.
-            at_depth = composition[LAYERS[depth]] != ''
-            for deeper in LAYERS[depth + 1:]:
-                at_depth &= composition[deeper] == ''
+            here = set()
+            for index in reach.get(flow, ()):
+                path = paths[index]
+                if not path[depth] or any(path[deeper] for deeper in
+                                          range(depth + 1, len(LAYERS))):
+                    continue
+                here.add((path[depth - 1] if depth else '', path[depth]))
 
-            here = {(str(row[LAYERS[depth - 1]]) if depth else '',
-                     str(row[LAYERS[depth]]))
-                    for _, row in composition[at_depth].iterrows()}
             stranded = sorted((parent, child) for parent, child in here
                               if child not in anywhere
                               and (parent, child) not in covered)
@@ -197,8 +282,7 @@ def _check_nothing_strands(processes: pd.DataFrame | None,
                 f'total. {flow} is not\n'
                 f'          terminal -- the processes table gives it an exit -- '
                 f'so each of these\n'
-                f'          needs a row in TCs, even if the value is 0. '
-                f'tools/make_skeleton.py writes them.'))
+                f'          needs a row in TCs. tools/make_skeleton.py writes them.'))
     return problems
 
 
@@ -573,9 +657,18 @@ def check(folder: str, tables: dict | None = None) -> list[Problem]:
     columns += [('TCs.csv', tcs, name) for name in ('value_min', 'value_max')
                 if name in tcs.columns]
 
+    # A TOLERANCE, BECAUSE THE COMPOSITION IS COMPUTED AND NOT TYPED. Upstream
+    # normalises in floating point, so a share can land a hair above 1: measured
+    # on the battery 2026-09-17, 29 of 473 rows exceeded 1, the largest by
+    # 1.3e-4 and the smallest by 6.6e-7, and none was above 1.01. This check is
+    # here to catch 50 written where 0.5 was meant -- a hundredfold error -- and
+    # refusing 1.000134 finds no unit mistake while stopping the run dead.
+    FRACTION_TOLERANCE = 1e-3
+
     for name, frame, column in columns:
         numeric = pd.to_numeric(frame[column], errors='coerce')
-        for index, value in numeric[(numeric > 1) | (numeric < 0)].items():
+        outside = (numeric > 1 + FRACTION_TOLERANCE) | (numeric < -FRACTION_TOLERANCE)
+        for index, value in numeric[outside].items():
             hint = ' -- looks like a percentage where a fraction was meant' \
                 if 1 < value <= 100 else ''
             problems.append(Problem(
