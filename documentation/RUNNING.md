@@ -144,8 +144,6 @@ figures/<case>/
     losses.png                   WHY it did not come back -- one wedge per
                                  reason, as mass and as a share of the outflow
     recovery_rate.png            recovered as a SHARE of what came in, per year
-    routes.png                   which road it came back on: the two roads and
-                                 the split between them, per draw
     fate.png                     what becomes of it once it leaves the fleet:
                                  recovered / lost in recycling / never collected
     pdf_<resource>.png           the distribution, one panel per year

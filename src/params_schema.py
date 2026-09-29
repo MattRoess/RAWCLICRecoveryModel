@@ -467,7 +467,8 @@ class FigureParams:
 
     # WHICH RESOURCES THE FIGURES COVER.  Empty means every one the case
     # resolves. Name a few to focus: ('copper',) draws only copper on
-    # routes.png, fate.png and the per-resource densities.
+    # fate.png, account_<r>.png, fleet_<r>.png and the per-resource
+    # densities.
     #
     # It narrows what is DRAWN and never what is solved. Every resource stays
     # in recovery_results.xlsx and monte_carlo_summary.csv whatever this says,

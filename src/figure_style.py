@@ -141,8 +141,8 @@ def write(figure, out_dir: str, stem: str, formats, dpi: int,
 
     The essential ones land in `out_dir`; everything else in `out_dir/detail`.
 
-    `essential=True` overrides the rule. `figures/routes/` is a folder of
-    comparisons and nothing else -- there is no detail to separate from, so
+    `essential=True` overrides the rule, for a figure written outside a case
+    folder -- a comparison across cases has no detail to be separated from, so
     burying half of it would be sorting a folder into itself.
     """
     if essential is None:

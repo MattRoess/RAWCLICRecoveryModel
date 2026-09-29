@@ -579,132 +579,25 @@ def chosen(run, wanted) -> list[str]:
     return [r for r in every if r in asked] or every
 
 
-def figure_routes(run, theme: str, unit: str, resources=()):
-    """
-    Recovered mass by ROAD, per year -- which road the material came back on.
-
-    DECISIONS 10 and 11: the two roads are the point of the wiring case, and
-    they are reported apart and also combined. `over_time.png` gives the
-    combined trajectory; this one splits it, because the reason to disassemble
-    at all is that the dedicated road returns more than the general shredder.
-
-    THE TWO ROADS ARE COMPLEMENTS, AND THE FIGURE HAS TO SAY SO. A part taken
-    out of the car is not in the car any anymore, so a draw that disassembles a
-    lot leaves little to the shredder: the two masses are anti-correlated by
-    construction, and two 95% bands drawn side by side invite the reader to
-    imagine both at their upper edge at once, which cannot happen. So each
-    resource gets two panels stacked in a column:
-
-    - **top, the masses**, one line and band per road, each computed per draw;
-    - **bottom, the split ITSELF** -- the share of that resource's recovered
-      mass that came back on the first road, per draw. The shares sum to 100%
-      in every single draw, which is exactly the correlation made visible: the
-      other road is the distance up to the ceiling, and its interval is this
-      one's mirrored. That panel is where an improvement in disassembly shows;
-      the mass panel above it is dominated by the fleet growing.
-
-    Each resource keeps its own mass axis (DECISIONS 13): copper's tonnage is an
-    order of magnitude above aluminium's, and a shared axis would make
-    aluminium's road split unreadable while looking tidy. No stacking on the
-    mass panel -- a stack shows the total and hides the smaller road, which is
-    the one under question.
-    """
-    years = sorted(int(y) for y in run.keys['Year'].unique())
-    by_route = routes(run)
-    if len(years) < 2 or len(by_route) < 2:
-        return None                # one road is not a comparison
-
-    layer = resource_key(run.keys)
-    keys = run.keys
-
-    series: dict[str, dict] = {}
-    for resource in chosen(run, resources):
-        # Per draw, per year, per road. Kept as draws rather than reduced on the
-        # spot: the share below has to be formed draw by draw, because the ratio
-        # of two medians is not the median of the ratio.
-        per_road = {}
-        for route, flows in by_route.items():      # positive side of the split first
-            columns = []
-            for year in years:
-                rows = np.flatnonzero(
-                    keys['Stock/Flow ID'].isin(flows).to_numpy()
-                    & (keys[layer] == resource).to_numpy() & own(keys)
-                    & (keys['Year'].astype(str) == str(year)).to_numpy())
-                columns.append(run.values[rows].sum(axis=0) if rows.size
-                               else np.zeros(run.draws))
-            draws = np.column_stack(columns)          # draws x years
-            if draws.mean(axis=0).max() > 0:
-                per_road[route] = draws
-        if len(per_road) > 1:
-            series[resource] = per_road
-    if not series:
-        return None
-
-    def band(draws):
-        return {'median': np.percentile(draws, 50, axis=0),
-                'low': np.percentile(draws, 2.5, axis=0),
-                'high': np.percentile(draws, 97.5, axis=0)}
-
-    every = np.concatenate([band(d)['high'] for roads in series.values()
-                            for d in roads.values()])
-    scale, shown = scale_for(every, unit)
-
-    # Wide enough for the subtitle to fit on one line even with one resource,
-    # and the split is a strip under the masses rather than a second full panel:
-    # it is one number a year, and the space it needs is the space to read it.
-    columns_of = len(series)
-    figure, axes, colours = chart(max(560 * columns_of, 900), 560, theme,
-                                  2, columns_of, height_ratios=(2.1, 1))
-    # subplots(2, 1) hands back a flat pair, subplots(2, n) a 2 x n array.
-    grid = np.array(axes, dtype=object).reshape(2, columns_of)
-
-    for column, (resource, per_road) in enumerate(sorted(series.items())):
-        top, bottom = grid[0][column], grid[1][column]
-        first = next(iter(per_road))       # the positive side of the split
-        for index, route in enumerate(per_road):
-            s, colour = band(per_road[route]), PALETTE[index % len(PALETTE)]
-            top.fill_between(years, s['low'] * scale, s['high'] * scale,
-                             color=colour, alpha=0.18, linewidth=0)
-            top.plot(years, s['median'] * scale, color=colour, linewidth=2.0,
-                     marker='o', markersize=3, label=route)
-
-        total = sum(per_road.values())
-        with np.errstate(invalid='ignore', divide='ignore'):
-            share = np.where(total > 0, 100 * per_road[first] / total, np.nan)
-        s = {'median': np.nanpercentile(share, 50, axis=0),
-             'low': np.nanpercentile(share, 2.5, axis=0),
-             'high': np.nanpercentile(share, 97.5, axis=0)}
-        bottom.fill_between(years, s['low'], s['high'], color=PALETTE[0],
-                            alpha=0.18, linewidth=0)
-        bottom.plot(years, s['median'], color=PALETTE[0], linewidth=2.0,
-                    marker='o', markersize=3)
-
-        rest = [r for r in per_road if r != first][0]
-        top.set_title(f'{resource}   {s["median"][-1]:.0f}% of it came back '
-                      f'{first} in {years[-1]}',
-                      color=colours['title'], fontsize=10, fontweight='bold')
-        top.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=8.5)
-        # No x label on the top panel: the years are the same axis as the strip
-        # directly under it, and the label would sit between the two.
-        bottom.set_xlabel('year', color=colours['meta'], fontsize=8.5)
-        bottom.set_ylabel(f'% {first}', color=colours['meta'], fontsize=8.5)
-        for panel in (top, bottom):
-            panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
-        # 0 to 100, always: the strip is a share of the whole, and the gap
-        # between the line and the ceiling IS the other road. Zooming to the
-        # data would make a split of 94/6 look like an even one.
-        bottom.set_ylim(0, 100)
-        bottom.set_title(f'the split itself -- the rest came back {rest}',
-                         color=colours['meta'], fontsize=9, loc='left')
-        legend = top.legend(fontsize=8, frameon=False, loc='upper left')
-        for text in legend.get_texts():
-            text.set_color(colours['meta'])
-
-    header(figure, 'Recovered mass by road', colours,
-           f'{years_listed(run)}.  solid: median, band: 95%.  the two roads are '
-           f'complements -- taken out of the car means no longer in it -- so '
-           f'the strip below is the split itself, formed per draw')
-    return figure
+# ⚠️ `figure_routes` WAS HERE AND IS GONE, 2026-09-29. It drew each resource's
+# recovered mass on each road, plus the split as a strip underneath, and on the
+# traction fleet case it came out 7,777 pixels wide to report one number:
+# 98-99% of every rare earth comes back on the disassembly road, 93-97% of the
+# copper.
+#
+# Removed at Matthias's instruction: *"I do not want such routes figures. One
+# sees that shredding does not work."*
+#
+# THE NUMBER WAS RIGHT AND THE QUESTION WAS WRONG, which is the part worth
+# keeping. A share of what COMES BACK folds two different things together --
+# the shredder road gets only 7% of the motors AND recovers 2% of their rare
+# earth -- and reports them as one figure that makes the road look irrelevant
+# rather than bad. What the fork actually costs is already on the Sankey, on
+# `account_<r>.png` (which still draws a line per road) and in the workbook's
+# `Contributions` sheet, where it can be read exactly.
+#
+# `routes()` itself stays: `figure_account` and `05_combine_cases.py` both use
+# it to label their per-road lines.
 
 
 def figure_recovery_rate(run, deterministic: pd.DataFrame | None,
@@ -1100,7 +993,8 @@ def _round_step(rough: float) -> float:
 
 
 def draw_account(panel, title: str, a: dict, roads: dict, years,
-                 scale: float, shown: str, colours, unit: str = 'kg'):
+                 scale: float, shown: str, colours, unit: str = 'kg',
+                 show_title: bool = True):
     """
     ONE ACCOUNT ON ONE SET OF AXES. Returns the per-cent axis it adds.
 
@@ -1135,13 +1029,36 @@ def draw_account(panel, title: str, a: dict, roads: dict, years,
         panel.plot(years, series * scale, color=colour, linewidth=width,
                    linestyle=style, marker='o', markersize=3, label=name)
 
-    # The 95% band of what leaves the fleet: the fleet's own uncertainty, which
-    # every mass on this axis inherits and none of the others can show without
-    # turning the figure into mud.
+    # TWO BANDS, AND THEY ARE THE TWO THE FIGURE EXISTS FOR.
+    #
+    # The outflow's: the fleet's own uncertainty, which every mass on this axis
+    # inherits.
+    #
+    # ⚠️ AND RECOVERED'S, WHICH WAS MISSING. `recovered` is what this whole
+    # stage computes -- the Monte Carlo's actual output -- and it was the one
+    # line drawn as a bare mean, while the outflow, which this model does not
+    # compute at all, carried the only band. Asked on 2026-09-29: *"why is
+    # there no uncertainty band for the recovered?"*
+    #
+    # The old defence was that the recovery rate's band already showed the
+    # coefficients' uncertainty. It does not cover this. The rate is formed per
+    # draw, so the fleet's uncertainty CANCELS in it (DECISIONS 32) -- that is
+    # the point of forming it that way. So the rate band shows the
+    # coefficients alone, the outflow band shows the fleet alone, and the
+    # uncertainty on the recovered MASS, which is both together and is the
+    # number anyone actually quotes, appeared nowhere on the figure.
+    #
+    # `lost inside recycling` deliberately gets no band: it is
+    # collected - recovered, so its interval is this one mirrored, and drawing
+    # it would be the same information twice at twice the ink.
     _, low, high_of_all = band(a['outflow'])
     panel.fill_between(years, low * scale, high_of_all * scale,
                        color=colours['title'], alpha=0.10, linewidth=0,
                        label='leaving the fleet, 95%')
+    _, back_low, back_high = band(a['recovered'])
+    panel.fill_between(years, back_low * scale, back_high * scale,
+                       color=PALETTE[1], alpha=0.20, linewidth=0,
+                       label='recovered, 95%')
 
     draw('inflow', 'entering the fleet', colours['meta'], (0, (1, 2)), 1.6)
     draw('outflow', 'leaving the fleet', colours['title'], '-', 2.4)
@@ -1164,8 +1081,7 @@ def draw_account(panel, title: str, a: dict, roads: dict, years,
     rate_axis.fill_between(years, low, high, color=PALETTE[2], alpha=0.14,
                            linewidth=0)
     rate_axis.plot(years, median, color=PALETTE[2], linewidth=3.0,
-                   marker='o', markersize=4,
-                   label=f'recovery rate   {median[0]:.0f} → {median[-1]:.0f}%')
+                   marker='o', markersize=4, label='recovery rate')
     # FOUR INTERVALS ON BOTH AXES, AND NOT ONE MORE. Five labels a side is what
     # a reader takes in at a glance; ruling the mass axis every 100 against a
     # rate axis every 10 gave twenty numbers down the page and two sets of
@@ -1201,8 +1117,12 @@ def draw_account(panel, title: str, a: dict, roads: dict, years,
     # denominator from another. A claim a figure cannot demonstrate does not
     # belong on it -- it belongs where it can be read exactly, which is the
     # workbook.
-    panel.set_title(f'{title}', color=colours['title'], fontsize=13,
-                    fontweight='bold')
+    # Named only when there is more than one panel. With one resource to a
+    # figure the header above already says which resource it is, and repeating
+    # it directly underneath is a second title saying nothing new.
+    if show_title:
+        panel.set_title(f'{title}', color=colours['title'], fontsize=13,
+                        fontweight='bold')
     panel.set_xlabel('year', color=colours['meta'], fontsize=14)
     panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=14)
     # Every decade, not every point. The points are still drawn as markers, so
@@ -1216,8 +1136,7 @@ def draw_account(panel, title: str, a: dict, roads: dict, years,
     return rate_axis
 
 
-def account_legend(figure, for_legend, colours, rows_of: int,
-                   strip_numbers: bool) -> None:
+def account_legend(figure, for_legend, colours, rows_of: int) -> None:
     """
     The shared legend, UNDER the figure rather than on it.
 
@@ -1229,16 +1148,18 @@ def account_legend(figure, for_legend, colours, rows_of: int,
     ONE PANEL'S WORTH, not every panel's. Every panel draws the same lines, so
     collecting them all repeated the legend once per resource -- twenty-one
     times on the boards case, and the reserved space came out taller than the
-    figure. `strip_numbers` drops each label's value where there are several
-    panels, since a value belongs to one of them and each panel's title carries
-    its own.
+    figure.
+
+    It used to take a `strip_numbers` flag, because the labels carried each
+    line's value and a value belongs to one panel. No label carries a number
+    any more -- they are all readable off the axes -- so the flag had nothing
+    left to strip and is gone rather than left as a parameter nobody passes
+    anything but a constant to.
     """
     panel, rate_axis = for_legend[0]
     handles, labels = panel.get_legend_handles_labels()
     extra = rate_axis.get_legend_handles_labels()
     handles, labels = handles + extra[0], labels + extra[1]
-    if strip_numbers:
-        labels = [text.split('   ')[0] for text in labels]
     room = min(0.35, 0.055 + 0.038 * np.ceil(len(labels) / 3) / max(1, rows_of))
     figure.subplots_adjust(bottom=room)
     legend = figure.legend(handles, labels, fontsize=11, frameon=False,
@@ -1249,6 +1170,18 @@ def account_legend(figure, for_legend, colours, rows_of: int,
     for text in legend.get_texts():
         text.set_color(colours['meta'])
 
+
+# ⚠️ NO NUMBER ON A FIGURE THAT THE FIGURE ALREADY SHOWS. Said on 2026-09-29:
+# *"I do not need numbers in the figure, if I can read them from the figure."*
+# A line that ends against a labelled axis states its own last value; printing
+# it in the legend beside it is the same number twice, and it crowds the label
+# that says WHICH line it is.
+#
+# This is the same rule as its opposite, from 2026-09-28: *"what you write
+# which can not be seen in the figures has no place there."* Between them:
+# a figure carries what can be seen ON it, stated once. A DATE is the
+# exception that proves it -- nobody reads 2055 off a peak, so the year a
+# curve turns is still written, next to the rule that marks it.
 
 def figure_account(run, theme: str, unit: str, resources=(), only: str = ''):
     """
@@ -1285,11 +1218,18 @@ def figure_account(run, theme: str, unit: str, resources=(), only: str = ''):
     it cannot be compared by distance to a mass -- so it is the single line
     that says on its own axis, in its own words, what it is.
 
-    Bands are 95%, on the outflow and on the recovery rate only. Every line
-    could carry one and the figure would be mud; those two are the ones whose
-    uncertainty is the point -- the fleet's, and the coefficients'. The legend
-    prints each line's value in the last year, so a number is read rather than
-    estimated off an axis.
+    BANDS ARE 95%, ON THREE THINGS: what left the fleet, what came back, and
+    the recovery rate. Not on every line -- that is mud -- but these three are
+    not interchangeable and no two of them cover the third:
+
+        outflow band    the fleet's uncertainty, alone
+        rate band       the coefficients' uncertainty, alone, because the rate
+                        is formed per draw and the fleet cancels in it
+        recovered band  BOTH together, which is the interval on the number
+                        anyone actually quotes
+
+    The recovered band was missing until 2026-09-29, so the one quantity this
+    stage exists to compute was the one drawn without an interval.
 
     Every ratio is formed inside the draw, numerator and denominator together,
     so the fleet's own uncertainty cancels where it should (DECISIONS 32) and
@@ -1352,17 +1292,24 @@ def figure_account(run, theme: str, unit: str, resources=(), only: str = ''):
     for panel, (resource, a) in zip(panels, sorted(accounts.items())):
         rate_axis = draw_account(panel, resource, a,
                                  roads_for.get(resource, {}),
-                                 years, scale, shown, colours, unit)
+                                 years, scale, shown, colours, unit,
+                                 show_title=len(accounts) > 1)
         for_legend.append((panel, rate_axis))
 
     names = ', '.join(sorted(accounts))
-    header(figure, f'{names}: the whole account, on one axis', colours,
-           f'{years_listed(run)}.  masses are MEANS in the same unit, so any two '
-           f'can be compared by the distance between them: recovered + lost + '
-           f'never collected = the outflow.  band: the outflow 95%.  '
-           f'the rate is per draw, on the right axis')
-    account_legend(figure, for_legend, colours, rows_of,
-                   strip_numbers=len(accounts) > 1)
+    # ⚠️ THE TITLE SAYS WHAT THE FIGURE MEANS, NOT HOW IT IS DRAWN. It read
+    # `the whole account, on one axis`, which describes a layout decision --
+    # true, and of no use to anyone asking what the figure is for. Said on
+    # 2026-09-29: *"The title just bad. Give it a meaning."* The question this
+    # figure answers is where the material ends up, so that is the title.
+    header(figure, f'{names}: how much comes back, and where the rest goes',
+           colours,
+           f'{years_listed(run)}.  every mass is a MEAN in the same unit, so '
+           f'any two compare by the distance between them: recovered + lost + '
+           f'never collected = what left the fleet.  bands are 95%, on what '
+           f'left the fleet and on what came back.  the recovery rate is '
+           f'formed per draw and read on the right axis')
+    account_legend(figure, for_legend, colours, rows_of)
     return figure
 
 
@@ -1432,28 +1379,42 @@ def fleet_flows(run, resource: str):
 
 def figure_trapped(run, theme: str, unit: str, resources=(), only: str = ''):
     """
-    WHAT THE FLEET IS HOLDING, WHAT IT GIVES BACK, AND WHAT IS GONE.
+    STILL DRIVING, COME BACK, OR GONE -- every tonne that entered the fleet.
 
     Between what a fleet takes in and what it gives back there is a stock, and
-    it is the largest number in this model -- copper bought years ago, still
-    driving around, unavailable to anybody. Nothing showed it: `account.png`
-    draws the inflow and the outflow and leaves the gap to be imagined.
+    it is the largest number in this model: copper bought years ago, still
+    driving around, unavailable to anybody. `account_<r>.png` draws the inflow
+    and the outflow per year and leaves that gap to be imagined. This
+    accumulates it.
 
-    Two panels, because a rate and a stock are different quantities and one
-    axis would be a lie about units.
+    TWO QUESTIONS, ASKED ON 2026-09-29, AND THE FIGURE IS BUILT ON THEM:
+    *"I want to know how much is in the fleet, and when recovery actually
+    starts contributing to the inflow."*
 
-    **Per year, the flows.** Entering, leaving, and coming back reusable. The
-    gap between entering and leaving is shaded: that is what the fleet swallows
-    that year. On the right axis, the number that decides whether any of this
-    is circular -- RECOVERED AS A SHARE OF WHAT THE FLEET IS BUYING. At 100%
-    every new car could be built from old ones; below it, the difference has to
-    be mined. The year the net flow crosses zero is marked, because reading a
-    date off a crossing is guessing.
+    **Top: how much is in the fleet.** The stock still driving, which is the
+    largest number in this model, with recovered-to-date and lost-to-date
+    beside it so the three account for everything that entered. The year the
+    fleet stops growing is marked -- it is the peak of the stock curve, so the
+    mark sits where a reader can see the thing it claims.
 
-    **Over time, the three stocks it builds.** In the fleet, recovered to date,
-    and lost to date. They are cumulative sums of the panel above, so together
-    they say where every kilogram that ever entered has got to: still driving,
-    back in the economy, or gone.
+    **Bottom: when does recovery start contributing?** Recovered as a share of
+    what the fleet is BUYING, and THE YEARS IT CROSSES 10%, 25%, 50% AND 100%.
+    The crossings are the answer to the question: a curve shows that it rises,
+    the marks say when. At 100% every new car could be built from old ones.
+
+    A date is the one number still written on these figures, because nobody
+    reads a year off a crossing -- see the rule above `figure_account`.
+
+    ⚠️ THE STRIP USED TO BE A FULL PANEL OF MASSES, AND IT WAS A CHEAP REPEAT.
+    It drew entering, leaving and recovered per year -- four lines, every one
+    of them already on `account_<r>.png` -- in order to deliver the one
+    quantity that is NOT there: the share over the INFLOW rather than over
+    what was collected. Said on 2026-09-29: *"First figure is a cheap repeat."*
+    So the repeated masses are gone and the strip carries only the thing that
+    is its own.
+
+    The two are different quantities, which is why they are not on one axis:
+    a share in per cent and a stock in kilotonnes.
 
     Counting starts at the first exported year and what was already on the road
     then is NOT in it -- see `fleet_flows`.
@@ -1479,7 +1440,13 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = ''):
         # The arrays' unit against the model's, from the model's own collected
         # mass. No unit constant appears here on purpose.
         to_working = float(np.nanmean(a['collected'][:, 0]) / raw.mean())
-        series[resource] = {k: (v * to_working if isinstance(v, np.ndarray) else v)
+        # ⚠️ BY NAME, NOT BY TYPE. This scaled every value that happened to be
+        # an ndarray, which is right only while `years` and `solved` are lists.
+        # The moment either became an array it would have been multiplied by a
+        # mass ratio and the figure would have been labelled 2020.0-2070.0 --
+        # caught in a stub render on 2026-09-29, where they are arrays.
+        masses = ('inflow', 'outflow', 'collected', 'recovered', 'net')
+        series[resource] = {k: (v * to_working if k in masses else v)
                             for k, v in found.items()}
     if not series:
         return None
@@ -1491,8 +1458,11 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = ''):
 
     across = min(2, len(series))
     down = -(-len(series) // across)
-    figure, axes, colours = chart(1250 * across, 940 * down, theme,
-                                  2 * down, across, height_ratios=(1, 1) * down)
+    # A STRIP AND A PANEL, not two panels. The share is one line and needs a
+    # sixth of the height; the stocks are what the figure is for.
+    figure, axes, colours = chart(1250 * across, 900 * down, theme,
+                                  2 * down, across,
+                                  height_ratios=(2.2, 1.5) * down)
     grid = np.array(axes, dtype=object).reshape(2 * down, across)
 
     def band(draws):
@@ -1502,109 +1472,142 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = ''):
 
     for index, (resource, s) in enumerate(sorted(series.items())):
         row, column = 2 * (index // across), index % across
-        top, bottom = grid[row][column], grid[row + 1][column]
+        # `stock` is the question asked first, so it is the panel on top.
+        stock, contribution = grid[row][column], grid[row + 1][column]
         years = s['years']
         end = years[-1]
 
-        # ---- the flows, per year -------------------------------------
-        into = np.nanmean(s['inflow'], axis=1)
-        out = np.nanmean(s['outflow'], axis=1)
-        back = np.nanmean(s['recovered'], axis=1)
-        # ⚠️ NO SHADED GAP BETWEEN INFLOW AND OUTFLOW. It was filled and
-        # labelled `the gap: what the fleet absorbs`, and being the largest
-        # block on the panel it read as a quantity somebody could have --
-        # which it is not. ONLY WHAT IS RECYCLED CAN BE USED AGAIN; the rest
-        # is either still driving or gone. Said on 2026-09-28, and the fill is
-        # gone rather than relabelled: the gap is still there to be read as the
-        # distance between two lines, without being dressed as a resource.
-        top.plot(years, into * scale, color=colours['meta'], linewidth=1.6,
-                 linestyle=(0, (1, 2)),
-                 label=f'entering the fleet   {readable(into[-1], unit)} in {end}')
-        top.plot(years, out * scale, color=colours['title'], linewidth=2.4,
-                 label=f'leaving the fleet   {readable(out[-1], unit)} in {end}')
-        top.plot(years, back * scale, color=PALETTE[1], linewidth=2.4,
-                 label=f'recovered, reusable   {readable(back[-1], unit)} in {end}')
+        # ---- 1. how much is in the fleet -----------------------------
+        stocks = (('in the fleet, still driving', np.cumsum(s['net'], axis=0),
+                   PALETTE[0], 3.4),
+                  ('recovered to date, reusable', np.cumsum(s['recovered'], axis=0),
+                   PALETTE[1], 2.2),
+                  ('lost to date', np.cumsum(s['outflow'] - s['recovered'], axis=0),
+                   PALETTE[3], 2.2))
+        for name, block, colour, width in stocks:
+            median, low, high = band(block)
+            stock.fill_between(years, low * scale, high * scale, color=colour,
+                               alpha=0.16, linewidth=0)
+            stock.plot(years, median * scale, color=colour, linewidth=width,
+                       label=name)
 
-        # THE CIRCULARITY NUMBER, on its own axis because it is not a mass:
-        # how much of what the fleet is buying could come from what it returns.
-        circular = top.twinx()
+        # THE YEAR THE FLEET STOPS GROWING, marked on the panel where it is
+        # the peak of a curve. On the old flows panel it sat where two lines
+        # crossed, and a date read off a crossing is a guess.
+        turned = next((year for year, value in zip(
+            years, np.nanmean(s['net'], axis=1)) if value < 0), None)
+        if turned is not None:
+            stock.axvline(turned, color=colours['meta'], linewidth=1.0,
+                          linestyle=(0, (3, 3)))
+            # ON WHATEVER SIDE HAS ROOM. Anchored always to the right, a peak
+            # late in the range put two lines of text straight through the
+            # `lost to date` curve, which by then is the highest thing on the
+            # panel.
+            late = turned > (years[0] + years[-1]) / 2
+            stock.annotate(f'{turned}: the stock peaks -- from here\n'
+                           f'more {resource} leaves the fleet\nthan enters it',
+                           xy=(turned, stock.get_ylim()[1]),
+                           xytext=(-8 if late else 8, -12),
+                           textcoords='offset points', color=colours['meta'],
+                           fontsize=11, va='top',
+                           ha='right' if late else 'left')
+        stock.set_title(f'{resource}: how much is in the fleet, and where the '
+                        f'rest of what entered since {years[0]} has got to',
+                        color=colours['title'], fontsize=13, fontweight='bold')
+        stock.set_ylabel(f'accumulated ({shown})', color=colours['meta'],
+                         fontsize=13)
+        stock.set_xticklabels([])
+
+        # ---- 2. when does recovery start contributing? ----------------
         with np.errstate(invalid='ignore', divide='ignore'):
             share = np.where(s['inflow'] > 0,
                              100 * s['recovered'] / s['inflow'], np.nan)
         median, low, high = band(share)
-        circular.fill_between(years, low, high, color=PALETTE[2], alpha=0.12,
-                              linewidth=0)
-        circular.plot(years, median, color=PALETTE[2], linewidth=3.0,
-                      label=f'RECOVERED AS A SHARE OF WHAT THE FLEET BUYS, '
-                            f'right axis   {median[0]:.0f} → {median[-1]:.0f}%')
-        circular.set_ylim(0, 100)
-        circular.set_yticks([0, 25, 50, 75, 100])
-        circular.set_ylabel('recovered, % of what is entering',
-                            color=PALETTE[2], fontsize=13)
-        circular.tick_params(colors=PALETTE[2], labelsize=15)
-        for side in ('top', 'left', 'bottom'):
-            circular.spines[side].set_visible(False)
-        circular.spines['right'].set_color(PALETTE[2])
-        circular.grid(False)
-        top.set_zorder(circular.get_zorder() + 1)
-        top.patch.set_visible(False)
+        contribution.fill_between(years, low, high, color=PALETTE[2],
+                                  alpha=0.16, linewidth=0)
+        contribution.plot(years, median, color=PALETTE[2], linewidth=3.0)
 
-        turned = next((year for year, value in zip(years, np.nanmean(s['net'], axis=1))
-                       if value < 0), None)
-        if turned is not None:
-            top.axvline(turned, color=colours['meta'], linewidth=1.0,
-                        linestyle=(0, (3, 3)))
-            # ⚠️ ABOVE THE LINES IT IS ABOUT, not on them. Anchored 30 points
-            # over y=0 it landed exactly where the recovered and the share
-            # lines run, and three lines of text sat across both of them.
-            # Anchored to the top of the axis instead, where nothing is drawn.
-            top.annotate(f'{turned}: the fleet begins\ngiving back more\nthan it takes',
-                         xy=(turned, top.get_ylim()[1]), xytext=(-8, -12),
-                         textcoords='offset points', color=colours['meta'],
-                         fontsize=11, ha='right', va='top')
-        top.set_title(f'{resource}: the flows, per year',
-                      color=colours['title'], fontsize=13, fontweight='bold')
-        top.set_ylabel(f'per year ({shown}/yr)', color=colours['meta'], fontsize=13)
+        # ⚠️ THE CROSSINGS ARE THE ANSWER. The curve shows that recovery
+        # rises; the question was WHEN it starts to count. Each threshold is
+        # marked at the first year the median reaches it, and a threshold the
+        # resource never reaches is simply not drawn rather than implied.
+        # ⚠️ AN AXIS THAT FITS THE CURVE. Fixed at 0-105 the copper reads well
+        # and neodymium, which may never pass 5%, is a flat line on the floor.
+        # The thresholds below adapt with it, so only the ones in range are
+        # drawn and none is implied.
+        ceiling = float(np.clip(np.nanmax(high) * 1.25, 12.0, 105.0))
+        marked = 0
+        for place, level in enumerate((10, 25, 50, 100)):
+            if level > ceiling:
+                continue
+            reached = next((year for year, value in zip(years, median)
+                            if value >= level), None)
+            contribution.axhline(level, color=colours['rule'], linewidth=0.7)
+            if reached is None:
+                continue
+            marked += 1
+            contribution.plot([reached], [level], marker='o', markersize=7,
+                              color=PALETTE[2], zorder=5)
+            # Flipped to the left once the crossing is near the end of the
+            # range, where a label anchored right runs off the page.
+            near_end = reached > years[0] + 0.85 * (years[-1] - years[0])
+            contribution.annotate(
+                f'{level}% in {reached}', xy=(reached, level),
+                xytext=(-6 if near_end else 6, -14 if place % 2 else 6),
+                textcoords='offset points', color=colours['title'],
+                fontsize=11, fontweight='bold',
+                ha='right' if near_end else 'left')
 
-        # ---- the stocks they build -----------------------------------
-        stocks = (('in the fleet, still driving', np.cumsum(s['net'], axis=0),
-                   PALETTE[0]),
-                  ('recovered to date, reusable', np.cumsum(s['recovered'], axis=0),
-                   PALETTE[1]),
-                  ('lost to date', np.cumsum(s['outflow'] - s['recovered'], axis=0),
-                   PALETTE[3]))
-        for name, block, colour in stocks:
-            median, low, high = band(block)
-            bottom.fill_between(years, low * scale, high * scale, color=colour,
-                                alpha=0.16, linewidth=0)
-            bottom.plot(years, median * scale, color=colour, linewidth=2.6,
-                        label=f'{name}   {readable(median[-1], unit)} by {end}')
-        bottom.set_title(f'{resource}: where everything that entered has got to, '
-                         f'counting from {years[0]}',
-                         color=colours['title'], fontsize=13, fontweight='bold')
-        bottom.set_ylabel(f'accumulated ({shown})', color=colours['meta'],
-                          fontsize=13)
-        bottom.set_xlabel('year', color=colours['meta'], fontsize=13)
+        # ⚠️ "NEVER" IS ALSO AN ANSWER, AND IT HAS TO BE SAID. With no
+        # threshold reached the panel drew a rising line and no mark, which
+        # reads as though the question had not been asked. For a resource whose
+        # recovery stays in single figures -- the shredded magnet is one -- the
+        # answer to "when does it start contributing" is that within this
+        # horizon it does not, and that is the finding.
+        if not marked:
+            contribution.annotate(
+                f'{resource} recovery never reaches 10% of what the fleet '
+                f'buys, in any year to {years[-1]}',
+                xy=(years[0], ceiling), xytext=(8, -8),
+                textcoords='offset points', color=colours['title'],
+                fontsize=11, fontweight='bold', va='top')
 
-        for panel in (top, bottom):
+        contribution.set_ylim(0, ceiling)
+        # FOUR INTERVALS, WHATEVER THE CEILING. Keeping the fixed
+        # 0/25/50/75/100 left a panel topping out at 12% with a single label
+        # on its axis, so no value on it could be read at all.
+        step = _round_step(ceiling / 4)
+        contribution.set_yticks([step * n for n in range(5)
+                                 if step * n <= ceiling])
+        contribution.set_ylabel('% of what is entering', color=PALETTE[2],
+                                fontsize=13)
+        contribution.set_xlabel('year', color=colours['meta'], fontsize=13)
+        contribution.tick_params(colors=PALETTE[2], labelsize=14)
+        contribution.set_title(
+            f'{resource}: when does recovery start contributing to what the '
+            f'fleet buys?  at 100% every new car is built from old ones',
+            color=colours['title'], fontsize=13, fontweight='bold')
+
+        for panel in (stock, contribution):
             panel.tick_params(labelsize=15)
             panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
-            handles, labels = panel.get_legend_handles_labels()
-            if panel is top:
-                more = circular.get_legend_handles_labels()
-                handles, labels = handles + more[0], labels + more[1]
-            legend = panel.legend(handles, labels, fontsize=11, frameon=False,
-                                  loc='upper left')
-            for text in legend.get_texts():
-                text.set_color(colours['meta'])
+        legend = stock.legend(fontsize=11, frameon=False, loc='upper left')
+        for text in legend.get_texts():
+            text.set_color(colours['meta'])
 
     first = min(s['years'][0] for s in series.values())
-    header(figure, 'What the fleet holds, gives back, and loses', colours,
-           f'{every_years(series)}, every year the arrays hold.  masses are '
-           f'MEANS, the share a median with 95%.  the lower panel accumulates '
-           f'the upper one from {first}, so what was on the road then is not in '
-           f'it.  recovered uses the model\'s rate carried linearly between the '
-           f'years it solves')
+    names = ', '.join(sorted(series))
+    # ⚠️ THE TITLE SAYS WHAT THE FIGURE MEANS. `What the fleet holds, gives
+    # back, and loses` names three quantities and says nothing about what
+    # reading them tells you. Said on 2026-09-29: *"Titles impossible. Give
+    # them the proper meaning."*
+    header(figure, f'{names}: how much is in the fleet, and when recovery '
+           f'starts to count', colours,
+           f'{every_years(series)}, every year the arrays hold.  the stocks '
+           f'accumulate from {first}, so what was already on the road then is '
+           f'NOT in them -- the three add up to everything that has entered '
+           f'since.  medians with 95% bands.  recovered uses the model\'s own '
+           f'rate carried linearly between the years it solves')
     return figure
 
 
@@ -1736,8 +1739,7 @@ def figure_losses(run, theme: str, unit: str, resources=(), only: str = ''):
                 share.fill_between(years, low, high, color=colours_for[place],
                                    alpha=0.16, linewidth=0)
                 share.plot(years, median, color=colours_for[place],
-                           linewidth=2.0, marker='o', markersize=3,
-                           label=f'{name}   {median[0]:.0f} → {median[-1]:.0f}%')
+                           linewidth=2.0, marker='o', markersize=3, label=name)
         share.set_title(f'{resource}: the same, as a share of the outflow',
                         color=colours['title'], fontsize=12, fontweight='bold')
         share.set_ylabel('% of the outflow', color=colours['meta'], fontsize=13)
@@ -2268,7 +2270,6 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
         ('recovery_rate',
          lambda: figure_recovery_rate(run, deterministic, theme, unit)),
 
-        ('routes', lambda: figure_routes(run, theme, unit, resources)),
         ('fate', lambda: figure_fate(run, theme, unit, resources)),
         ('pdf_all',
          lambda: figure_pdf_grid(run, deterministic, theme, unit, resources)),

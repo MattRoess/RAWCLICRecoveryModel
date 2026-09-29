@@ -69,8 +69,7 @@ import numpy as np
 from src.figure_style import PALETTE, chart, write
 from src.monte_carlo import solve_draws
 from src.params_schema import Params
-from src.plot_monte_carlo import (_round_step, account, account_legend,
-                                  draw_account,
+from src.plot_monte_carlo import (_round_step, account, draw_account,
                                   header, losses, routes)
 from src.rest import LAYERS, REST
 from src.units import factor, readable
