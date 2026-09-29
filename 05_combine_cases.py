@@ -123,6 +123,29 @@ class CombineError(ValueError):
     """Raised when the cases named cannot be added together."""
 
 
+def _resource_of(run) -> str:
+    """
+    The column holding each row's OWN resource, whatever depth it sits at.
+
+    ⚠️ A CASE DOES NOT HAVE ONE DEPTH, and this file assumed it did. Every
+    helper here picked `the deepest layer with anything in it` and compared
+    against that one column. On the traction motor case that column is Layer 4,
+    filled by Nd, Pr, Dy and Tb -- while copper, aluminium, steel and lamination
+    stop at Layer 2/3 and are blank in it.
+
+    So `named_in` returned None for copper, and 05 printed "none of copper, Cu
+    in this case -- skipped" and left the traction motor's copper out of the
+    combined figure entirely. Silently: a skip is a normal thing to print.
+
+    `src/plot_monte_carlo.resource_key` already solved this for the figures on
+    2026-09-25 and this file never picked it up. It marks each row with its own
+    resource and with `own_depth`, so a component named after its own material
+    is not counted twice.
+    """
+    from src.plot_monte_carlo import resource_key
+    return resource_key(run.keys)
+
+
 def named_in(run, names) -> str | None:
     """
     Which spelling of the metal this case uses, if any.
@@ -130,23 +153,49 @@ def named_in(run, names) -> str | None:
     The wiring case resolves materials and calls it `copper`; the boards case
     resolves elements and calls it `Cu`. A case with none of the names given
     contributes nothing and says so, rather than counting zero quietly.
+
+    Looked for at EVERY depth -- see `_resource_of`.
     """
     keys = run.keys
-    layer = next((column for column in reversed(LAYERS)
-                  if column in keys.columns
-                  and keys[column].astype(str).str.strip().any()), None)
-    if layer is None:
-        return None
+    layer = _resource_of(run)
     present = {value for value in keys[layer].unique() if value and value != REST}
     return next((name for name in names if name in present), None)
+
+
+def could_carry(folder: str, names, params) -> bool:
+    """
+    Whether this case could possibly hold the metal -- WITHOUT solving it.
+
+    `combine_one` used to solve every case at full draws and only then ask
+    `named_in` whether the metal was in it, so a run of eight metals across
+    four cases did 32 Monte Carlos to use 10 of them. Neodymium solved the
+    wiring case in full in order to print "none of Nd in this case".
+
+    Read from the case's own coefficient table instead: a resource that no
+    coefficient targets and no flow is keyed at cannot come out of the model.
+
+    ⚠️ IT MAY ONLY SAY NO WHEN IT IS CERTAIN. Anything it cannot read -- a
+    missing table, an unreadable one -- returns True and the case is solved, so
+    a failure here costs time and never a number. The names it checks are the
+    same ones `named_in` checks afterwards, and `named_in` still has the last
+    word on what was actually resolved.
+    """
+    try:
+        from src import case_tables
+        tcs = case_tables.read(folder, 'TCs')
+    except Exception:
+        return True
+    columns = [c for c in ('TC_target_key', 'Input_layer_key') if c in tcs.columns]
+    if not columns:
+        return True
+    present = {str(v).strip() for c in columns for v in tcs[c].unique()}
+    return any(name in present for name in names)
 
 
 def roads_of(run, resource: str, years) -> dict:
     """That case's recovered mass per road, per year per draw."""
     keys = run.keys
-    layer = next(column for column in reversed(LAYERS)
-                 if column in keys.columns
-                 and keys[column].astype(str).str.strip().any())
+    layer = _resource_of(run)          # every depth, not just the deepest
     out = {}
     for road, flows in routes(run).items():
         columns = []
@@ -182,9 +231,7 @@ def added(parts: list[dict]) -> dict:
 def domains_of(run, resource: str) -> list[str]:
     """The streams this case carries for the metal: Wiring, Motors, PCB ..."""
     keys = run.keys
-    layer = next(column for column in reversed(LAYERS)
-                 if column in keys.columns
-                 and keys[column].astype(str).str.strip().any())
+    layer = _resource_of(run)          # every depth, not just the deepest
     return sorted({d for d in keys.loc[keys[layer] == resource,
                                        'Layer 2'].unique() if d})
 
@@ -590,9 +637,7 @@ def reasons_of(run, resource: str, domain: str, years) -> dict:
     """Why this ONE stream's metal did not come back, per year per draw."""
     from src.rest import flow_roles
     keys = run.keys
-    layer = next(column for column in reversed(LAYERS)
-                 if column in keys.columns
-                 and keys[column].astype(str).str.strip().any())
+    layer = _resource_of(run)          # every depth, not just the deepest
     process_of = dict(zip(run.tcs['Output_FlowID'], run.tcs['process']))
     out = {}
     for flow, role in flow_roles(run.case).items():
@@ -659,6 +704,10 @@ def combine_one(params, wanted, label: str) -> int:
             raise CombineError(
                 f'{folder} is not a folder. `combine.cases` in '
                 f'src/params_schema.py names the case folders to add.')
+        if not could_carry(folder, wanted, params):
+            print(f'  {folder}: no {" / ".join(wanted)} in its coefficients '
+                  f'-- not solved')
+            continue
         print(f'  solving {folder} ...', flush=True)
         run = solve_draws(folder, LAYER_NAMES,
                           draws=params.data.draws,
