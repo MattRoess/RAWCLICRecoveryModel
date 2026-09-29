@@ -493,6 +493,14 @@ SOURCE = pd.DataFrame([
     ('group_marker', '__component__'), ('material_suffix', None),
     ('groups', None), ('draws', 200000),
     ('improvement_start', 2030), ('improvement_end', 2060),
+    # ⚠️ SO 05 CAN ADD THIS CASE. `05_combine_cases.py` runs over the
+    # BATTERY's scenarios, S1/S2/S3, and asks every case for each of them in
+    # turn. This case has one export, `mix` -- the magnet grade drawn per draw
+    # -- and a rare earth does not depend on a cathode chemistry, so every
+    # name maps to it. The electronics cases have carried the same declaration
+    # as `*=BAU` since 2026-09-17; without it, adding this case to `combine`
+    # fails looking for a folder called S1.
+    ('scenario_alias', '*=mix'),
 ], columns=['key', 'value'])
 
 LISTS = pd.DataFrame({'keyed_at': ['component', 'material', 'element', None],

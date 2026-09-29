@@ -522,7 +522,8 @@ class CombineParams:
     # SAFE TO CHANGE: yes. A folder that does not exist is named and refused.
     cases: tuple[str, ...] = ('data_folder/bev_electronics_wiring',
                               'data_folder/bev_electronics_boards',
-                              'data_folder/battery')
+                              'data_folder/battery',
+                              'data_folder/tractionmotor')
 
     # ******************************************************************
     #  WHICH METALS ARE DRAWN.  Every one of them, every time 04 is run:
@@ -545,23 +546,26 @@ class CombineParams:
     #  reported as contributing nothing rather than silently counting zero.
     # ******************************************************************
     #
-    #  THE RARE EARTHS ARE NOT HERE, AND THAT IS DELIBERATE from 2026-09-25.
-    #  This figure ADDS cases -- wiring, boards and the battery are different
-    #  parts of one car -- and it runs over the BATTERY's scenarios, S1/S2/S3.
-    #  Neither fits the rare earths: they are not affected by a battery
-    #  chemistry scenario, and the traction motor cases that carry Pr and Tb
-    #  are four COMPETING ROUTES for the same motors, so adding them would
-    #  count one fleet four times. The wiring case already holds a `Motors`
-    #  group as well, which disagrees with the traction motor export by a
-    #  factor of three on total motor mass.
+    #  THE RARE EARTHS JOINED ON 2026-09-29, when the traction motor case
+    #  did. They were left out while there were FOUR traction cases, because
+    #  those were competing routes for the same motors and adding them would
+    #  have counted one fleet four times. There is one traction case now --
+    #  both roads inside it, split at the review's step 2 -- so it adds like
+    #  any other part of the car.
     #
-    #  The traction motors are their own study -- press Run on
-    #  `03_tractionmotors.py` -- and it answers for one fleet, not four.
+    #  Nd and Dy are in the BOARDS case too, as sensor and actuator magnets.
+    #  That is not a double count: a sensor magnet and a traction magnet are
+    #  different components of the same vehicle, which is the same reason
+    #  wiring copper and board copper are added.
     resources: dict[str, tuple[str, ...]] = field(default_factory=lambda: {
-        'copper':  ('copper', 'Cu'),
-        'nickel':  ('Ni',),
-        'cobalt':  ('Co',),
-        'lithium': ('Li',),
+        'copper':       ('copper', 'Cu'),
+        'nickel':       ('Ni',),
+        'cobalt':       ('Co',),
+        'lithium':      ('Li',),
+        'neodymium':    ('Nd',),
+        'praseodymium': ('Pr',),
+        'dysprosium':   ('Dy',),
+        'terbium':      ('Tb',),
     })
 
     # What the combined streams are called together, for the title.
@@ -569,7 +573,7 @@ class CombineParams:
     # still titled 'BEV electronics' while drawing the battery's components
     # alongside them.
     # SAFE TO CHANGE: yes.
-    whole: str = 'BEV electronics and battery'
+    whole: str = 'BEV electronics, battery and traction motor'
 
     # WHERE THE COMBINED FIGURE GOES. Not any one case's folder: it belongs to
     # none of them.
@@ -711,14 +715,27 @@ STUDIES: dict[str, dict] = {
         # `tools/build_tractionmotor_case.py` to (1,1,1) for disassembly only
         # or (0,0,0) for shredder only, and rebuild.
         'run.data_folder': 'data_folder/tractionmotor',
-        # ⚠️ `mix` ONLY, AND ON PURPOSE. Running all four grades is four times
-        # the folders and four times the figures to answer one narrow
-        # question. Nd and Pr are BYTE-IDENTICAL across SH, UH and EH -- the
-        # workbook's didymium range applies to all three -- so only Dy and Tb
-        # differ, and `mix` already draws the grade per draw, which is what a
-        # fleet is. Set this to 'EH' for the one question the pinned grades
-        # answer: what if only EH is feasible, because of China.
-        'run.scenario': 'mix',
+        # ⚠️ NO SCENARIO, AND SO NO SCENARIO FOLDER. This used to say `mix`,
+        # which put every output one level deeper -- `figures/tractionmotor/
+        # mix/`, `output_data/mix/` -- a folder with exactly one thing in it
+        # that had to be opened before anything could be read. Said on
+        # 2026-09-29: *"why is there a folder tractionmotor/mix. NO MIX."*
+        #
+        # THE GRADE IS STILL `mix`. The case's own source table carries
+        # `scenario_alias = *=mix`, so whatever scenario name is asked for, the
+        # draws read are `traction_recovery_draws/mix` -- the magnet grade
+        # drawn per draw, which is what a fleet is. Blank here means the case
+        # has no scenario DIMENSION, one pass, output at the top of its folder.
+        # That is exactly how the electronics cases work, with `*=BAU`.
+        #
+        # Running all four grades would be four times the folders and four
+        # times the figures for one narrow question, and Nd and Pr are
+        # BYTE-IDENTICAL across SH, UH and EH -- the workbook's didymium range
+        # applies to all three -- so only Dy and Tb differ at all. To ask the
+        # pinned-grade question (what if only EH is feasible, because of
+        # China), change the alias in `tools/build_tractionmotor_case.py` to
+        # `*=EH` and rebuild.
+        'run.scenario': '',
         # ⚠️ THE MAGNET, ITS ELEMENTS, AND COPPER. Those are what this study is
         # about, said more than once and finally written down as DECISIONS 29.
         # Naming all nine resources here weighted aluminium, steel and

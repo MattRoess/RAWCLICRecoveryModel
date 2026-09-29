@@ -74,7 +74,12 @@ def model_ratio(case: str, scenario: str) -> pd.DataFrame:
     from src.rest import recovered_flows
     from src import case_tables
 
-    path = os.path.join(case, 'output_data', scenario, 'recovery_results.xlsx')
+    # NO SCENARIO FOLDER. The case declares `scenario_alias = *=mix`, so it
+    # has one export and no scenario dimension, and its outputs sit at the top
+    # of output_data/ -- see STUDIES['tractionmotors'] in params_schema.
+    path = os.path.join(case, 'output_data', scenario,
+                        'recovery_results.xlsx') if scenario else \
+        os.path.join(case, 'output_data', 'recovery_results.xlsx')
     if not os.path.exists(path):
         raise SystemExit(f'{path} is not there. Run 03_tractionmotors.py.')
 
@@ -122,7 +127,7 @@ def share_of(case: str) -> tuple[float, float]:
 
 def main() -> int:
     params = current()
-    scenario = params.run.scenario or 'mix'
+    scenario = params.run.scenario
     ratios = model_ratio(CASE, scenario)
     share = share_of(CASE)
 
@@ -159,7 +164,8 @@ def main() -> int:
                transform=panel.transAxes, fontsize=17, fontweight='bold',
                color=colours['title'], va='center', parse_math=False)
     panel.text(0.0, 1.045,
-               f'lines: this model, grade {scenario}.  dashes at 2030 and '
+               f'lines: this model, magnet grade drawn per draw.  dashes at '
+               f'2030 and '
                f'2060: the review’s disassembly coefficient plus its '
                f'shredder coefficient on the {1 - share[0]:.0%} and '
                f'{1 - share[1]:.0%} that step 2 leaves in the hulk.  '
@@ -168,7 +174,8 @@ def main() -> int:
                va='center', parse_math=False)
     figure.subplots_adjust(top=0.85, left=0.09, right=0.98, bottom=0.11)
 
-    out = os.path.join(params.figures.out_dir, 'tractionmotor', scenario)
+    out = os.path.join(params.figures.out_dir, 'tractionmotor', scenario) \
+        if scenario else os.path.join(params.figures.out_dir, 'tractionmotor')
     written = write(figure, out, 'agreement_with_the_review',
                     params.figures.enabled(), params.figures.dpi,
                     essential=True)
