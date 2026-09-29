@@ -795,20 +795,6 @@ def figure_fate(run, theme: str, unit: str, resources=()):
     changes, and the scale between the arrays and the table is taken from the
     model's own collected mass rather than assumed.
     """
-    # CACHED ON THE RUN. `figure_account`, `figure_losses`, `figure_trapped`
-    # and the shared-unit scan below each ask for the same account, so it was
-    # being rebuilt four times per resource -- every one of them re-reading the
-    # upstream arrays for every year.
-    store = getattr(run, '_accounts', None)
-    if store is None:
-        store = {}
-        try:
-            run._accounts = store
-        except AttributeError:
-            store = None
-    if store is not None and (resource, domain) in store:
-        return store[(resource, domain)]
-
     source = getattr(run, 'upstream', None)
     if source is None or not getattr(source, 'propagates', False):
         return None
@@ -941,6 +927,20 @@ def account(run, resource: str, domain: str | None = None) -> dict[str, np.ndarr
     Both sides narrow together: the upstream arrays are read for that domain
     alone and the model's rows are filtered on it, so the account still closes.
     """
+    # CACHED ON THE RUN. `figure_account`, `figure_losses`, `figure_trapped`
+    # and the shared-unit scan below each ask for the same account, so it was
+    # being rebuilt four times per resource -- every one of them re-reading the
+    # upstream arrays for every year.
+    store = getattr(run, '_accounts', None)
+    if store is None:
+        store = {}
+        try:
+            run._accounts = store
+        except AttributeError:
+            store = None
+    if store is not None and (resource, domain) in store:
+        return store[(resource, domain)]
+
     source = getattr(run, 'upstream', None)
     if source is None or not getattr(source, 'propagates', False):
         return None
