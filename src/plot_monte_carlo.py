@@ -396,7 +396,8 @@ def figure_over_time(run, deterministic: pd.DataFrame | None, theme: str,
                     color=colours['title'], fontsize=12, fontweight='bold',
                     loc='left')
     panel.set_xlabel('year', color=colours['meta'], fontsize=11)
-    panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=11)
+    panel.set_ylabel(f'mass per year ({shown}/year)',
+                     color=colours['meta'], fontsize=11)
     panel.set_xticks([y for y in years if y % 10 == 0] or years)
     panel.tick_params(labelsize=11)
     # No `1e6` in the corner and no `2,020` on the year axis: an offset is a
@@ -887,7 +888,8 @@ def figure_fate(run, theme: str, unit: str, resources=()):
         panel.set_title(f'{resource}   {share:.0f}% never collected in {years[-1]}',
                         color=colours['title'], fontsize=10, fontweight='bold')
         panel.set_xlabel('year', color=colours['meta'], fontsize=8.5)
-        panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=8.5)
+        panel.set_ylabel(f'mass per year ({shown}/year)',
+                         color=colours['meta'], fontsize=8.5)
         panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7)
         legend = panel.legend(fontsize=8, frameon=False, loc='upper left')
         for text in legend.get_texts():
@@ -1143,7 +1145,8 @@ def draw_account(panel, title: str, a: dict, roads: dict, years,
         panel.set_title(f'{title}', color=colours['title'], fontsize=13,
                         fontweight='bold')
     panel.set_xlabel('year', color=colours['meta'], fontsize=14)
-    panel.set_ylabel(f'mass ({shown})', color=colours['meta'], fontsize=14)
+    panel.set_ylabel(f'mass per year ({shown}/year)',
+                     color=colours['meta'], fontsize=14)
     # Every decade, not every point. The points are still drawn as markers, so
     # nothing is hidden -- but eleven labels along the bottom is a row of
     # numbers to read where six is a scale to glance at.
@@ -1353,9 +1356,15 @@ def fleet_flows(run, resource: str):
         recovered   coming back as material, reusable
         net         inflow - outflow, what the fleet absorbs that year
 
-    ANNUAL, BECAUSE A STOCK IS AN INTEGRAL. The upstream export is annual and
-    all of it is read; integrating the case's five-yearly sample instead would
-    either miss four years in five or need a step factor pretending to be data.
+    EVERY YEAR THE EXPORT HOLDS, AND A STOCK IS AN INTEGRAL OVER THEM. All of
+    the export is read rather than the case's solved years, which are coarser
+    still.
+
+    ⚠️ THE EXPORTS DO NOT SHARE A STEP. The electronics are annual; the battery
+    and the traction motor are five-yearly. This docstring used to assert the
+    export "is annual", and the figure added the samples with `np.cumsum` as
+    though each stood for one year -- understating every traction and battery
+    stock about fivefold. See `_running_total`.
 
     `recovered` IS THE ONE INTERPOLATED QUANTITY, and it has to be, because the
     model solves the years the case names and not every year. What is
@@ -1404,6 +1413,32 @@ def fleet_flows(run, resource: str):
     return {'years': every, 'solved': solved, **out}
 
 
+def _running_total(block, years):
+    """
+    A per-year flow turned into its running total, BY TRAPEZOID.
+
+    ⚠️ NOT `np.cumsum`, WHICH IS WHAT THIS FIGURE USED. The upstream exports do
+    not all have the same year step: the electronics are annual, the battery
+    and the traction motor are FIVE-YEARLY. Adding five-yearly samples as
+    though each stood for one year understates every stock about fivefold --
+    a different answer, not a rounding difference.
+
+    `figure_trapped` said in its own docstring that "the upstream export is
+    annual and all of it is read", which was true of the only case it had been
+    looked at on. `05_combine_cases._accumulate` has done this correctly since
+    it was written; this figure never picked it up. Found on 2026-09-29 from
+    the question *"is it not per year?"*
+
+    The gaps are taken from the years themselves, so an export at any step is
+    integrated correctly and an annual one is unchanged in all but the
+    end points.
+    """
+    gaps = np.diff(np.asarray(years, dtype=float))
+    middles = 0.5 * (block[1:, :] + block[:-1, :]) * gaps[:, None]
+    return np.concatenate([np.zeros((1, block.shape[1])),
+                           np.cumsum(middles, axis=0)], axis=0)
+
+
 def _shared_unit(values, unit: str):
     """
     One display unit for a set of figures, or None to let each pick its own.
@@ -1448,7 +1483,7 @@ def _stock_tops(run, wanted) -> list:
         if not np.isfinite(first) or first <= 0:
             continue
         to_working = float(np.nanmean(a['collected'][:, 0]) / first)
-        stock = np.cumsum(found['net'], axis=0) * to_working
+        stock = _running_total(found['net'], found['years']) * to_working
         top = np.nanpercentile(stock, 97.5)
         if np.isfinite(top):
             tops.append(abs(float(top)))
@@ -1561,9 +1596,9 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = '',
     if not series:
         return None
 
-    biggest = np.concatenate([np.nanpercentile(np.cumsum(s['net'], axis=0),
-                                               97.5, axis=1)
-                              for s in series.values()])
+    biggest = np.concatenate([
+        np.nanpercentile(_running_total(s['net'], s['years']), 97.5, axis=1)
+        for s in series.values()])
     # One unit across every resource -- see `figure_account`. Its own, because
     # these are ACCUMULATED stocks and the account draws annual flows; sharing
     # one unit between the two would put a stock axis in the flow's unit.
@@ -1591,11 +1626,15 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = '',
         end = years[-1]
 
         # ---- 1. how much is in the fleet -----------------------------
-        stocks = (('in the fleet, still driving', np.cumsum(s['net'], axis=0),
-                   PALETTE[0], 3.4),
-                  ('recovered to date, reusable', np.cumsum(s['recovered'], axis=0),
-                   PALETTE[1], 2.2),
-                  ('lost to date', np.cumsum(s['outflow'] - s['recovered'], axis=0),
+        # TOTALS AT EACH YEAR, integrated over the gaps between samples --
+        # see `_running_total`. The first is a STOCK (what is in the fleet at
+        # that moment); the other two are running totals since the first year.
+        stocks = (('in the fleet at that year, still driving',
+                   _running_total(s['net'], years), PALETTE[0], 3.4),
+                  ('recovered by that year, in total',
+                   _running_total(s['recovered'], years), PALETTE[1], 2.2),
+                  ('lost by that year, in total',
+                   _running_total(s['outflow'] - s['recovered'], years),
                    PALETTE[3], 2.2))
         for name, block, colour, width in stocks:
             median, low, high = band(block)
@@ -1614,7 +1653,7 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = '',
         #
         # argmax of the median stock IS the top of the line a reader sees, so
         # the label and the picture cannot disagree.
-        stock_median = band(np.cumsum(s['net'], axis=0))[0]
+        stock_median = band(_running_total(s['net'], years))[0]
         peak = int(np.nanargmax(stock_median))
         turned = years[peak] if 0 < peak < len(years) - 1 else None
         if turned is not None:
@@ -1635,8 +1674,8 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = '',
         stock.set_title(f'{resource}: how much is in the fleet, and where the '
                         f'rest of what entered since {years[0]} has got to',
                         color=colours['title'], fontsize=13, fontweight='bold')
-        stock.set_ylabel(f'accumulated ({shown})', color=colours['meta'],
-                         fontsize=13)
+        stock.set_ylabel(f'total mass by that year ({shown})',
+                         color=colours['meta'], fontsize=13)
         stock.set_xticklabels([])
 
         # ---- 2. when does recovery start contributing? ----------------
@@ -1721,12 +1760,17 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = '',
     # back, and loses` names three quantities and says nothing about what
     # reading them tells you. Said on 2026-09-29: *"Titles impossible. Give
     # them the proper meaning."*
+    step = (series[next(iter(series))]['years'][1]
+            - series[next(iter(series))]['years'][0]) if len(
+                series[next(iter(series))]['years']) > 1 else 1
     header(figure, f'{names}: how much is in the fleet, and when recovery '
            f'starts to count', colours,
-           f'{every_years(series)}, every year the arrays hold.  the stocks '
-           f'accumulate from {first}, so what was already on the road then is '
-           f'NOT in them -- the three add up to everything that has entered '
-           f'since.  medians with 95% bands.  recovered uses the model\'s own '
+           f'{every_years(series)}, sampled every {step}.  the upper panel is '
+           f'a TOTAL AT EACH YEAR, not a per-year flow: what is in the fleet '
+           f'at that moment, and what has come back or been lost in all the '
+           f'years up to it, integrated over the gaps between samples.  '
+           f'counted from {first}, so what was already on the road then is NOT '
+           f'in it.  medians with 95% bands.  recovered uses the model\'s own '
            f'rate carried linearly between the years it solves')
     return figure
 
@@ -1847,7 +1891,8 @@ def figure_losses(run, theme: str, unit: str, resources=(), only: str = '',
         summary = f'most of it {biggest}'
         mass.set_title(f'{resource}: how much, by reason',
                        color=colours['title'], fontsize=12, fontweight='bold')
-        mass.set_ylabel(f'lost ({shown})', color=colours['meta'], fontsize=13)
+        mass.set_ylabel(f'lost per year ({shown}/year)',
+                        color=colours['meta'], fontsize=13)
 
         with np.errstate(invalid='ignore', divide='ignore'):
             for place, name in enumerate(names):
@@ -2292,7 +2337,8 @@ def figure_convergence(run, theme: str, unit: str):
     panel.axhline(values.mean(), color=colours['meta'], linewidth=0.9, linestyle='--')
     panel.set_xscale('log')
     panel.set_xlabel('draws used', color=colours['meta'], fontsize=9)
-    panel.set_ylabel(f'{name[0]} · {name[1]}  ({shown})', color=colours['meta'], fontsize=9)
+    panel.set_ylabel(f'{name[0]} · {name[1]}  ({shown}/year)',
+                     color=colours['meta'], fontsize=9)
     panel.set_title(f'Convergence with draw count   ({years_covered(run)})',
                     color=colours['title'],
                     fontsize=12, fontweight='bold', loc='left')
