@@ -222,8 +222,22 @@ def ramp(current, improved, start: int, end: int, years,
 
 
 # The columns that make one sum-to-1 group: every coefficient moving the same
-# resource out of the same flow. Stage 01 totals on exactly these.
-GROUP = ['Input_FlowID', 'TC_target_layer', 'TC_target_key']
+# resource out of the same flow.
+#
+# ⚠️ ALL FIVE, AND IT WAS THREE. This is `src/mass_balance.RESOURCE`, which is
+# what the sampler groups on and what stage 01 totals -- copied here rather
+# than imported because mass_balance imports this module, and asserted against
+# it below so the copy cannot drift.
+#
+# With `Input_layer` and `Input_layer_key` missing, two real groups that differ
+# only by which input they are keyed at were read as one: on the wiring case
+# `F_disassembled -> copper` merged the Wiring rows with the Motors rows and
+# totalled 2.0000 before any extrapolation, and on the battery `F_cells ->
+# rest` totalled 7.0000. `_hold_at_the_bounds` then saw a group "above 1" and
+# divided it -- by two, and by seven. Caught on 2026-09-29 by checking whether
+# `continue` was safe for those cases, not by any test.
+GROUP = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
+         'TC_target_layer', 'TC_target_key']
 
 
 def _hold_at_the_bounds(block, group, numbers):
@@ -248,6 +262,10 @@ def _hold_at_the_bounds(block, group, numbers):
     run can say so out loud rather than doing it silently.
     """
     columns = [c for c in ('value_min', 'value', 'value_max') if c in block.columns]
+    del group                     # regrouped here, on the full key -- see GROUP
+    group = (block[[c for c in GROUP if c in block.columns]]
+             .astype(str).agg('|'.join, axis=1)
+             if all(c in block.columns for c in GROUP) else None)
     if not columns:
         return block, []
 
