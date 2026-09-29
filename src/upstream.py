@@ -143,7 +143,7 @@ def cases_to_run(params) -> list[str]:
     `scenario_alias` do in a case's own source table:
 
         data_folder = 'data_folder/battery'
-        data_folder = 'data_folder/tractionmotor; data_folder/tractionmotor_shredder'
+        data_folder = 'data_folder/bev_electronics_wiring; data_folder/bev_electronics_boards'
 
     Asked for 2026-09-25: four traction motor cases had to be run by editing
     the setting between each one, which is four edits and four presses to

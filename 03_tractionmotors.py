@@ -3,7 +3,7 @@
 
     Press Run. No arguments, nothing to edit.
 
-ONE CASE, ONE ANSWER: `data_folder/tractionmotor_fleet`, grade `mix`.
+ONE CASE, ONE ANSWER: `data_folder/tractionmotor`, grade `mix`.
 
 The fleet runs BOTH roads at once and splits between them at the review's own
 step 2, "Motor removal from vehicle" (0.85 | 0.93 | 0.98, ref 6,7,8,9). What is
@@ -12,8 +12,8 @@ chooses the share and there is no dial to set.
 
 This used to be four cases -- long loop, short loop, shredder, split -- times
 four magnet grades, so sixteen passes and sixteen of every figure, and no
-single answer to read. The four pure routes are the extremes, not the fleet;
-`tools/compare_routes.py` puts them side by side when that is the question.
+single answer to read. They were the extremes, not the fleet. One builder
+writes the one case now: `tools/build_tractionmotor_case.py`.
 
 `mix` draws the magnet grade per draw, which is what a fleet is. `SH`, `UH`
 and `EH` pin it, for the one question they answer: what if only EH is feasible.

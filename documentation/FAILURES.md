@@ -1,0 +1,363 @@
+# FAILURES
+
+**What Claude got wrong on this project, when, how it was caught, and what now
+stops it recurring.**
+
+Asked for by Matthias on 2026-09-29: *"I also want a history of all your
+failures."*
+
+This is not `DEFECTS.md`. That file is the model's defect register — some of
+its entries are inherited, some are ordinary bugs found by tests working as
+intended. **This file is only the failures that were mine**, including the ones
+that cost days, and especially the ones a human had to find because no check I
+wrote would ever have found them.
+
+Read the **Patterns** section at the end first. The individual failures are
+instances of six recurring shapes, and the shapes are more useful than the
+list.
+
+---
+
+## The register
+
+| # | Date | Failure | Found by | Cost |
+|---|------|---------|----------|------|
+| 1 | 09-02 | `mode_vs_mean` summed the year axis | Matthias | a figure that compared two masses no year has |
+| 2 | 09-02 | Every figure built before any was written | me | matplotlib warnings; 27 figures open at once |
+| 3 | 09-02 | Sankey subtitle claimed a depth it did not have | me | a material case labelled "element-depth rows only" |
+| 4 | 09-07 | `describe()` took a name it had to map back to a class | Matthias | `00_parameters.py` died with `KeyError: 'combine'` |
+| 5 | 09-28 | Upstream export had no `outflow` | Matthias | four figures silently not drawn, for weeks |
+| 6 | 09-28 | `other_flow` could not address a component-level resource | Matthias | copper had no account figure |
+| 7 | 09-28 | The nesting double count, in three places | Matthias | copper reported at 140.94 kt collected; truth 70.47 |
+| 8 | 09-28 | False roads — and my first fix still passed | me, late | four material streams read as four competing roads |
+| 9 | 09-28 | Claims on figures that the figure cannot support | Matthias | "many of the statements are absolutely wrong" |
+| 10 | 09-28 | Made a branch, against a stated rule | Matthias | "you are again not following this rule" |
+| 11 | 09-29 | Published a coefficient table I had not checked | Matthias | "126 coefficients" — 41 were headings, not coefficients |
+| 12 | 09-29 | Named the wrong PDF as the battery study | Matthias | "This document is also not the one I provided. I am mad!!" |
+| 13 | 09-29 | Invented `DISASSEMBLY_SHARE`; double-counted removal | me, hours late | the fleet case's numbers were wrong all day |
+| 14 | 09-29 | Wrote a check that compared the case against itself | me | 1.9 pp "agreement" that meant nothing |
+| 15 | 09-29 | **Never re-rendered the figures** | Matthias | days spent judging images up to three weeks old |
+| 16 | 09-29 | Renamed figures without clearing the old ones | Matthias | `trapped.png` read as current 11 days after it died |
+| 17 | 09-25→29 | Built four cases when one was wanted | Matthias | four of every figure; "I want one clear answer" |
+| 18 | 09-29 | Started a 450-line refactor when a 4-line rename was needed | Matthias | "you are costing me so much time and money" |
+
+---
+
+## 1. `mode_vs_mean` summed the year axis — 09-02
+
+Compared a mode-run total against a mean-run total after summing over every
+year, producing two masses that correspond to no year in the data. Fixed to be
+per-year, with the measured drift stated in the subtitle.
+
+The same figure's console line named the worst row `Wiring` — a component — on
+a case whose resources live at Layer 3, by hard-coding `Layer 4 or Layer 2`. It
+now names the deepest filled layer and the year, so the printed line and the
+figure cannot disagree.
+
+Register: `DEFECTS.md` 3.16.
+
+## 2. Every figure built before any was written — 09-02
+
+`draw_all` built the whole list eagerly, so all 27 of the boards case's figures
+were open simultaneously, each holding a histogram of 200,000 draws.
+Matplotlib warns at 20. Fixed with thunks: built one at a time, written, closed.
+
+Register: `DEFECTS.md` 3.17.
+
+## 3. The Sankey announced a depth it did not have — 09-02
+
+Subtitle read "Element-depth rows only" on cases that resolve materials. It now
+names the layer actually drawn.
+
+Register: `DEFECTS.md` 3.18.
+
+## 4. `describe()` took a name, not the section — 09-07
+
+Adding a parameter section stopped `00_parameters.py` dead with
+`KeyError: 'combine'`, because `describe()` mapped a string back to a class
+through a dict that the new section was not in. It takes the section object
+now, so a new section cannot be missing from anything.
+
+Register: `DEFECTS.md` 3.20.
+
+## 5. The upstream export had no `outflow` — 09-28
+
+`src/traction_export.py` wrote `collected` and `inflow` and stopped. The
+recovery model's `account()` needs `outflow` to compute the mass that left the
+fleet and never reached a recycler. Without it `account()` returned `None` and
+**four figures — account, losses, trapped, fate — were silently not drawn**.
+
+Silently is the word that matters. Nothing failed. The stage printed success.
+The figures were simply absent, and stayed absent for weeks, until Matthias
+asked where copper's account was.
+
+Fixed by composing `outflow` from the tracker's three destinations
+(`collected`, `export`, `unknown_whereabouts`), with `_parts_of()` raising
+rather than composing a partial sum — an outflow quietly too small means
+"never collected" too small, which flatters collection without anything
+failing.
+
+Register: `DEFECTS.md` 3.23.
+
+## 6. `other_flow` could not address a component-level resource — 09-28
+
+The second half of the same missing figure. Fixed with a fallback to
+`<group_marker>__<domain>.npy`.
+
+Register: `DEFECTS.md` 3.23.
+
+## 7. The nesting double count, in three places — 09-28
+
+The layers are nested: an element row is part of its material row. A component
+named after its own material — `copper` inside `copper` — answers the same
+resource twice with the same mass. Summing both doubles it.
+
+Measured, for copper in the wiring case:
+
+| | reported | truth |
+|---|---|---|
+| collected | 140.94 kt | 70.47 kt |
+| lost | 91.73 kt | 21.26 kt |
+
+Three separate code paths had it: the Sankey (`mass()`, `draws_for()`), the
+`account()` function, and twelve row selections in `plot_monte_carlo`. Fixed
+with `shallowest_of()` and `own()` / `own_depth`.
+
+**Why no check caught it:** the Sankey balanced against itself, and the account
+closed by construction. Both were internally consistent and both were twice the
+truth. Neither was ever put beside the `Recovered` sheet, which had been right
+the whole time.
+
+Register: `DEFECTS.md` 3.21, 3.24.
+
+## 8. False roads, and a fix that still passed — 09-28
+
+`routes()` read the shredder case's four material streams — copper, aluminium,
+NdFeB, steel — as four competing roads. The account figure then drew
+`recovered, ndfeb stream` for dysprosium at 0.3396 kt beside `recovered` at
+0.3396 kt: one number, twice, under two names.
+
+The first fix was worse than no fix. I tested whether the branches carried
+overlapping resources — correct idea — but included `F_loss_upstream` in the
+test. That flow carries **every** resource by construction, so it overlapped
+with all of them and the four streams were read as roads again. The fix passed
+and changed nothing.
+
+Corrected to test only the branches that recovered material actually descends
+from.
+
+## 9. Claims on figures that the figure cannot support — 09-28
+
+I wrote statements onto figures — about what a number meant, what it implied —
+that a reader could not verify from anything drawn. On the Dy figure Matthias's
+verdict was: *"Many of the statements in the figure are absolutely wrong!!! It
+is very very very bad work"*, and then: *"what you write which can not be seen
+in the figures as no place there. Move it to other figure once for all."*
+
+Every unverifiable number and claim was stripped from titles and legends. A
+figure now states only what is drawn on it.
+
+This one is not a bug. It is a habit: writing the conclusion I believed instead
+of the one the picture supports.
+
+## 10. Made a branch, against a stated rule — 09-28
+
+The rule had been given: commit to `main`, push, pull on the other Mac. I made
+a branch anyway. *"Keep always in mind how github updated. This is a rule you
+are again not following!"* Moved back to `main`.
+
+## 11. Published a coefficient table I had not checked — 09-29
+
+`tools/extract_traction_tcs.py` produced what I reported as "126 coefficients,
+71 of them unreferenced". **41 of the 126 were chain-summary headings, not
+coefficients.** The real figures are 85 steps, 31 of them unreferenced.
+
+Matthias found it. His question was the right one: *"Why have you not told
+me?"* The answer: because I pushed the table before checking it. Fixed by
+splitting steps from chain totals into two files.
+
+## 12. Named the wrong PDF as the battery study — 09-29
+
+Labelled `1-s2.0-S0956053X2600543X-main.pdf` as the battery study in the
+project documentation. It is a paper, not his study. *"This document is also
+not the one I provided for the batteries. I am mad!!"* The real study was
+copied in from `iCloud/Empa/RAWCLIC/` and the paper relabelled as what it is.
+
+I asserted a document's identity without opening it to check.
+
+## 13. `DISASSEMBLY_SHARE` — removal counted twice — 09-29
+
+The fleet case needed a split between the disassembly road and the shredder
+road. **The review already contained it**, as step 2, "Motor removal from
+vehicle", 0.85 | 0.93 | 0.98, with references 6,7,8,9.
+
+I invented a coefficient instead and put it above chains that already applied
+`capture x removal`:
+
+    disassembly road  =   d    x (0.80 capture x 0.93 removal)   <- removal twice
+    shredder road     = (1-d)  x (0.80 capture x 0.98 feed)
+
+Two values were tried — 0.20, then the battery case's 0.95|0.98|1.00 — and both
+were a second copy of a step the source already gave. A whole day's traction
+numbers were wrong.
+
+The correct structure invents nothing:
+
+    F_collected --step 1--> F_captured --step 2--------> F_removed   disassembly
+                \                                  \
+                 \-> F_uncollected                  \-(1-step 2)--> F_shredded
+
+Fixed 09-29 in `tools/build_tractionmotor_case.py`.
+
+**The failure underneath:** Matthias had said *"damn I told you to use my
+numbers from the study!!"* and, earlier, *"You know what figures I have for
+copper in electronics and also with batteries. So why do you need to ask, I
+want the same."* The number existed, in a document in the project, and I made
+one up.
+
+## 14. A check that compared the case against itself — 09-29
+
+`tools/check_ratios.py` was written to verify the fleet case against the
+review's published end-to-end coefficients. It blended them as
+`d x dis + (1-d) x shr` — **using the same invented `d` the case was built
+from**. So it compared the case against a number derived from the case. It
+reported agreement within 1.9 pp and would have reported agreement for any
+value of `d`.
+
+It was also wrong on the arithmetic. The review's disassembly coefficient
+already contains step 2, so that road contributes the published number in full,
+not a share of it; the shredder road is fed only by what step 2 leaves behind.
+The expectation is `disassembly + (1 - step 2) x shredder` — which means **the
+fleet recovers more than pure disassembly**, because pure disassembly writes
+the unremoved 7% off while the fleet sends it to a shredder.
+
+Both fixed 09-29.
+
+## 15. Never re-rendered the figures — 09-29 *(the expensive one)*
+
+For four days I fixed figures by editing code and reading what it would draw. I
+never once looked at the images on disk beside it.
+
+Matthias spent those days opening figures and finding every fault he had
+already reported still there. *"I have looked at many of the figures. Most of
+them have all the items which I criticised yesterday. I am so pissed."* Then:
+*"We have to go through all of them. What a nightmare."*
+
+They were all still there because **nothing had re-drawn them.**
+
+| folder | newest figure |
+|---|---|
+| `figures/carcomposition_mockup/` | 2026-09-03 |
+| `figures/bev_electronics_wiring/` | 2026-09-04 |
+| `figures/bev_electronics_boards/` | 2026-09-17 |
+| `figures/battery/S1–S3/` | 2026-09-18 |
+| `figures/combined/S1–S3/` | 2026-09-25 |
+
+Newest PNG anywhere: **2026-09-25 16:03.** Every figure fix from 09-26 to 09-29
+had never been rendered once. He was judging work up to three weeks older than
+the code, and I let him, because I was verifying in the source instead of in
+the output.
+
+**There is no code fix for this one.** The rule is: a figure change is not done
+until the figure has been looked at.
+
+## 16. A renamed figure does not disappear — it becomes a lie — 09-29
+
+`trapped.png` was split into one file per resource, `fleet_<resource>.png`, and
+the shaded band on it — *the gap: what the fleet absorbs* — was removed on
+09-28 after *"only what is recycled can be used again. also the grey area is
+shit."*
+
+Nothing deleted the old file. Eleven days later `figures/battery/S1/trapped.png`
+was still in the folder: a six-resource poster, the band still on it, dated like
+everything around it, indistinguishable from current work. Matthias opened it
+and read it as this model's answer. It was not — no code in the project draws
+it. Same for `account.png` and `losses.png`, in five folders.
+
+Fixed by `figure_style.sweep()`: each stage records which figures it wrote, and
+clears its own leftovers on the next run. 02 cannot delete 03's work. Files
+written before the manifest existed are reported, never deleted.
+
+## 17. Four cases when one was wanted — 09-25 to 09-29
+
+I built four traction cases — long loop, short loop, shredder, split — each
+sending 100% of motors one way. A fleet is none of those. It also meant four of
+every figure and nothing to read as the answer.
+
+*"I want one clear answer that one understands, not 100% for four different
+cases. We discussed this."* And: *"Your current solution is absolutely not
+practical and overshoots the target."*
+
+One case now. One builder: `tools/build_tractionmotor_case.py`. The pure routes
+stay reachable by pinning `removal` to 1 or 0.
+
+## 18. A refactor when a rename was needed — 09-29
+
+Asked to make the case simply `tractionmotor`, I began merging four builders
+into one file — while he was blocked and waiting to run. *"You are costing me
+so much time and money."*
+
+The rename was four lines. I did the four lines, committed, pushed, and he ran.
+The consolidation was right, but it was not what unblocked him, and I chose it
+without asking which came first.
+
+---
+
+## Patterns
+
+Eighteen failures, six shapes. The shapes repeat; the instances do not matter
+much.
+
+**1. Verified against itself.** #7, #8, #14. A Sankey that balances, an account
+that closes by construction, a check that blends at the number it is checking.
+All three were internally consistent and all three were wrong. *A figure or a
+check that can only be tested against itself is not tested.* Every check must
+compare against something produced by a different path — the `Recovered` sheet,
+the review's published values, the upstream arrays.
+
+**2. Verified in the source, not in the output.** #15, #16, #11, #12. I read
+code and concluded the output was right; I wrote a table and pushed it before
+reading it; I named a document without opening it. This is the single most
+expensive pattern in the list — it cost more days than every other entry
+combined. *Open the artefact. The file on disk, the rendered image, the actual
+PDF.*
+
+**3. Silent absence.** #5, #6. Nothing failed, nothing warned, four figures
+were simply not there for weeks. *A stage that cannot draw something must say
+so; returning `None` quietly is a bug even when the code is correct.*
+
+**4. Invented what the source already had.** #13. The coefficient was in his
+workbook, with a range and four references. I made one up. *When a number is
+needed, look for it in the study before deriving it, and say which cell it came
+from.*
+
+**5. Renamed without clearing.** #16, and the reason `tractionmotor_fleet` was
+confusing at all. An old name that still resolves — a file, a folder, a case —
+is worse than a missing one, because it looks current. *A rename is not done
+until the old thing is gone or marked.*
+
+**6. Widened the scope past the ask.** #17, #18, and the hundreds of figures.
+Four cases when one was wanted; a refactor when a rename was wanted; every
+resource drawn when he had said twice it was the magnet, its elements, and
+copper. *Do what was asked, at the size it was asked.*
+
+---
+
+## What these cost him, in his own words
+
+> "I have always to check and then fight with you so bad!! I hate that I have
+> to do this."
+
+> "I will now control everything."
+
+> "I do not trust you anymore!!"
+
+Every one of those followed a failure in this register. Entries #7, #11, #13
+and #15 are the ones that earned them: in each case the work looked finished,
+reported success, and was wrong, and he found it rather than any check of mine.
+
+---
+
+*Kept current. A new failure gets an entry on the day it is found, not at the
+next handover. If an entry here is ever fixed, the fix is named in it — an
+entry with no fix named is still open.*

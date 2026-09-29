@@ -25,11 +25,11 @@ assumption. None is a measurement.**
 
 ## What reads it
 
-    tools/build_tractionmotor_case.py            long loop, disassembly
-    tools/build_tractionmotor_shortloop_case.py  short loop, and the split
-    tools/build_tractionmotor_shredder_case.py   shredded whole
-    tools/build_tractionmotor_fleet_case.py      both roads, split at step 2
-    tools/extract_recycling_coefficients.py      the workbook -> the csv
+    tools/build_tractionmotor_case.py            THE case: both roads,
+                                                 split at the review's step 2
+    tools/extract_traction_tcs.py                the workbook -> the csv
+    tools/draw_tractionmotor_cases_overview.py   the schema, with every
+                                                 coefficient on its own stage
 
 Each builder types the coefficients it needs at the top of the file with the
 sheet they came from, so the chain from this folder to a case is one file to

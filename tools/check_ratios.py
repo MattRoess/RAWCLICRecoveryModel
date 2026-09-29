@@ -55,7 +55,7 @@ from src.params_schema import current
 # The 2030 shredder magnet value is 0.0157, not the sheet's 0.02: that cell
 # quotes the STEP as if it were the chain, while the same sheet applies capture
 # and feed to copper, aluminium and steel, and the 2060 sheet applies them to
-# the magnet too. See tools/build_tractionmotor_shredder_case.py.
+# the magnet too. See tools/build_tractionmotor_case.py, SHR30.
 REVIEW = {
     'Nd':         {'dis': (0.41, 0.65), 'shr': (0.0157, 0.265)},
     'Pr':         {'dis': (0.41, 0.65), 'shr': (0.0157, 0.265)},

@@ -48,7 +48,7 @@ several separated by semicolons:
 
 ```python
 data_folder: str = 'data_folder/bev_electronics_wiring'
-data_folder: str = 'data_folder/tractionmotor; data_folder/tractionmotor_shredder'
+data_folder: str = 'data_folder/bev_electronics_wiring; data_folder/bev_electronics_boards'
 ```
 
 **Each pass is still one case.** They are different studies — different

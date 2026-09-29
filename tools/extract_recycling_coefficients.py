@@ -31,11 +31,11 @@ USED = {
     ('disassembly', '7'): 'tractionmotor', ('disassembly', '8'): 'tractionmotor',
     ('disassembly', '9'): 'tractionmotor', ('disassembly', '10'): 'tractionmotor',
     ('disassembly', '11'): 'tractionmotor',
-    ('disassembly', '6a/d'): 'tractionmotor_shortloop, tractionmotor_split',
-    ('shredder', '1'): 'tractionmotor_shredder',
-    ('shredder', '2'): 'tractionmotor_shredder',
-    ('shredder', '3'): 'tractionmotor_shredder',
-    ('shredder', '3→6b'): 'tractionmotor_shredder',
+    ('disassembly', '6a/d'): 'not modelled: no 2030 coefficient',
+    ('shredder', '1'): 'tractionmotor, head (step 1)',
+    ('shredder', '2'): 'tractionmotor, shredder road',
+    ('shredder', '3'): 'tractionmotor, shredder road',
+    ('shredder', '3→6b'): 'tractionmotor, shredder road',
     # ⚠️ PATHWAY MODELLED, COEFFICIENT DELIBERATELY NOT TAKEN. The ferrous
     # stream exists in the case and ends at F_ree_in_steel, but this 0.01
     # "recoverable from the steel melt" is not applied: Matthias 2026-09-25,

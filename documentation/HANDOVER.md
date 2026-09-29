@@ -2004,7 +2004,17 @@ somebody chose rather than the placeholder in
 
 ## 2026-09-28 (evening) — READ THE FIRST SECTION BEFORE TOUCHING THE FLEET CASE
 
-### ⚠️ 1. `tractionmotor_fleet` DOUBLE-COUNTS MOTOR REMOVAL. Do not use its numbers.
+### ~~⚠️ 1. `tractionmotor_fleet` DOUBLE-COUNTS MOTOR REMOVAL~~ — **FIXED 2026-09-29**
+
+> **Resolved.** The fork is now the review's step 2, in
+> `tools/build_tractionmotor_case.py` — which is the ONLY traction builder
+> left, and writes `data_folder/tractionmotor`. There is no
+> `DISASSEMBLY_SHARE` and no `tractionmotor_fleet` any more; the case that
+> is the answer carries the plain name. `check_ratios.py` was wrong in the
+> same way and now expects `disassembly + (1 - step 2) x shredder`.
+> The account below is kept because it is the record of how it happened —
+> see `documentation/FAILURES.md`.
+
 
 The case is built and runs. Its numbers are wrong and I found it minutes before
 stopping, by reading the user's own extracted study table.

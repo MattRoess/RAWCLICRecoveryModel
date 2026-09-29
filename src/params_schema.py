@@ -63,21 +63,18 @@ class RunParams:
     #                                                drivetrains, as MATERIALS
     #    'data_folder/battery'                 04_04  the pack, as ELEMENTS
     #                                                within COMPONENTS
-    #    'data_folder/tractionmotor'           04_03  disassembly into the
-    #                                                hydrometallurgical long
-    #                                                loop
-    #    'data_folder/tractionmotor_shortloop' 04_03  disassembly into the
-    #                                                short loop, HD/HPMS
-    #    'data_folder/tractionmotor_shredder'  04_03  no disassembly: the
-    #                                                motor goes to the shredder
-    #    'data_folder/tractionmotor_split'     04_03  a share between the long
-    #                                                and the short loop
+    #    'data_folder/tractionmotor'           04_03  the fleet: motors
+    #                                                removed and disassembled,
+    #                                                the rest shredded in the
+    #                                                hulk, split at the
+    #                                                review's step 2
     #
     #  SEVERAL AT ONCE, SEPARATED BY SEMICOLONS. Naming more than one runs
     #  every one of them, in the order written, exactly as a case set up with
     #  scenarios runs all of its scenarios:
     #
-    #      data_folder = 'data_folder/tractionmotor; data_folder/...shredder'
+    #      data_folder = 'data_folder/bev_electronics_wiring; '
+    #                    'data_folder/bev_electronics_boards'
     #
     #  STILL ONE STUDY PER CASE. They are different networks with different
     #  coefficients and different layers, so each one is solved, written and
@@ -97,10 +94,7 @@ class RunParams:
     # One folder holding an `input_data/`, written from the project root, or
     # several separated by semicolons.
     # SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
-    data_folder: str = ('data_folder/tractionmotor; '
-                        'data_folder/tractionmotor_shortloop; '
-                        'data_folder/tractionmotor_shredder; '
-                        'data_folder/tractionmotor_split')
+    data_folder: str = 'data_folder/tractionmotor'
 
     # WHICH SCENARIO TO RUN.  Blank runs every scenario the case declares.
     #
@@ -560,7 +554,8 @@ class CombineParams:
     #  group as well, which disagrees with the traction motor export by a
     #  factor of three on total motor mass.
     #
-    #  They are reported separately instead, by `tools/compare_routes.py`.
+    #  The traction motors are their own study -- press Run on
+    #  `03_tractionmotors.py` -- and it answers for one fleet, not four.
     resources: dict[str, tuple[str, ...]] = field(default_factory=lambda: {
         'copper':  ('copper', 'Cu'),
         'nickel':  ('Ni',),
@@ -700,21 +695,20 @@ STUDIES: dict[str, dict] = {
                               'Ag', 'Au', 'Pd', 'Cu', 'Ni'),
     },
     'tractionmotors': {
-        # ⚠️ ONE CASE, ONE ANSWER. The four pure routes each send 100% of the
-        # motors one way; the fleet is a mixture of them and that is what
-        # `tractionmotor_fleet` computes. Four cases meant four of every figure
-        # and no single answer.
+        # ⚠️ ONE CASE, ONE ANSWER. `data_folder/tractionmotor` runs BOTH
+        # roads at once: motors that are removed are disassembled, motors that
+        # are not stay in the hulk and are shredded with it. There used to be
+        # four cases, each sending 100% of the motors one way, which meant four
+        # of every figure and no single answer to read.
         #
         # THE MIXTURE IS NOT A DIAL. The split is the review's own step 2,
-        # "Motor removal from vehicle", 0.85 | 0.93 | 0.98 at 2030: what is
-        # removed is disassembled, what is not stays in the hulk and is
-        # shredded. Nobody chose it. An earlier version had an invented share
-        # above a chain that already applied step 2, which counted removal
-        # twice.
+        # "Motor removal from vehicle", 0.85 | 0.93 | 0.98 at 2030. Nobody
+        # chose it. An earlier version had an invented share above a chain that
+        # already applied step 2, which counted removal twice.
         #
-        # The pure four remain on disk as the bounds -- removal at 1 and at 0
-        # -- and `tools/compare_routes.py` compares them when that is the
-        # question.
+        # The pure routes are still reachable: pin `removal` in
+        # `tools/build_tractionmotor_case.py` to (1,1,1) for disassembly only
+        # or (0,0,0) for shredder only, and rebuild.
         'run.data_folder': 'data_folder/tractionmotor',
         # ⚠️ `mix` ONLY, AND ON PURPOSE. Running all four grades is four times
         # the folders and four times the figures to answer one narrow
