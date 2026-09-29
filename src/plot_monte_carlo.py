@@ -795,6 +795,20 @@ def figure_fate(run, theme: str, unit: str, resources=()):
     changes, and the scale between the arrays and the table is taken from the
     model's own collected mass rather than assumed.
     """
+    # CACHED ON THE RUN. `figure_account`, `figure_losses`, `figure_trapped`
+    # and the shared-unit scan below each ask for the same account, so it was
+    # being rebuilt four times per resource -- every one of them re-reading the
+    # upstream arrays for every year.
+    store = getattr(run, '_accounts', None)
+    if store is None:
+        store = {}
+        try:
+            run._accounts = store
+        except AttributeError:
+            store = None
+    if store is not None and (resource, domain) in store:
+        return store[(resource, domain)]
+
     source = getattr(run, 'upstream', None)
     if source is None or not getattr(source, 'propagates', False):
         return None
@@ -959,6 +973,8 @@ def account(run, resource: str, domain: str | None = None) -> dict[str, np.ndarr
         out = source.other_flow('outflow', resource, domains, year, 0, run.draws)
         into = source.other_flow('inflow', resource, domains, year, 0, run.draws)
         if collected.mean() <= 0 or raw is None or out is None or raw.mean() <= 0:
+            if store is not None:
+                store[(resource, domain)] = None
             return None
         to_working = collected.mean() / raw.mean()
         out = out * to_working
@@ -969,8 +985,11 @@ def account(run, resource: str, domain: str | None = None) -> dict[str, np.ndarr
         got['uncollected'].append(np.clip(out - collected, 0, None))
         got['recovered'].append(back)
         got['lost'].append(collected - back)
-    return {name: np.column_stack(columns)      # draws x years
-            for name, columns in got.items()} | {'years': np.array(years)}
+    built = {name: np.column_stack(columns)     # draws x years
+             for name, columns in got.items()} | {'years': np.array(years)}
+    if store is not None:
+        store[(resource, domain)] = built
+    return built
 
 
 def _round_step(rough: float) -> float:
@@ -1183,7 +1202,8 @@ def account_legend(figure, for_legend, colours, rows_of: int) -> None:
 # exception that proves it -- nobody reads 2055 off a peak, so the year a
 # curve turns is still written, next to the rule that marks it.
 
-def figure_account(run, theme: str, unit: str, resources=(), only: str = ''):
+def figure_account(run, theme: str, unit: str, resources=(), only: str = '',
+                   fixed=None):
     """
     THE WHOLE ACCOUNT OF A RESOURCE ON ONE SET OF AXES, so that every quantity
     can be compared against every other one directly.
@@ -1275,7 +1295,14 @@ def figure_account(run, theme: str, unit: str, resources=(), only: str = ''):
 
     every = np.concatenate([np.nanpercentile(a['outflow'], 97.5, axis=0)
                             for a in accounts.values()])
-    scale, shown = scale_for(every, unit)
+    # ⚠️ ONE UNIT FOR EVERY RESOURCE OF THIS FIGURE TYPE, handed in by
+    # `draw_all`. Scaled per figure, `account_Pr` came out in tonnes beside
+    # `account_copper` in kilotonnes and the two could not be put side by side
+    # without converting in your head. Said on 2026-09-29: *"I told you before
+    # to have always the same units on the y axis, so figures can be
+    # compared."* The RANGE still differs -- it has to, copper is four orders
+    # above terbium -- but the unit on the label does not.
+    scale, shown = fixed or scale_for(every, unit)
 
     # A GRID ONCE THERE ARE MORE THAN THREE. One row is right for the case that
     # asked for two or three resources; the boards case resolves twenty-one, and
@@ -1377,6 +1404,30 @@ def fleet_flows(run, resource: str):
     return {'years': every, 'solved': solved, **out}
 
 
+def _shared_unit(parts, key: str, unit: str, accumulate: bool = False):
+    """
+    One display unit for a whole set of figures, or None to let each pick.
+
+    Judged on the LARGEST value any of them will draw, so the biggest axis
+    reads in whole numbers and the smaller resources read as fractions of the
+    same unit -- 1.4 kt beside 0.05 kt rather than 1,400 t beside 50 t on two
+    axes labelled differently.
+
+    `parts` may hold None where a resource has no account; those are ignored.
+    Nothing to judge gives None, and each figure then scales itself exactly as
+    before.
+    """
+    values = []
+    for part in parts:
+        if not part or key not in part:
+            continue
+        block = np.cumsum(part[key], axis=0) if accumulate else part[key]
+        top = np.nanpercentile(block, 97.5)
+        if np.isfinite(top):
+            values.append(abs(float(top)))
+    return scale_for(np.array(values), unit, by='max') if values else None
+
+
 def _crosses(years, series, level: float):
     """
     Where the DRAWN line first reaches `level`, interpolated between samples.
@@ -1408,7 +1459,8 @@ def _crosses(years, series, level: float):
     return None
 
 
-def figure_trapped(run, theme: str, unit: str, resources=(), only: str = ''):
+def figure_trapped(run, theme: str, unit: str, resources=(), only: str = '',
+                   fixed=None):
     """
     STILL DRIVING, COME BACK, OR GONE -- every tonne that entered the fleet.
 
@@ -1485,7 +1537,10 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = ''):
     biggest = np.concatenate([np.nanpercentile(np.cumsum(s['net'], axis=0),
                                                97.5, axis=1)
                               for s in series.values()])
-    scale, shown = scale_for(biggest, unit)
+    # One unit across every resource -- see `figure_account`. Its own, because
+    # these are ACCUMULATED stocks and the account draws annual flows; sharing
+    # one unit between the two would put a stock axis in the flow's unit.
+    scale, shown = fixed or scale_for(biggest, unit)
 
     across = min(2, len(series))
     down = -(-len(series) // across)
@@ -1699,7 +1754,8 @@ def losses(run, resource: str) -> dict[str, np.ndarray] | None:
             'outflow': a['outflow'], 'recovered': a['recovered']}
 
 
-def figure_losses(run, theme: str, unit: str, resources=(), only: str = ''):
+def figure_losses(run, theme: str, unit: str, resources=(), only: str = '',
+                  fixed=None):
     """
     WHERE IT GOES WHEN IT DOES NOT COME BACK, one wedge per reason.
 
@@ -1727,7 +1783,7 @@ def figure_losses(run, theme: str, unit: str, resources=(), only: str = ''):
 
     every = np.concatenate([np.nanmean(s['outflow'], axis=0)
                             for s in series.values()])
-    scale, shown = scale_for(every, unit)
+    scale, shown = fixed or scale_for(every, unit)   # shared -- see figure_account
 
     across = len(series)
     figure, axes, colours = chart(1150 * across, 780, theme, 1, 2 * across)
@@ -2329,22 +2385,37 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
     # THE ACCOUNT AND THE LOSSES, ONE FILE EACH. Both used to be a grid of
     # every chosen resource in a single image, which at six resources is
     # unreadable at any size (see `figure_account`).
-    for resource in chosen(run, resources):
+    # ⚠️ ONE UNIT PER FIGURE TYPE, WORKED OUT BEFORE ANY OF THEM IS DRAWN.
+    # Each figure used to pick its own, so `account_Pr` was in tonnes and
+    # `account_copper` in kilotonnes -- the same quantity, two labels, and no
+    # way to lay them side by side. Judged on the LARGEST resource, so the
+    # biggest axis reads in whole numbers and the smaller ones read as
+    # fractions of the same unit.
+    wanted = chosen(run, resources)
+    flow_unit = _shared_unit(
+        [account(run, r) for r in wanted], 'outflow', unit)
+    stock_unit = _shared_unit(
+        [fleet_flows(run, r) for r in wanted], 'net', unit, accumulate=True)
+
+    for resource in wanted:
         figures.append((f'account_{resource}',
                         lambda resource=resource: figure_account(
-                            run, theme, unit, resources, only=resource)))
+                            run, theme, unit, resources, only=resource,
+                            fixed=flow_unit)))
         figures.append((f'losses_{resource}',
                         lambda resource=resource: figure_losses(
-                            run, theme, unit, resources, only=resource)))
+                            run, theme, unit, resources, only=resource,
+                            fixed=flow_unit)))
         # WHAT THE FLEET IS HOLDING, and what is gone -- the stock the account
         # leaves to be imagined. Asked for on 2026-09-28: *"how much is in the
         # fleet etc. how much is lost over time."*
         figures.append((f'fleet_{resource}',
                         lambda resource=resource: figure_trapped(
-                            run, theme, unit, resources, only=resource)))
+                            run, theme, unit, resources, only=resource,
+                            fixed=stock_unit)))
 
     layer = resource_key(run.keys)
-    for resource in chosen(run, resources):
+    for resource in wanted:
         figures.append((f'pdf_{resource}',
                         # bound now, not at call time: a bare `resource` would
                         # be the last one for every entry in the list.
