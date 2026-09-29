@@ -996,21 +996,42 @@ def account(run, resource: str, domain: str | None = None) -> dict[str, np.ndarr
 
 def _round_step(rough: float) -> float:
     """
-    The nearest step a person would actually count in: 1, 2, 2.5 or 5 times a
-    power of ten.
+    The nearest step a person would actually count in: 1, 1.5, 2, 2.5, 3, 4 or
+    5 times a power of ten.
 
     An axis ruled at 63.4 is an axis nobody reads a value off. Rounding the
     wanted spacing UP to one of these keeps the gridlines at numbers that can
     be added in the head, which is the whole point of ruling the axis when
     every quantity on it is meant to be compared against every other.
+
+    ⚠️ IT USED TO OFFER ONLY 1, 2, 2.5 AND 5, and that wastes the panel. A top
+    of 24.3 rounds its quarter-step from 6.08 up to 10 and rules the axis to
+    40: the data reaches the middle and the upper 40% is white.
+    `05_combine_cases` added the finer ladder on 2026-09-25 as `_tight_step`
+    and this one was left coarse. Said on 2026-09-29: *"the axis scales are
+    quite often shit. Use the full space."*
     """
     if not np.isfinite(rough) or rough <= 0:
         return 1.0
     power = 10.0 ** np.floor(np.log10(rough))
-    for nice in (1, 2, 2.5, 5, 10):
+    for nice in (1, 1.5, 2, 2.5, 3, 4, 5, 10):
         if rough <= nice * power:
             return float(nice * power)
     return float(10 * power)
+
+
+def _ruling(top: float) -> tuple[float, int]:
+    """
+    A step and a count for an axis reaching `top`, wasting as little as it can.
+
+    FOUR INTERVALS OR FIVE, whichever leaves less white above the data. Fixed
+    at four, a top of 24.3 rules to 40; at five the same data rules to 25. Both
+    are readable; one of them uses the panel.
+    """
+    if not np.isfinite(top) or top <= 0:
+        return 1.0, 4
+    return min(((_round_step(top / n), n) for n in (4, 5)),
+               key=lambda pair: pair[0] * pair[1])
 
 
 def draw_account(panel, title: str, a: dict, roads: dict, years,
@@ -1119,9 +1140,9 @@ def draw_account(panel, title: str, a: dict, roads: dict, years,
     rate_axis.grid(False)
 
     top = float(np.nanmax(high_of_all) * scale)
-    step = _round_step(top / 4)
-    panel.set_ylim(0, step * 4)
-    panel.set_yticks([step * n for n in range(5)])
+    step, count = _ruling(top)
+    panel.set_ylim(0, step * count)
+    panel.set_yticks([step * n for n in range(count + 1)])
 
     # ⚠️ THE TITLE SAYS WHAT THE PANEL IS. It does not summarise it.
     #
@@ -1695,7 +1716,13 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = '',
         # and neodymium, which may never pass 5%, is a flat line on the floor.
         # The thresholds below adapt with it, so only the ones in range are
         # drawn and none is implied.
-        ceiling = float(np.clip(np.nanmax(high) * 1.25, 12.0, 105.0))
+        #
+        # RULED FROM THE DATA, NOT FROM A PADDED CEILING. It padded the top by
+        # 25% and then `_ruling` rounded that up again, so a curve reaching 5%
+        # was drawn on an axis running to 12 -- the double padding wasted more
+        # of the panel than the fixed 0-105 it replaced.
+        step, count = _ruling(float(np.clip(np.nanmax(high), 1e-9, 100.0)))
+        ceiling = step * count
         marked = 0
         for place, level in enumerate((10, 25, 50, 100)):
             if level > ceiling:
@@ -1731,13 +1758,11 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = '',
                 textcoords='offset points', color=colours['title'],
                 fontsize=11, fontweight='bold', va='top')
 
+        # Four intervals or five, whichever wastes less -- keeping the fixed
+        # 0/25/50/75/100 left a panel topping out at 12% with a single label on
+        # its axis, so no value on it could be read at all.
         contribution.set_ylim(0, ceiling)
-        # FOUR INTERVALS, WHATEVER THE CEILING. Keeping the fixed
-        # 0/25/50/75/100 left a panel topping out at 12% with a single label
-        # on its axis, so no value on it could be read at all.
-        step = _round_step(ceiling / 4)
-        contribution.set_yticks([step * n for n in range(5)
-                                 if step * n <= ceiling])
+        contribution.set_yticks([step * n for n in range(count + 1)])
         contribution.set_ylabel('% of what is entering', color=PALETTE[2],
                                 fontsize=13)
         contribution.set_xlabel('year', color=colours['meta'], fontsize=13)
