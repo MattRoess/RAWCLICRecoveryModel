@@ -28,7 +28,7 @@ assumption. None is a measurement.**
     tools/build_tractionmotor_case.py            long loop, disassembly
     tools/build_tractionmotor_shortloop_case.py  short loop, and the split
     tools/build_tractionmotor_shredder_case.py   shredded whole
-    tools/build_tractionmotor_fleet_case.py      both roads, with the share
+    tools/build_tractionmotor_fleet_case.py      both roads, split at step 2
     tools/extract_recycling_coefficients.py      the workbook -> the csv
 
 Each builder types the coefficients it needs at the top of the file with the

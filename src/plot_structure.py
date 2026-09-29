@@ -317,10 +317,17 @@ def draw(target: str | None = None, params: Params | None = None) -> None:
         tcs = numeric_bounds(tcs)
     from src.rest import flow_roles
     figure = render(tcs, case, theme=params.figures.theme, roles=flow_roles(folder))
-    for path in write(figure, folder_for(params.figures.out_dir, case,
-                                        params.run.scenario), 'structure',
-                      params.figures.enabled(), params.figures.dpi):
+    root = folder_for(params.figures.out_dir, case, params.run.scenario)
+    written = write(figure, root, 'structure',
+                    params.figures.enabled(), params.figures.dpi)
+    for path in written:
         print(f'wrote {path}')
+
+    # Claims `structure.png` in the folder's manifest, so the sweep the other
+    # two stages run knows it is current work and not somebody's leftover.
+    # See `figure_style.sweep`.
+    from src.figure_style import report_sweep
+    report_sweep(root, 'structure', written)
 
     import matplotlib.pyplot as plt
     plt.close(figure)

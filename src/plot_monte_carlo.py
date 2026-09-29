@@ -481,16 +481,50 @@ def routes(run) -> dict[str, list[str]]:
     General: any case's split is found from its own network, and a case that
     never splits has one road and nothing to compare, so the figure returns
     None.
+
+    ⚠️ THE SPLIT IS NOT ALWAYS AT THE FIRST FLOW. The fleet traction case
+    divides twice: at `F_collected`, where a vehicle is collected or is not,
+    and then at `F_captured`, where the motor is taken out or stays in the hulk
+    to be shredded. Only the second is a road -- the first has nothing
+    recovered on its other side, because a vehicle nobody collected yields
+    nothing. Testing the first flow only, this returned no roads at all for
+    that case and the whole point of it, which road the material came back on,
+    went unanswered.
+
+    So a split with material recovered below exactly ONE of its branches is not
+    a choice, and the search steps through it to that branch. A split with
+    several such branches is where the search stops, and the road test below
+    decides whether it is roads or material streams.
     """
     recovered = set(recovered_flows(run, run.case))
     if not recovered:
         return {}
     tcs = run.tcs
     from src.report import start_flows
-    split = tcs[tcs['Input_FlowID'].isin(start_flows(tcs))]
-    branches = sorted(set(split['Output_FlowID']))
-    if len(branches) < 2:
-        return {}
+    parent = dict(zip(tcs['Output_FlowID'], tcs['Input_FlowID']))
+
+    def _below(branch: str) -> list[str]:
+        """The recovered flows that descend from one branch."""
+        found = []
+        for flow in sorted(recovered):
+            at, seen = flow, set()
+            while at != branch and at in parent and at not in seen:
+                seen.add(at)
+                at = parent[at]
+            if at == branch:
+                found.append(flow)
+        return found
+
+    at_flows = sorted(start_flows(tcs))
+    while True:
+        split = tcs[tcs['Input_FlowID'].isin(at_flows)]
+        branches = sorted(set(split['Output_FlowID']))
+        if len(branches) < 2:
+            return {}
+        bearing = [b for b in branches if _below(b)]
+        if len(bearing) != 1:
+            break
+        at_flows = bearing            # step through, it was never a choice
 
     # ⚠️ A ROAD SPLIT SENDS THE SAME RESOURCE TWO WAYS. A network can divide at
     # its first flow without there being any road: the shredder case divides
@@ -507,18 +541,10 @@ def routes(run) -> dict[str, list[str]]:
                for branch, rows in split.groupby('Output_FlowID')}
     process = split['process'].iloc[0] if 'process' in split.columns else ''
 
-    # Walk each recovered flow back up to the branch it descends from. Parents
-    # are unique here: a flow is produced once, by one process.
-    parent = dict(zip(tcs['Output_FlowID'], tcs['Input_FlowID']))
+    # Each recovered flow belongs to the branch it descends from. Parents are
+    # unique here: a flow is produced once, by one process.
     names = _road_names(branches, process)
-    on_road: dict[str, list[str]] = {b: [] for b in names}   # positive first
-    for flow in sorted(recovered):
-        at, seen = flow, set()
-        while at not in branches and at in parent and at not in seen:
-            seen.add(at)
-            at = parent[at]
-        if at in branches:
-            on_road[at].append(flow)
+    on_road = {b: _below(b) for b in names}                  # positive first
 
     # A road split sends the SAME resource more than one way. Branches that
     # carry disjoint resources are material STREAMS, and a stream is not a
@@ -2323,6 +2349,13 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
             continue
         written.extend(write(figure, out_dir, stem, formats, dpi))
         plt.close(figure)
+
+    # ⚠️ AND CLEAR WHAT 03 USED TO DRAW AND NO LONGER DOES. A figure that is
+    # renamed or dropped stays in the folder looking current -- see
+    # `figure_style.sweep`, which exists because `trapped.png` was read as this
+    # model's answer eleven days after anything stopped producing it.
+    from src.figure_style import report_sweep
+    report_sweep(out_dir, 'monte carlo', written)
     return written
 
 

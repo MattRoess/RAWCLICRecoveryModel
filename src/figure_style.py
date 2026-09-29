@@ -160,6 +160,101 @@ def write(figure, out_dir: str, stem: str, formats, dpi: int,
     return written
 
 
+# The manifest each stage leaves behind, so the next run can tell its own
+# leftovers from another stage's current work. Text, one line per file, so it
+# diffs and can be read without a tool.
+MANIFEST = '_written.txt'
+
+
+def _manifest_path(root: str) -> str:
+    return os.path.join(root, MANIFEST)
+
+
+def _read_manifest(root: str) -> dict[str, str]:
+    try:
+        with open(_manifest_path(root)) as handle:
+            pairs = [line.rstrip('\n').split('\t', 1) for line in handle
+                     if '\t' in line]
+    except FileNotFoundError:
+        return {}
+    return {name: stage for stage, name in pairs}
+
+
+def sweep(root: str, stage: str, written) -> tuple[list[str], list[str]]:
+    """
+    Delete this stage's OWN leftovers from a case's figure folder.
+
+    ⚠️ A RENAMED FIGURE DOES NOT DISAPPEAR, IT BECOMES A LIE. `trapped.png` was
+    split into one file per resource, `fleet_<resource>.png`, and the shaded
+    band in it -- `the gap: what the fleet absorbs` -- was removed on
+    2026-09-28 because only what is recycled can be used again. Nothing deleted
+    the old file. Eleven days later `figures/battery/S1/trapped.png` was still
+    sitting in the folder, a six-resource poster with the band still on it,
+    dated like everything around it and indistinguishable from current work. It
+    was opened and read as this model's answer. It was not: no code in the
+    project draws it any more.
+
+    Figures are DERIVED -- `.gitignore` says so and refuses to track them -- so
+    a figure nothing produces is not a record of anything, and leaving it is
+    worse than having no figure at all.
+
+    ONLY WHAT THIS STAGE WROTE BEFORE. 02 draws the structure and the
+    point-solve Sankeys into the same folder 03 then writes its own figures to,
+    and 03 deleting what it did not write would delete 02's work on every run.
+    Each stage records its own files and clears only those.
+
+    Files nobody has ever recorded -- everything written before this manifest
+    existed -- are REPORTED, NOT DELETED. Which stage made them is not knowable
+    from the folder, and guessing wrong throws away a figure somebody wanted.
+    One full pass records them and they stop being unclaimed.
+
+    Returns (deleted, unclaimed), both as paths relative to `root`.
+    """
+    if not os.path.isdir(root):
+        return [], []
+    kept = _read_manifest(root)
+    mine = {os.path.relpath(path, root) for path in written}
+
+    here = []
+    for folder, _sub, files in os.walk(root):
+        for name in files:
+            if name == MANIFEST:
+                continue
+            here.append(os.path.relpath(os.path.join(folder, name), root))
+
+    deleted = sorted(name for name in here
+                     if kept.get(name) == stage and name not in mine)
+    for name in deleted:
+        os.remove(os.path.join(root, name))
+
+    unclaimed = sorted(name for name in here
+                       if name not in kept and name not in mine)
+
+    kept = {name: who for name, who in kept.items() if name not in deleted}
+    kept.update({name: stage for name in mine})
+    with open(_manifest_path(root), 'w') as handle:
+        handle.write(f'# which stage wrote each figure here. '
+                     f'{os.path.basename(root)}\n')
+        for name in sorted(kept):
+            handle.write(f'{kept[name]}\t{name}\n')
+    return deleted, unclaimed
+
+
+def report_sweep(root: str, stage: str, written) -> None:
+    """`sweep`, and say out loud what it did. Silent when there was nothing."""
+    deleted, unclaimed = sweep(root, stage, written)
+    for name in deleted:
+        print(f'  removed {os.path.join(root, name)} -- {stage} no longer '
+              f'draws it')
+    if unclaimed:
+        print(f'  ⚠️ {len(unclaimed)} file(s) in {root} were written before '
+              f'this manifest existed and no stage claims them. They may be '
+              f'from a figure that no longer exists -- check them, then delete '
+              f'or re-run:')
+        for name in unclaimed:
+            print(f'       {name}')
+
+
 def chart(width: float, height: float, theme: str, rows: int = 1, columns: int = 1,
           height_ratios=None):
     """

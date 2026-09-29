@@ -702,12 +702,20 @@ STUDIES: dict[str, dict] = {
     'tractionmotors': {
         # ⚠️ ONE CASE, ONE ANSWER. The four pure routes each send 100% of the
         # motors one way; the fleet is a mixture of them and that is what
-        # `tractionmotor_fleet` computes, with the disassembly share as a
-        # coefficient. Four cases meant four of every figure and no single
-        # answer. The pure four remain on disk as the bounds -- this case with
-        # the share at 1 and at 0 -- and `tools/compare_routes.py` compares
-        # them when that is the question.
-        'run.data_folder': 'data_folder/tractionmotor_fleet',
+        # `tractionmotor_fleet` computes. Four cases meant four of every figure
+        # and no single answer.
+        #
+        # THE MIXTURE IS NOT A DIAL. The split is the review's own step 2,
+        # "Motor removal from vehicle", 0.85 | 0.93 | 0.98 at 2030: what is
+        # removed is disassembled, what is not stays in the hulk and is
+        # shredded. Nobody chose it. An earlier version had an invented share
+        # above a chain that already applied step 2, which counted removal
+        # twice.
+        #
+        # The pure four remain on disk as the bounds -- removal at 1 and at 0
+        # -- and `tools/compare_routes.py` compares them when that is the
+        # question.
+        'run.data_folder': 'data_folder/tractionmotor',
         # ⚠️ `mix` ONLY, AND ON PURPOSE. Running all four grades is four times
         # the folders and four times the figures to answer one narrow
         # question. Nd and Pr are BYTE-IDENTICAL across SH, UH and EH -- the

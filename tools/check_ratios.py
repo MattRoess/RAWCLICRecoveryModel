@@ -3,16 +3,35 @@ tools/check_ratios.py -- does the fleet case agree with the review?
 
     ./.venv/bin/python tools/check_ratios.py
 
-ONE FIGURE, ONE QUESTION. The fleet case blends two routes whose end-to-end
-coefficients the review publishes. So its ratio must sit BETWEEN them, at the
-place the disassembly share puts it:
+ONE FIGURE, ONE QUESTION. The fleet case runs both routes at once, and the
+review publishes each route's end-to-end coefficient. So the case's ratio is
+predictable from them, and this figure checks that it lands where it should.
 
-    expected  =  d x disassembly  +  (1 - d) x shredder
+    expected  =  disassembly  +  (1 - step 2) x shredder
 
-The figure draws the model's own recovered/collected per year, the review's two
-anchors at 2030 and 2060, and that expectation. If the line does not land on
-the expectation, either the case or the blend is wrong -- and the figure says
-which way it is off rather than leaving it to be taken on trust.
+⚠️ THAT IS NOT A WEIGHTED AVERAGE, AND THE `d x dis + (1-d) x shr` THIS FILE
+USED TO WRITE WAS WRONG TWICE OVER. The review's disassembly coefficient
+ALREADY contains step 2 -- it is capture x removal x the rest of the chain --
+so the disassembly road contributes the published number in full, not a share
+of it. The shredder road is fed only by what step 2 leaves behind, and the
+review's shredder coefficient already contains capture x feed, so that road
+contributes the published number scaled by `1 - step 2`.
+
+The consequence is worth stating plainly: **the fleet recovers MORE than pure
+disassembly**, because the pure disassembly case writes the unremoved 7% off
+as a loss while the fleet sends it to a shredder that gets some of it back.
+
+The earlier version was also not a check at all. It blended at an invented
+`DISASSEMBLY_SHARE` that the case itself was built from, so it compared the
+case against a number derived from the case and agreed with itself to within
+1.9 pp. It now blends at the review's own step 2, and the two anchors are the
+review's published end-to-end values, so the case and the expectation come
+from different places and disagreeing is possible.
+
+The figure draws the model's own recovered/collected per year, and that
+expectation at 2030 and 2060. If the line does not land on it, either the case
+or the review's arithmetic is wrong -- and the figure says which way it is off
+rather than leaving it to be taken on trust.
 """
 import os
 import sys
@@ -25,7 +44,7 @@ from src.bootstrap import ensure_venv
 
 ensure_venv()
 
-from src.figure_style import PALETTE, chart, write
+from src.figure_style import PALETTE, chart, report_sweep, write
 from src.params_schema import current
 
 # ⚠️ THE REVIEW'S OWN END-TO-END COEFFICIENTS, typed from
@@ -47,7 +66,7 @@ REVIEW = {
     'steel':      {'dis': (0.60, 0.71), 'shr': (0.72, 0.83)},
 }
 ANCHORS = (2030, 2060)
-CASE = 'data_folder/tractionmotor_fleet'
+CASE = 'data_folder/tractionmotor'
 
 
 def model_ratio(case: str, scenario: str) -> pd.DataFrame:
@@ -84,7 +103,13 @@ def model_ratio(case: str, scenario: str) -> pd.DataFrame:
 
 
 def share_of(case: str) -> tuple[float, float]:
-    """The disassembly share the case actually carries, both horizons."""
+    """
+    The case's own step 2 -- motor removal -- at both horizons.
+
+    Read from the case rather than typed, because it is the thing the fork is
+    made of: if the workbook is revised and the builder rerun, the expectation
+    has to move with it.
+    """
     from src import case_tables
     out = []
     for sheet in ('TCs', 'TCs_improved'):
@@ -113,7 +138,7 @@ def main() -> int:
                    marker='o', markersize=3.5, label=resource)
         for index, year in enumerate(ANCHORS):
             dis, shr = REVIEW[resource]['dis'][index], REVIEW[resource]['shr'][index]
-            expected = 100 * (share[index] * dis + (1 - share[index]) * shr)
+            expected = 100 * (dis + (1 - share[index]) * shr)
             panel.plot([year], [expected], marker='_', markersize=26,
                        markeredgewidth=3.0, color=colour, zorder=5)
             got = here[here['Year'] == year]['ratio']
@@ -135,18 +160,24 @@ def main() -> int:
                color=colours['title'], va='center', parse_math=False)
     panel.text(0.0, 1.045,
                f'lines: this model, grade {scenario}.  dashes at 2030 and '
-               f'2060: the review’s own end-to-end coefficients blended at '
-               f'this case’s disassembly share, {share[0]:.0%} and '
-               f'{share[1]:.0%}.  worst gap {worst:.1f} pp.',
+               f'2060: the review’s disassembly coefficient plus its '
+               f'shredder coefficient on the {1 - share[0]:.0%} and '
+               f'{1 - share[1]:.0%} that step 2 leaves in the hulk.  '
+               f'worst gap {worst:.1f} pp.',
                transform=panel.transAxes, fontsize=11, color=colours['sub'],
                va='center', parse_math=False)
     figure.subplots_adjust(top=0.85, left=0.09, right=0.98, bottom=0.11)
 
-    out = os.path.join(params.figures.out_dir, 'tractionmotor_fleet', scenario)
-    for path in write(figure, out, 'agreement_with_the_review',
-                      params.figures.enabled(), params.figures.dpi,
-                      essential=True):
+    out = os.path.join(params.figures.out_dir, 'tractionmotor', scenario)
+    written = write(figure, out, 'agreement_with_the_review',
+                    params.figures.enabled(), params.figures.dpi,
+                    essential=True)
+    for path in written:
         print(f'\nwrote {path}')
+    # This writes into the case's own figure folder, which 02 and 03 sweep.
+    # Claiming the file keeps it out of their "nobody wrote this" report --
+    # and means a renamed check figure is cleared like any other.
+    report_sweep(out, 'ratio check', written)
     print(f'worst gap: {worst:.1f} percentage points')
     return 0
 

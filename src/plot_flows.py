@@ -541,16 +541,25 @@ def draw(folder: str | None = None, params: Params | None = None,
 
     print(f'{folder}: {len(flows)} flows, {len(edges)} transfers, '
           f'showing {shows}' + (f' of {of_many} combinations' if of_many > 1 else ''))
+    root = folder_for(params.figures.out_dir, case, params.run.scenario)
+    written = []
     for element in elements:
         figure = figure_for(case, edges, flows, element, unit,
                             params.figures.theme, shows=shows, of_many=of_many)
         if figure is None:
             continue
         stem = element or 'total'
-        for path in write(figure, folder_for(params.figures.out_dir, case,
-                                            params.run.scenario), stem,
+        for path in write(figure, root, stem,
                           params.figures.enabled(), params.figures.dpi):
             print(f'  wrote {path}')
+            written.append(path)
         import matplotlib.pyplot as plt
         plt.close(figure)
+
+    # ⚠️ AND CLEAR THE SANKEYS 02 USED TO DRAW AND NO LONGER DOES. Narrowing
+    # `figures.resources` leaves the dropped resources' pictures on disk, which
+    # is the same trap `figure_style.sweep` was written for. Only 02's own
+    # files are touched; 03's and the structure's are left alone.
+    from src.figure_style import report_sweep
+    report_sweep(root, 'flow diagrams', written)
 

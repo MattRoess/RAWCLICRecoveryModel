@@ -3,9 +3,21 @@
 
     Press Run. No arguments, nothing to edit.
 
-Four cases -- long loop, short loop, shredder, split -- and four magnet
-grades each, so sixteen passes. The grades are scenarios: `mix` draws the
-grade per draw, `SH`, `UH` and `EH` pin it.
+ONE CASE, ONE ANSWER: `data_folder/tractionmotor_fleet`, grade `mix`.
+
+The fleet runs BOTH roads at once and splits between them at the review's own
+step 2, "Motor removal from vehicle" (0.85 | 0.93 | 0.98, ref 6,7,8,9). What is
+removed is disassembled; what is not stays in the hulk and is shredded. Nobody
+chooses the share and there is no dial to set.
+
+This used to be four cases -- long loop, short loop, shredder, split -- times
+four magnet grades, so sixteen passes and sixteen of every figure, and no
+single answer to read. The four pure routes are the extremes, not the fleet;
+`tools/compare_routes.py` puts them side by side when that is the question.
+
+`mix` draws the magnet grade per draw, which is what a fleet is. `SH`, `UH`
+and `EH` pin it, for the one question they answer: what if only EH is feasible.
+Set `run.scenario` in `STUDIES['tractionmotors']` to ask it.
 
 It runs every stage in order and stops at the first that fails. The stages
 themselves live in `stages/`; they are not what you press any more.
