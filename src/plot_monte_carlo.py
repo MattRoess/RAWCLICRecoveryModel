@@ -1404,28 +1404,55 @@ def fleet_flows(run, resource: str):
     return {'years': every, 'solved': solved, **out}
 
 
-def _shared_unit(parts, key: str, unit: str, accumulate: bool = False):
+def _shared_unit(values, unit: str):
     """
-    One display unit for a whole set of figures, or None to let each pick.
+    One display unit for a set of figures, or None to let each pick its own.
 
     Judged on the LARGEST value any of them will draw, so the biggest axis
     reads in whole numbers and the smaller resources read as fractions of the
     same unit -- 1.4 kt beside 0.05 kt rather than 1,400 t beside 50 t on two
     axes labelled differently.
 
-    `parts` may hold None where a resource has no account; those are ignored.
-    Nothing to judge gives None, and each figure then scales itself exactly as
-    before.
+    ⚠️ EVERY VALUE HANDED IN MUST ALREADY BE IN `unit`. This took a set of
+    numbers and a key to pull them out with, and for the stocks it pulled them
+    straight out of `fleet_flows` -- which returns the UPSTREAM arrays, in the
+    upstream's unit, because the conversion to the model's working unit happens
+    afterwards inside `figure_trapped`. So a copper stock of 260 kt was judged
+    as 260 kg, 260 kg does not reach a tonne, and the axis came out in
+    kilograms with `1e8` stuck in the corner: *"what the hell kg."*
+
+    Taking values rather than a key and a dict is the fix. A caller that has
+    not converted cannot now pass the wrong thing by accident, because it has
+    to produce the number itself.
     """
-    values = []
-    for part in parts:
-        if not part or key not in part:
-            continue
-        block = np.cumsum(part[key], axis=0) if accumulate else part[key]
-        top = np.nanpercentile(block, 97.5)
-        if np.isfinite(top):
-            values.append(abs(float(top)))
+    values = [abs(float(v)) for v in values if np.isfinite(v)]
     return scale_for(np.array(values), unit, by='max') if values else None
+
+
+def _stock_tops(run, wanted) -> list:
+    """
+    The largest accumulated stock each resource reaches, in the WORKING unit.
+
+    The same conversion `figure_trapped` applies, for the same reason and by
+    the same arithmetic: the upstream arrays and the model's table are in
+    different units, and the ratio between them is the model's own collected
+    mass over the upstream's.
+    """
+    tops = []
+    for resource in wanted:
+        found = fleet_flows(run, resource)
+        a = account(run, resource)
+        if not found or not a or 'collected' not in found:
+            continue
+        first = np.nanmean(found['collected'][0])
+        if not np.isfinite(first) or first <= 0:
+            continue
+        to_working = float(np.nanmean(a['collected'][:, 0]) / first)
+        stock = np.cumsum(found['net'], axis=0) * to_working
+        top = np.nanpercentile(stock, 97.5)
+        if np.isfinite(top):
+            tops.append(abs(float(top)))
+    return tops
 
 
 def _crosses(years, series, level: float):
@@ -2393,9 +2420,9 @@ def draw_all(run, deterministic: pd.DataFrame | None, out_dir: str, formats,
     # fractions of the same unit.
     wanted = chosen(run, resources)
     flow_unit = _shared_unit(
-        [account(run, r) for r in wanted], 'outflow', unit)
-    stock_unit = _shared_unit(
-        [fleet_flows(run, r) for r in wanted], 'net', unit, accumulate=True)
+        [np.nanpercentile(a['outflow'], 97.5)
+         for r in wanted if (a := account(run, r))], unit)
+    stock_unit = _shared_unit(_stock_tops(run, wanted), unit)
 
     for resource in wanted:
         figures.append((f'account_{resource}',
