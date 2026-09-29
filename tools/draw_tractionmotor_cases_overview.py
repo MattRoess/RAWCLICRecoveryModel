@@ -19,6 +19,42 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
+import pandas as pd
+
+# ⚠️ THE COEFFICIENTS ARE READ, NOT TYPED. This figure carried hand-written
+# chain values -- `Nd 0.41 -> 0.65` -- which are a chain of MODES, not any
+# percentile of the result, and which drift the moment the study is revised.
+# They now come from the workbook through the file
+# `tools/extract_traction_tcs.py` writes, so the picture cannot disagree with
+# the source it claims to show.
+#
+# Asked for on 2026-09-29: the coefficients IN CONTEXT -- each on the stage
+# where it acts, not in a table beside the diagram.
+STEPS = pd.read_csv('documentation/traction_transfer_coefficients.csv')
+
+
+def tc(route, step, material, horizon='2030'):
+    """`0.93 [0.85-0.98]` for one step, or '' when the sheet has no such row."""
+    row = STEPS[(STEPS.route == route) & (STEPS.step.astype(str) == step)
+                & (STEPS.material.astype(str).str.startswith(material))
+                & (STEPS.horizon.astype(str) == horizon)]
+    if not len(row):
+        return ''
+    one = row.iloc[0]
+    return f"{one['mode']:g} [{one['min']:g}-{one['max']:g}]"
+
+
+def refs(route, step, material, horizon='2030'):
+    """The workbook's reference numbers, or NO REF where it gives none."""
+    row = STEPS[(STEPS.route == route) & (STEPS.step.astype(str) == step)
+                & (STEPS.material.astype(str).str.startswith(material))
+                & (STEPS.horizon.astype(str) == horizon)]
+    if not len(row):
+        return ''
+    value = str(row.iloc[0]['ref_numbers'])
+    return 'NO REF' if value in ('nan', '—', '') else f'ref {value}'
+
+
 COM = '#5B7C99'; DIS = '#2E7D5B'; SHR = '#B5651D'
 LONG = '#2980B9'; SHORT = '#8E44AD'; SPLIT = '#16A085'; LOST = '#C0392B'
 
@@ -40,7 +76,14 @@ def arrow(x1, y1, x2, y2, colour='#555', lw=1.8):
 # ---------------------------------------------------------------- trunk
 ax.text(1, 58.5, 'EVERY CASE STARTS HERE', fontsize=9, weight='bold', color=COM)
 box(1, 50, 17, 6.5, 'End-of-life BEV\ncollected', COM)
+ax.text(18.6, 53.2, f"step 1  EoL collection  {tc('disassembly','1','NdFeB')}"
+        f"  {refs('disassembly','1','NdFeB')}",
+        fontsize=7.4, va='center', family='monospace', color='#333')
 box(1, 41, 17, 6.5, 'Traction motor\nreaches treatment', COM)
+ax.text(18.6, 44.6, f"step 2  motor removed   {tc('disassembly','2','NdFeB')}"
+        f"  {refs('disassembly','2','NdFeB')}\n"
+        f"        THIS IS THE FORK: what is not removed is shredded",
+        fontsize=7.4, va='center', family='monospace', color='#333')
 arrow(9.5, 50, 9.5, 47.5)
 ax.text(9.5, 38.6, 'the one big fork', ha='center', fontsize=9.5,
         weight='bold', style='italic')
@@ -51,6 +94,10 @@ arrow(9.5, 35.5, 23, 15, SHR, 2.4)
 # ------------------------------------------------------- disassembly arm
 ax.text(23, 52.5, 'TAKE IT APART', fontsize=10, weight='bold', color=DIS)
 box(23, 44, 17, 7, 'Dehouse,\ndemagnetise,\nextract + mill magnet', DIS)
+ax.text(23, 51.9, f"step 3  pre-processing {tc('disassembly','3','NdFeB')}\n"
+        f"step 4a extraction     {tc('disassembly','4a','NdFeB')}\n"
+        f"step 5  decoat + mill  {tc('disassembly','5','NdFeB')}",
+        fontsize=7.1, va='top', family='monospace', color=DIS)
 ax.text(23, 41.6, 'copper, aluminium and steel leave here in all three',
         fontsize=7.8, color='#666', style='italic')
 arrow(40, 47.5, 45, 47.5, DIS, 2.2)
@@ -62,8 +109,14 @@ for y, col in [(52, SHORT), (44.5, SPLIT), (37, LONG)]:
 
 # the three magnet routes
 box(49, 52, 22, 6.2, 'SHORT LOOP  ·  hydrogen\nkeeps the alloy whole', SHORT, fs=9)
+ax.text(49, 51.5, f"step 6a/d {tc('disassembly','6a/d','NdFeB','2060')}  2060 only",
+        fontsize=7.1, va='top', family='monospace', color=SHORT)
 box(49, 44.5, 22, 6.2, 'SPLIT  ·  a share to each\n(share is an assumption)', SPLIT, fs=9)
 box(49, 37, 22, 6.2, 'LONG LOOP  ·  dissolve and\nseparate the elements', LONG, fs=9)
+ax.text(49, 36.5, f"step 6b leach+SX  {tc('disassembly','6b','Nd')}\n"
+        f"step 7  separation {tc('disassembly','7','Nd')}\n"
+        f"step 8  oxide      {tc('disassembly','8','Nd')}  (Nd)",
+        fontsize=7.1, va='top', family='monospace', color=LONG)
 
 rows = [(52, SHORT, 'tractionmotor_shortloop',
          'new magnet alloy\nNd Pr Dy Tb still together', '0.46', '0.67'),
@@ -83,12 +136,20 @@ for y, col, case, yields, a, b in rows:
 # ---------------------------------------------------------- shredder arm
 ax.text(23, 21.5, 'SHRED IT WHOLE', fontsize=10, weight='bold', color=SHR)
 box(23, 13, 17, 7, 'No magnet removal.\nEverything into\nthe shredder', SHR)
+ax.text(23, 12.4, f"step 2 shredder feed {tc('shredder','2','NdFeB')}\n"
+        f"                     {refs('shredder','2','NdFeB')}",
+        fontsize=7.1, va='top', family='monospace', color=SHR)
 arrow(40, 16.5, 49, 16.5, SHR, 2.2)
 
 box(49, 18.5, 22, 5.2, 'copper · aluminium · steel\nrecovered, much as before',
     SHR, alpha=0.10, fs=8.6)
 box(49, 11, 22, 6.2, 'the magnet is dispersed\ninto steel, non-ferrous, residue',
     LOST, alpha=0.13, fs=8.6)
+ax.text(49, 10.4, f"step 3 to ferrous     {tc('shredder','3','NdFeB → ferrous')}\n"
+        f"       to non-ferrous {tc('shredder','3','NdFeB → non')}\n"
+        f"       to ASR         {tc('shredder','3','NdFeB → ASR')}\n"
+        f"       RECOVERED REE  {tc('shredder','3','NdFeB → recovered')}",
+        fontsize=7.1, va='top', family='monospace', color=LOST)
 arrow(71, 14.1, 75, 14.1, LOST, 1.8)
 box(75, 11, 24, 6.2, '', LOST, alpha=0.08)
 ax.text(76, 15.6, 'tractionmotor_shredder', fontsize=8.4, family='monospace',
