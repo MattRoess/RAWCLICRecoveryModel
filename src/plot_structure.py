@@ -198,21 +198,8 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light',
     tallest = max(len(group) for group in columns.values())
     diagram_h = top + tallest * (box_h + gap_y)
 
-    blocks = tc_blocks(tcs, edges, has_range, process_col, technology_col)
-    # ⚠️ THREE COLUMNS, NOT TWO. Asked for on 2026-09-29. In two, the
-    # coefficient table ran to twice the height of the diagram above it, so a
-    # schema 1,372 points tall arrived inside an image 9,566 pixels tall and
-    # was unreadable at any size a screen shows -- which is the opposite of
-    # what the figure is for.
-    TABLE_COLUMNS = 3
-    per_col = max(1, -(-len(blocks) // TABLE_COLUMNS))
-    tallest_block = max(
-        (sum(len(b[2]) + 3 for b in blocks[i * per_col:(i + 1) * per_col])
-         for i in range(TABLE_COLUMNS)),
-        default=0)
-    legend_h = 54 + tallest_block * 15
     width = max(left * 2 + max(columns) * (box_w + col_gap) + box_w, 960)
-    height = diagram_h + legend_h
+    height = diagram_h + 24
 
     figure, axes, colours = canvas(width, height, theme)
 
@@ -281,25 +268,65 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light',
             role = shown_roles[node]
             label(axes, x + 14, y + 49, ROLE_LABEL[role], 10.5, ROLE_COLOUR[role], 'bold')
 
-    axes.plot([left, width - left], [diagram_h - 10] * 2, color=colours['rule'], linewidth=1)
-    label(axes, left, diagram_h + 14, 'Transfer coefficients behind each arrow', 13,
-          colours['title'], 'bold')
+    return figure
 
-    # Evenly spaced across the full width, so the three read as one table.
+
+# ⚠️ THE NUMBERS ARE THEIR OWN PAGE. They used to sit under the diagram in the
+# same image, and they are long: on the traction case the table ran to twice
+# the height of the schema, so the schema arrived inside an image 9,566 pixels
+# tall and could not be read at any size a screen shows. Asked for on
+# 2026-09-29: *"have the numbers on a separate page."*
+#
+# Two files now, both at the top level of the case's folder:
+#
+#     structure.png      what connects to what
+#     coefficients.png   the number on every arrow, with its range and source
+#
+# Neither is a detail, and neither has to be shrunk to make room for the other.
+TABLE_COLUMNS = 3
+
+
+def render_coefficients(tcs: pd.DataFrame, case: str, theme: str = 'light'):
+    """
+    Every transfer coefficient behind every arrow, as a page of its own.
+
+    Three columns across the full width, because one or two made a strip taller
+    than it is wide. The order is the diagram's own: the edges as they are
+    drawn, so a reader moves between the two pictures by position.
+    """
+    has_range = {'value_min', 'value_max'}.issubset(tcs.columns)
+    process_col = 'process' if 'process' in tcs.columns else None
+    technology_col = 'technology' if 'technology' in tcs.columns else None
+    edges = list(dict.fromkeys(zip(tcs['Input_FlowID'], tcs['Output_FlowID'])))
+    blocks = tc_blocks(tcs, edges, has_range, process_col, technology_col)
+
+    left, top = 24, 84
+    per_col = max(1, -(-len(blocks) // TABLE_COLUMNS))
+    tallest = max((sum(len(b[2]) + 3
+                       for b in blocks[i * per_col:(i + 1) * per_col])
+                   for i in range(TABLE_COLUMNS)), default=0)
+    width, height = 1920, top + tallest * 15 + 40
+    figure, axes, colours = canvas(width, height, theme)
+
+    label(axes, left, 26, f'{case} — the number on every arrow', 17,
+          colours['title'], 'bold')
+    label(axes, left, 50,
+          f'{len(edges)} processes, {len(tcs)} transfer coefficients.  '
+          f'The diagram they belong to is structure.png.',
+          12.5, colours['sub'])
+
     span = (width - 2 * left) / TABLE_COLUMNS
-    col_x = [left + c * span for c in range(TABLE_COLUMNS)]
     for c in range(TABLE_COLUMNS):
-        y = diagram_h + 42
+        x, y = left + c * span, top
         for head, meta, lines in blocks[c * per_col:(c + 1) * per_col]:
-            label(axes, col_x[c], y, head, 11.5, colours['title'], 'bold')
+            label(axes, x, y, head, 11.5, colours['title'], 'bold')
             y += 14
-            label(axes, col_x[c], y, meta, 10, colours['meta'])
+            label(axes, x, y, meta, 10, colours['meta'])
             y += 14
             for line in lines:
-                label(axes, col_x[c] + 10, y, line, 10.5, colours['tc'], family=MONO)
+                label(axes, x + 10, y, line, 10.5, colours['tc'], family=MONO)
                 y += 13
             y += 14
-
     return figure
 
 
@@ -325,10 +352,18 @@ def draw(target: str | None = None, params: Params | None = None) -> None:
         from src.sampling import numeric_bounds
         tcs = numeric_bounds(tcs)
     from src.rest import flow_roles
-    figure = render(tcs, case, theme=params.figures.theme, roles=flow_roles(folder))
     root = folder_for(params.figures.out_dir, case, params.run.scenario)
-    written = write(figure, root, 'structure',
-                    params.figures.enabled(), params.figures.dpi)
+    import matplotlib.pyplot as plt
+
+    written = []
+    for stem, figure in (
+            ('structure', render(tcs, case, theme=params.figures.theme,
+                                 roles=flow_roles(folder))),
+            ('coefficients', render_coefficients(tcs, case,
+                                                 theme=params.figures.theme))):
+        written += write(figure, root, stem,
+                         params.figures.enabled(), params.figures.dpi)
+        plt.close(figure)
     for path in written:
         print(f'wrote {path}')
 

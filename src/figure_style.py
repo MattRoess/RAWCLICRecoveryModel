@@ -133,7 +133,8 @@ def folder_for(out_dir: str, case: str, scenario: str = '') -> str:
 #
 # A stem not named here is detail, so a new figure lands in `detail/` unless
 # somebody decides it belongs in the six.
-ESSENTIAL = ('structure', 'over_time', 'recovery_rate', 'total', 'pdf_all')
+ESSENTIAL = ('structure', 'coefficients', 'over_time', 'recovery_rate',
+             'total', 'pdf_all')
 
 # The same, one file per resource: `account_Nd`, `losses_copper`. A grid of six
 # was unreadable, so each resource gets its own figure and they all belong at
