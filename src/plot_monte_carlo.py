@@ -1674,7 +1674,7 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = '',
         stock.set_title(f'{resource}: how much is in the fleet, and where the '
                         f'rest of what entered since {years[0]} has got to',
                         color=colours['title'], fontsize=13, fontweight='bold')
-        stock.set_ylabel(f'total mass by that year ({shown})',
+        stock.set_ylabel(f'total mass ({shown})',
                          color=colours['meta'], fontsize=13)
         stock.set_xticklabels([])
 
