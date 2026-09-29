@@ -735,12 +735,12 @@ def combine_one(params, wanted, label: str) -> int:
         if used is None:
             print(f'    none of {", ".join(wanted)} in this case -- skipped')
             continue
+        stream = os.path.basename(folder)[shorten:].replace('_', ' ') \
+            or os.path.basename(folder)
         one = account(run, used)
         if one is None:
             print(f'    {used}: no upstream draws for this case -- skipped')
             continue
-        stream = os.path.basename(folder)[shorten:].replace('_', ' ') \
-            or os.path.basename(folder)
         parts.append(one)
         streams.append(f'{stream} ({used})')
         for road, draws_of in roads_of(run, used, years).items():
@@ -748,9 +748,25 @@ def combine_one(params, wanted, label: str) -> int:
         # For the second figure: each stream apart, and why it was lost.
         for domain in domains_of(run, used):
             piece = account(run, used, domain=domain)
-            if piece is not None:
-                per_stream[domain] = piece
-                per_stream_reasons[domain] = reasons_of(run, used, domain, years)
+            if piece is None:
+                continue
+            # ⚠️ A STREAM NAMED AFTER THE METAL SAYS NOTHING. The stream label
+            # is the case's Layer 2 -- `Wiring`, `PCB`, `Sensors`,
+            # `batteryPackCables` -- which names the part the metal sits in.
+            # The traction case's components ARE the materials, so its copper
+            # stream is called `copper`, and the copper figure came out with a
+            # line in its legend labelled `copper`: *"what is the copper?"*
+            #
+            # Where the domain is the metal's own name it is replaced by the
+            # case's, which is what actually distinguishes it. A collision
+            # between two cases takes both names.
+            name = domain
+            if name.strip().lower() in {w.lower() for w in wanted} | {label.lower()}:
+                name = stream
+            if name in per_stream:
+                name = f'{stream} · {domain}'
+            per_stream[name] = piece
+            per_stream_reasons[name] = reasons_of(run, used, domain, years)
         why = losses(run, used)
         for name, block in (why or {}).get('reasons', {}).items():
             reasons[name] = reasons.get(name, 0) + block
@@ -775,9 +791,14 @@ def combine_one(params, wanted, label: str) -> int:
     figure = figure_combined(added(parts), roads, years, params.figures.theme,
                              params.run.working_unit, label,
                              params.combine.whole, streams)
+    # ⚠️ ESSENTIAL, ALL FOUR. `figures/combined/` is the whole output of this
+    # stage -- there is no detail here to separate them from, so burying them
+    # in `detail/` was sorting a folder into itself. Asked on 2026-09-29:
+    # *"why is it in the details folder."*
     written = write(figure, combined_dir,
                     f'{label}_combined',
-                    params.figures.enabled(), params.figures.dpi)
+                    params.figures.enabled(), params.figures.dpi,
+                    essential=True)
 
 
     with_bev = figure_with_the_bev(per_stream, years, params.figures.theme,
@@ -785,21 +806,24 @@ def combine_one(params, wanted, label: str) -> int:
                                    label, params.combine.whole)
     written += write(with_bev, combined_dir,
                      f'{label}_with_the_bev',
-                     params.figures.enabled(), params.figures.dpi)
+                     params.figures.enabled(), params.figures.dpi,
+                     essential=True)
 
     lost = figure_lost(per_stream, years, params.figures.theme,
                        params.run.working_unit, label,
                        params.combine.whole)
     written += write(lost, combined_dir,
                      f'{label}_lost',
-                     params.figures.enabled(), params.figures.dpi)
+                     params.figures.enabled(), params.figures.dpi,
+                     essential=True)
 
     back = figure_recovered(per_stream, years, params.figures.theme,
                             params.run.working_unit, label,
                             params.combine.whole)
     written += write(back, combined_dir,
                      f'{label}_recovered',
-                     params.figures.enabled(), params.figures.dpi)
+                     params.figures.enabled(), params.figures.dpi,
+                     essential=True)
 
     for path in written:
         print(path)
