@@ -91,7 +91,7 @@ def main() -> int:
     if not os.path.exists(BOOK):
         raise SystemExit(f'{BOOK} is not there.')
     table = references()
-    rows = []
+    rows, chain = [], []
     for horizon, route, sheet in SHEETS:
         raw = pd.read_excel(BOOK, sheet_name=sheet, header=None)
         start = header_row(raw)
@@ -100,6 +100,20 @@ def main() -> int:
         for _, row in frame.iterrows():
             step = str(row.get('Step #', '')).strip()
             if not step or step == 'nan':
+                continue
+            # ⚠️ EACH SHEET CARRIES A CHAIN-SUMMARY BLOCK BELOW ITS STEPS, and
+            # its rows sit in the same columns -- `Material`, `Total NdFeB`,
+            # `OVERALL CHAIN TC ... (2030)`. Swept in with the steps they
+            # became 41 of 126 'coefficients' that are not coefficients.
+            # A step id is a number with an optional letter: 1, 4a, 6a/d.
+            if not re.match(r'^[0-9]+[a-z/]*$', step):
+                chain.append({
+                    'horizon': horizon, 'route': route, 'sheet': sheet,
+                    'label': step,
+                    'material': str(row.get('Step Name', '')).strip(),
+                    'min': row.get('Material'), 'mode': row.get('TC Min'),
+                    'max': row.get('TC Mode'),
+                    'note': str(row.get('Notes', '')).strip()})
                 continue
             rows.append({
                 'horizon': horizon, 'route': route, 'sheet': sheet,
@@ -119,6 +133,11 @@ def main() -> int:
     out = pd.DataFrame(rows)
     csv = 'documentation/traction_transfer_coefficients.csv'
     out.to_csv(csv, index=False)
+    # The study's own end-to-end numbers, kept apart from the steps because
+    # they are a DIFFERENT quantity: the product of the step modes, which is
+    # not the mean of the chain the model samples.
+    summary = 'documentation/traction_chain_totals.csv'
+    pd.DataFrame(chain).to_csv(summary, index=False)
 
     lines = ['# Traction motor transfer coefficients, as the study gives them',
              '',
@@ -159,7 +178,8 @@ def main() -> int:
     doc = 'documentation/TRACTION_COEFFICIENTS.md'
     open(doc, 'w', encoding='utf-8').write('\n'.join(lines))
 
-    print(f'{csv}: {len(out)} coefficients')
+    print(f'{csv}: {len(out)} process-step coefficients')
+    print(f'{summary}: {len(chain)} chain-summary rows, kept separate')
     print(f'{doc}: {len(table)} references resolved')
     missing = out[out['references'] == '']
     print(f'  {len(missing)} coefficient(s) carry no reference number')

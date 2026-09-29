@@ -1,0 +1,42 @@
+horizon,route,sheet,label,material,min,mode,max,note
+2030,disassembly,TC_2030_Disassembly_Route,OVERALL CHAIN TC — Disassembly Route (2030),nan,,,,nan
+2030,disassembly,TC_2030_Disassembly_Route,"Chain TC = product of all step Mode TCs. If any step is NR, the chain TC is marked as scenario-derived.",nan,,,,nan
+2030,disassembly,TC_2030_Disassembly_Route,Material,Chain TC Min,Chain TC Mode,Chain TC Max,Interpretation,nan
+2030,disassembly,TC_2030_Disassembly_Route,Total NdFeB,0.29,0.5,0.75,NdFeB reaching magnet recycling feed (before hydromet/HD),nan
+2030,disassembly,TC_2030_Disassembly_Route,Nd (to oxide/metal),0.2,0.41,0.7,Full chain: collection → oxide. Steps 6b–8 are hydromet route.,nan
+2030,disassembly,TC_2030_Disassembly_Route,Pr (to oxide/metal),0.19,0.39,0.68,Full chain: collection → oxide.,nan
+2030,disassembly,TC_2030_Disassembly_Route,Dy (to oxide/metal),0.18,0.38,0.68,Full chain: collection → oxide. Dy may partition differently.,nan
+2030,disassembly,TC_2030_Disassembly_Route,Tb (to oxide/metal),0.17,0.36,0.66,Full chain: collection → oxide. Highest uncertainty (trace qty).,nan
+2030,disassembly,TC_2030_Disassembly_Route,Cu (to secondary Cu),0.44,0.64,0.83,Collection → Cu smelter/refiner.,nan
+2030,disassembly,TC_2030_Disassembly_Route,Al (to secondary Al),0.48,0.66,0.85,Collection → secondary Al smelter.,nan
+2030,disassembly,TC_2030_Disassembly_Route,Fe/Si-steel (to steelmaker),0.4,0.6,0.81,Collection → ferrous scrap. NOT functional lamination reuse.,nan
+2030,shredder,TC_2030_Shredder_Route,OVERALL CHAIN TC — Shredder Route (2030),nan,,,,nan
+2030,shredder,TC_2030_Shredder_Route,"Chain TC = product of all step Mode TCs. If any step is NR, the chain TC is marked as scenario-derived.",nan,,,,nan
+2030,shredder,TC_2030_Shredder_Route,Material,Chain TC Min,Chain TC Mode,Chain TC Max,Interpretation,nan
+2030,shredder,TC_2030_Shredder_Route,NdFeB → recovered REE,0,0.02,0.05,⚠ NEAR ZERO. NdFeB dispersed into ferrous/ASR → lost in steel melt slag. This is the central finding.,nan
+2030,shredder,TC_2030_Shredder_Route,Cu (shredder non-ferrous),0.4,0.59,0.77,Lower than disassembly route due to mixing/contamination.,nan
+2030,shredder,TC_2030_Shredder_Route,Al (shredder non-ferrous),0.43,0.61,0.79,Lower than disassembly route. Alloy quality degradation.,nan
+2030,shredder,TC_2030_Shredder_Route,Fe/Si-steel (ferrous),0.57,0.72,0.87,High mass recovery but NOT functional lamination reuse.,nan
+2030,shredder,TC_2030_Shredder_Route,Comparison: Disassembly vs Shredder Route (2030),nan,,,,nan
+2030,shredder,TC_2030_Shredder_Route,Material,Disassembly TC Mode,Shredder TC Mode,Difference,Interpretation,nan
+2030,shredder,TC_2030_Shredder_Route,NdFeB → REE,0.5,0.02,0.48,Disassembly recovers ~40× more NdFeB,nan
+2030,shredder,TC_2030_Shredder_Route,Cu,0.64,0.59,0.05,Disassembly yields cleaner Cu fraction,nan
+2030,shredder,TC_2030_Shredder_Route,Al,0.66,0.61,0.05,Disassembly preserves Al alloy quality,nan
+2030,shredder,TC_2030_Shredder_Route,Fe/Si-steel,0.6,0.72,-0.12,Similar mass; functional reuse differs,nan
+2060,disassembly,TC_2060_Disassembly_Route,OVERALL CHAIN TC — Disassembly Route (2060),nan,,,,nan
+2060,disassembly,TC_2060_Disassembly_Route,Chain TC = product of all step Mode TCs.,nan,,,,nan
+2060,disassembly,TC_2060_Disassembly_Route,Material,Chain TC Min,Chain TC Mode,Chain TC Max,Interpretation,nan
+2060,disassembly,TC_2060_Disassembly_Route,NdFeB → new magnet (short-loop),0.44,0.67,0.87,Short-loop: collection → HD/direct → new magnet. No elemental separation.,nan
+2060,disassembly,TC_2060_Disassembly_Route,Nd (hydromet → oxide),0.39,0.65,0.87,Long-loop fallback for mixed/contaminated feed.,nan
+2060,disassembly,TC_2060_Disassembly_Route,Dy (hydromet → oxide),0.36,0.62,0.84,HRE recovery improved.,nan
+2060,disassembly,TC_2060_Disassembly_Route,Cu (to secondary Cu),0.62,0.8,0.92,Automated winding separation.,nan
+2060,disassembly,TC_2060_Disassembly_Route,Al (to secondary Al),0.66,0.82,0.93,Design-for-disassembly.,nan
+2060,disassembly,TC_2060_Disassembly_Route,Fe/Si-steel,0.58,0.76,0.9,Mass recovery. Functional lamination reuse: emerging.,nan
+2060,shredder,TC_2060_Shredder_Route,3→6b,Hydromet of NdFeB concentrate,NdFeB → recovered REE,0.15,0.3,OPTIMISTIC: hydromet processing of shredder concentrate. Assumes effective inline concentration + hydromet.
+2060,shredder,TC_2060_Shredder_Route,OVERALL CHAIN TC — Shredder Route (2060),nan,,,,nan
+2060,shredder,TC_2060_Shredder_Route,Chain TC = product of all step Mode TCs.,nan,,,,nan
+2060,shredder,TC_2060_Shredder_Route,Material,Chain TC Min,Chain TC Mode,Chain TC Max,Interpretation,nan
+2060,shredder,TC_2060_Shredder_Route,NdFeB → recovered REE,0.12,0.26,0.48,OPTIMISTIC scenario. Requires effective inline magnetic separation + downstream hydromet. Still much lower than disassembly route.,nan
+2060,shredder,TC_2060_Shredder_Route,Cu,0.53,0.71,0.86,Improved sensor-based sorting.,nan
+2060,shredder,TC_2060_Shredder_Route,Al,0.56,0.73,0.88,Improved sorting technology.,nan
+2060,shredder,TC_2060_Shredder_Route,Fe/Si-steel,0.69,0.83,0.94,High mass recovery.,nan
