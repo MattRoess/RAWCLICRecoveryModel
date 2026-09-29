@@ -278,6 +278,29 @@ def _hold_at_the_bounds(block, group, numbers):
     for c in columns:
         block[c] = after_clip[c].where(before[c].notna(), block[c])
 
+    # ⚠️ AND THE MODE IS HELD INSIDE ITS OWN RANGE. Extrapolating moves
+    # value_min, value and value_max at three different rates, so the mode can
+    # cross a bound that has stopped moving or is falling faster than it. The
+    # battery's cathode nickel is the plain case: the review caps it at 0.99
+    # and the mode reaches 0.99 by 2060, so one step further puts the mode at
+    # 0.9967 ABOVE its own maximum. On the boards case the maximum falls
+    # fastest and the mode passes it going down.
+    #
+    # Same rule as the one above, on the bound that binds: *"set it to the
+    # bound."* The mode is clipped into [value_min, value_max], and the two
+    # bounds are ordered first so the interval it is clipped into is never
+    # inside out.
+    if {'value_min', 'value', 'value_max'} <= set(columns):
+        low = pd.to_numeric(block['value_min'], errors='coerce')
+        high = pd.to_numeric(block['value_max'], errors='coerce')
+        ordered_low, ordered_high = np.minimum(low, high), np.maximum(low, high)
+        mode = pd.to_numeric(block['value'], errors='coerce')
+        held = mode.clip(lower=ordered_low, upper=ordered_high)
+        moved |= (mode - held).abs().gt(1e-12).fillna(False).to_numpy()
+        block['value'] = held.where(mode.notna(), block['value'])
+        block['value_min'] = ordered_low.where(low.notna(), block['value_min'])
+        block['value_max'] = ordered_high.where(high.notna(), block['value_max'])
+
     # Set a group that now sums above 1 back to 1.
     if group is not None and 'value' in columns:
         mode = pd.to_numeric(block['value'], errors='coerce')
