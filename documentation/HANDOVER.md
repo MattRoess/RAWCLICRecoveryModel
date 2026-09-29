@@ -2137,3 +2137,109 @@ Nothing here is lost; none of it is right yet.
    percentile of the result.
 4. DECISIONS.md still has three weeks of decisions that live only in this log.
 
+---
+
+## 2026-09-29 (evening) — HANDOVER
+
+**Tree is clean. `main` is pushed. Nothing is half-done.**
+
+    origin/main   f82f4da   21 commits today
+
+### If you read one thing
+
+Everything below is figures, naming and one modelling rule. **No result from
+any run you did today is wrong.** Every defect fixed after your runs was in the
+drawing code, so `recovery_results.xlsx` and `monte_carlo_summary.csv` from
+those runs stand as they are.
+
+### THE ONE THING WAITING ON A DECISION YOU ALREADY MADE
+
+You said: **put the shortfall on the loss flow.** It is NOT implemented — you
+asked for the handover a minute later and I stopped rather than leave it half
+written.
+
+What it is. `improvement_after_end = continue` extrapolates past 2060.
+Measured with the model's own checker:
+
+    bev_electronics_wiring   OK
+    tractionmotor            OK        <- the only case set to it
+    battery                  3 groups sum to 0.9900 at 2070
+    bev_electronics_boards   3 rows, 4 groups, 0.9900 to 0.9933
+
+The cause, exactly. In `F_cells cathodeActiveMaterial -> Ni` the review caps
+recovery at 0.99 and the mode reaches it by 2060. One step further the mode
+would be 0.9967, above its own maximum, so it is held at 0.99 — and the loss
+row that should have taken the remainder was clipped to 0 in the same step. So
+0.67% to 1% of the mass exists in 2065 and not in 2070, and stage 01 refuses
+it.
+
+The fix you chose: give the group's LOSS flow the shortfall, since it is the
+only member not sitting at a bound. `src/rest.flow_roles(case)` says which
+flow in a group is the loss. It goes in `_hold_at_the_bounds`
+(`src/case_tables.py`), after the mode is held and before the group is set
+back to 1 — and `ramp()` does not currently know the case, so it needs the
+roles passed down from `coefficients()`.
+
+Until then, battery and boards stay on `hold`, which is their default and is
+defensible: those coefficients are genuinely finished by 2060.
+
+### WHAT CHANGED TODAY
+
+**The case is `data/tractionmotor`.** One case, one builder
+(`tools/build_tractionmotor_case.py`), forking at the review's own step 2 —
+motor removal, 0.85 | 0.93 | 0.98, ref 6,7,8,9. The invented
+`DISASSEMBLY_SHARE` is gone, and so are the three other builders and
+`compare_routes.py`. No `mix` folder: the case declares `scenario_alias =
+*=mix`, so it has no scenario dimension and writes to the top of its folders.
+
+**`data_folder` is now `data`.** 154 path references across 34 files. The
+setting is still called `run.data_folder`.
+
+**Extrapolation past 2060.** `improvement_after_end` in a case's source table,
+`hold` (default) or `continue`. Traction is `continue`. A simple linear
+extrapolation; a value that would pass 0 or 1 is set to it, a mode that would
+pass its own min or max is set to that, and a group that then sums above 1 is
+set back to 1. Nothing is scaled up to reach 1 — which is why the shortfall
+above has nowhere to go yet.
+
+**05 adds the traction case.** Four cases now, and the rare earths joined
+`combine.resources`. It runs its own 200,000-draw Monte Carlo and does not read
+03's output — percentiles cannot be added, so it re-solves and adds per draw.
+
+**Figures.** Too many to list; see `documentation/FAILURES.md` entries 19–26,
+which is the honest version. The ones that changed numbers on a picture:
+the fleet stock was summed as if 5-yearly samples were annual and was ~5× low;
+05 was silently dropping the traction motor's copper, 60 kt, about 9% of the
+combined total.
+
+### ⚠️ A BUG THAT NEVER REACHED A RESULT, BUT NEARLY DID
+
+`case_tables.GROUP` was three columns where the model's sum-to-1 key
+(`mass_balance.RESOURCE`) is five. Two groups differing only by their input key
+read as one: the wiring case's `F_disassembled -> copper` totalled **2.0000**
+and the battery's `F_cells -> rest` totalled **7.0000**, and the set-to-1 rule
+would have divided them by two and by seven. It never fired because traction is
+the only case on `continue` and its groups happen to be identified by three
+columns. Fixed, and asserted equal to `RESOURCE` so the copy cannot drift.
+
+### WHAT TO RE-RUN
+
+Nothing is required. If you want the figures to match the code:
+
+    02_electronics.py   03_tractionmotors.py   04_batteries.py   05_combine_cases.py
+
+02/03/04 for the axis labels, the fleet stock, the structure and coefficients
+pages; 05 for its four figures moving out of `detail/` and the `copper` stream
+being renamed `tractionmotor`.
+
+**There is still no way to redraw figures without re-solving.** Every one-word
+axis fix today cost a full Monte Carlo re-run. Worth building: the run writes
+what the figures need, a redraw reads it back.
+
+### STILL OPEN, OLDER
+
+- No source documents for electronics (20/24 and 47/52 `PLACEHOLDER`) or
+  `carcomposition_mockup` (556 `MADE UP`).
+- `DECISIONS.md` is missing three weeks of decisions that live only here.
+- The schema's lower-left is empty — cosmetic, inherent to the layered layout.
+- The other Mini: `git fetch origin && git reset --hard origin/main`.
