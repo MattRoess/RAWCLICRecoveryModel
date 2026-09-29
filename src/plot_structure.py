@@ -199,9 +199,16 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light',
     diagram_h = top + tallest * (box_h + gap_y)
 
     blocks = tc_blocks(tcs, edges, has_range, process_col, technology_col)
-    per_col = max(1, (len(blocks) + 1) // 2)
+    # ⚠️ THREE COLUMNS, NOT TWO. Asked for on 2026-09-29. In two, the
+    # coefficient table ran to twice the height of the diagram above it, so a
+    # schema 1,372 points tall arrived inside an image 9,566 pixels tall and
+    # was unreadable at any size a screen shows -- which is the opposite of
+    # what the figure is for.
+    TABLE_COLUMNS = 3
+    per_col = max(1, -(-len(blocks) // TABLE_COLUMNS))
     tallest_block = max(
-        (sum(len(b[2]) + 3 for b in blocks[i * per_col:(i + 1) * per_col]) for i in range(2)),
+        (sum(len(b[2]) + 3 for b in blocks[i * per_col:(i + 1) * per_col])
+         for i in range(TABLE_COLUMNS)),
         default=0)
     legend_h = 54 + tallest_block * 15
     width = max(left * 2 + max(columns) * (box_w + col_gap) + box_w, 960)
@@ -278,8 +285,10 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light',
     label(axes, left, diagram_h + 14, 'Transfer coefficients behind each arrow', 13,
           colours['title'], 'bold')
 
-    col_x = [left, width / 2 + 10]
-    for c in range(2):
+    # Evenly spaced across the full width, so the three read as one table.
+    span = (width - 2 * left) / TABLE_COLUMNS
+    col_x = [left + c * span for c in range(TABLE_COLUMNS)]
+    for c in range(TABLE_COLUMNS):
         y = diagram_h + 42
         for head, meta, lines in blocks[c * per_col:(c + 1) * per_col]:
             label(axes, col_x[c], y, head, 11.5, colours['title'], 'bold')
