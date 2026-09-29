@@ -13,7 +13,7 @@ that cost days, and especially the ones a human had to find because no check I
 wrote would ever have found them.
 
 Read the **Patterns** section at the end first. The individual failures are
-instances of six recurring shapes, and the shapes are more useful than the
+instances of seven recurring shapes, and the shapes are more useful than the
 list.
 
 ---
@@ -40,6 +40,14 @@ list.
 | 16 | 09-29 | Renamed figures without clearing the old ones | Matthias | `trapped.png` read as current 11 days after it died |
 | 17 | 09-25→29 | Built four cases when one was wanted | Matthias | four of every figure; "I want one clear answer" |
 | 18 | 09-29 | Started a 450-line refactor when a 4-line rename was needed | Matthias | "you are costing me so much time and money" |
+| 19 | 09-29 | 05 silently dropped the traction motor's copper | me, by accident | 60 kt, ~9% of the combined total, reported as a skip |
+| 20 | 09-29 | The fleet stock summed 5-yearly samples as annual | Matthias | every traction and battery stock ~5x too low |
+| 21 | 09-29 | The shared unit judged unconverted numbers | Matthias | a 265 kt axis labelled kg, with `1e8` in the corner |
+| 22 | 09-29 | Threshold dots drawn off the curve; peak label a sample late | Matthias | "points in green which do not align with the curve" |
+| 23 | 09-29 | Five axes said a bare `mass (kt)` for per-year flows | Matthias | total or per year, unstated, differing by 50x |
+| 24 | 09-29 | A cache inserted into the wrong function | Matthias's run | every 03 run crashed on `UnboundLocalError` |
+| 25 | 09-29 | 05's own figures buried in `detail/`, one stream named `copper` | Matthias | "what is the copper, and why is it in the details folder" |
+| 26 | 09-29 | Warned about a problem in 05 that did not exist | me | sent him into a run braced for an axis bug that was fixed in September |
 
 ---
 
@@ -303,9 +311,119 @@ without asking which came first.
 
 ---
 
+## 19. 05 silently dropped the traction motor's copper — 09-29
+
+Four helpers in `05_combine_cases.py` picked *the deepest layer with anything
+in it* and compared every resource against that one column. On the traction
+case that column is Layer 4 — Nd, Pr, Dy, Tb — while copper, aluminium, steel
+and lamination stop at Layer 2/3 and are blank there. So `named_in` returned
+`None` and the run printed
+
+    data/tractionmotor: none of copper, Cu in this case -- skipped
+
+which reads like a case that simply has no copper. It has **60.0 kt** recovered
+in 2070, against the wiring case's 497 and the battery's 381 — about 9% of the
+combined total, missing, and reported as a normal skip.
+
+`src/plot_monte_carlo.resource_key` had fixed exactly this for the figures on
+2026-09-25. This file never picked it up.
+
+**Found while measuring runtime for an unrelated speedup.** No check would
+have caught it: a skipped case is a thing 05 prints on purpose.
+
+## 20. The fleet stock summed 5-yearly samples as annual — 09-29
+
+`figure_trapped` asserted in its own docstring that *"the upstream export is
+annual and all of it is read"* and used `np.cumsum`. True of the electronics
+(51 years, step 1); **false of the battery and the traction motor** (11 years,
+step 5). Measured on a flat 10 kt/year flow over 2020–2070:
+
+| | total by 2070 |
+|---|---|
+| `cumsum`, what it did | 110 kt |
+| trapezoid, correct | 500 kt |
+| truth, 10 × 50 years | 500 kt |
+
+Every traction and battery stock was about a fifth of the truth.
+`05_combine_cases._accumulate` has integrated over the year gaps since it was
+written. Found from the question *"is it not per year?"*
+
+## 21. The shared unit judged unconverted numbers — 09-29
+
+Fixing the axis units (entry 23) I added `_shared_unit`, which took a list of
+dicts and a key to pull numbers out with. For the stocks it pulled them
+straight from `fleet_flows` — whose arrays are the **upstream's**, in the
+upstream's unit, because the conversion happens afterwards inside
+`figure_trapped`. A 265 kt stock was judged as the number 265 against a unit of
+kg; 265 kg does not reach a tonne; the axis came out in kilograms with `1e8`
+stuck in the corner. *"What the hell kg."*
+
+It takes values now, not a dict and a key, so a caller that has not converted
+cannot pass the wrong thing by accident.
+
+## 22. Dots drawn off the curve, and a label a sample late — 09-29
+
+The crossings on `fleet_<r>.png` were drawn at the threshold VALUE and the
+first SAMPLED year at or past it. The model solves every fifth year, so
+copper's share climbs 9% → 18% between 2035 and 2040, stepping over 10%: the
+dot went at (2040, 10) while the line at 2040 is at 18. *"I have points in
+green which do not align with the curve. Why?"*
+
+The panel above had the same fault and nobody had reported it: *"2055: the
+stock peaks"* sat one sample past the peak of a curve that plainly peaked at
+2050, because 2055 is the first year with a negative net flow.
+
+One mistake twice: **labelling from the underlying condition rather than from
+the curve that is drawn.**
+
+## 23. Five axes said a bare `mass (kt)` — 09-29
+
+`over_time`, `fate`, `account`, `losses` and `convergence` all draw per-year
+flows and all labelled the axis `mass (kt)`, leaving the reader to decide
+whether a point was that year's flow or everything up to it — quantities that
+differ by a factor of fifty over this horizon. *"Either it is total mass of
+copper or mass / year."*
+
+## 24. A cache inserted into the wrong function — 09-29
+
+Anchored on
+
+    source = getattr(run, 'upstream', None)
+
+which appears in both `figure_fate` and `account`. The edit took the first
+match, so the cache's head landed in `figure_fate` — which has no `resource` to
+key on — while its writes landed in `account`, where `store` was then
+undefined. **Every 03 run crashed.**
+
+I had checked that the module imported and that the 143 fixture checks passed.
+Neither touches `figure_fate`: it needs upstream draws the fixtures do not
+have. He found it by running it.
+
+## 25. 05's own figures in `detail/`, and a stream called `copper` — 09-29
+
+All four of 05's writes omitted `essential=True`, so the entire output of the
+stage was filed under `detail/` — in a folder that contains nothing else to be
+separated from.
+
+And on the copper figure, one line in the legend was labelled `copper`. Streams
+are named by their case's Layer 2 — `wiring`, `pcb`, `sensors` — and the
+traction case's components ARE the materials, so its copper component is called
+copper. *"What is the copper?"*
+
+## 26. Warned about a problem that did not exist — 09-29
+
+Before he ran 05 I warned that copper would come out in Mt and terbium in t,
+reasoning from `scale_for`. **05 does not call `scale_for`.** It has pinned
+every axis to `AXIS_UNIT = 'kt'` since 2026-09-25, after he asked for exactly
+that. Three lines in the file, none of which I read before warning him.
+
+Not a defect in the code — a defect in what I told him, which sent him into a
+run braced for a bug that had been fixed three weeks earlier.
+
+
 ## Patterns
 
-Eighteen failures, six shapes. The shapes repeat; the instances do not matter
+Twenty-six failures, seven shapes. The shapes repeat; the instances do not matter
 much.
 
 **1. Verified against itself.** #7, #8, #14. A Sankey that balances, an account
@@ -336,7 +454,16 @@ confusing at all. An old name that still resolves — a file, a folder, a case �
 is worse than a missing one, because it looks current. *A rename is not done
 until the old thing is gone or marked.*
 
-**6. Widened the scope past the ask.** #17, #18, and the hundreds of figures.
+**6. Fixed in one file, left broken in the other.** #19, #20, #22, #23, and
+the axis ruling the same day. `resource_key` solved mixed-depth resources for
+the figures and 05 never picked it up. `_accumulate` integrated over year gaps
+and `figure_trapped` never picked it up. `_tight_step` used the full panel and
+the shared `_round_step` never picked it up. Every one was solved correctly
+somewhere in this repository while the other caller stayed wrong for weeks.
+*When a fix is worth making, find every caller of the thing it fixes — the
+second one is where the defect survives.*
+
+**7. Widened the scope past the ask.** #17, #18, and the hundreds of figures.
 Four cases when one was wanted; a refactor when a rename was wanted; every
 resource drawn when he had said twice it was the magnet, its elements, and
 copper. *Do what was asked, at the size it was asked.*
