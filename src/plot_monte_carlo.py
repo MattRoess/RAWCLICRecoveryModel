@@ -1377,6 +1377,37 @@ def fleet_flows(run, resource: str):
     return {'years': every, 'solved': solved, **out}
 
 
+def _crosses(years, series, level: float):
+    """
+    Where the DRAWN line first reaches `level`, interpolated between samples.
+
+    ⚠️ NOT THE FIRST SAMPLED YEAR PAST IT. The model solves every fifth year,
+    so a curve climbing 9% -> 18% steps straight over 10%: the first sample at
+    or above the level is 2040, and a dot placed at (2040, 10) sits eight
+    points BELOW the line. That is what it did until 2026-09-29 -- *"I have
+    points in green which do not align with the curve. Why?"*
+
+    The figure joins its samples with straight segments, so the linear crossing
+    of a segment IS a point on the line as drawn. The dot lands on it exactly,
+    and the year printed is that crossing rounded -- 2037, not 2040.
+
+    Returns None when the line never reaches the level, which the caller then
+    says in words. A line that wanders gives its FIRST crossing; later ones are
+    not marked, because the question is when it starts to count.
+    """
+    for index in range(1, len(series)):
+        low, high = series[index - 1], series[index]
+        if index == 1 and np.isfinite(low) and low >= level:
+            return years[0]
+        if not (np.isfinite(low) and np.isfinite(high)):
+            continue
+        if low < level <= high:
+            span = high - low
+            return years[index - 1] + ((level - low) / span if span else 0.0) \
+                * (years[index] - years[index - 1])
+    return None
+
+
 def figure_trapped(run, theme: str, unit: str, resources=(), only: str = ''):
     """
     STILL DRIVING, COME BACK, OR GONE -- every tonne that entered the fleet.
@@ -1491,11 +1522,19 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = ''):
             stock.plot(years, median * scale, color=colour, linewidth=width,
                        label=name)
 
-        # THE YEAR THE FLEET STOPS GROWING, marked on the panel where it is
-        # the peak of a curve. On the old flows panel it sat where two lines
-        # crossed, and a date read off a crossing is a guess.
-        turned = next((year for year, value in zip(
-            years, np.nanmean(s['net'], axis=1)) if value < 0), None)
+        # THE YEAR THE FLEET STOPS GROWING, READ OFF THE CURVE THAT IS DRAWN.
+        # It used to be the first year whose NET FLOW is negative, which is the
+        # year AFTER the peak: the stock at 2055 is the stock at 2050 plus a
+        # negative net, so the highest point plotted was 2050 while the label
+        # pointed at 2055. Same fault as the crossings below, reported on
+        # 2026-09-29: *"I have points in green which do not align with the
+        # curve."*
+        #
+        # argmax of the median stock IS the top of the line a reader sees, so
+        # the label and the picture cannot disagree.
+        stock_median = band(np.cumsum(s['net'], axis=0))[0]
+        peak = int(np.nanargmax(stock_median))
+        turned = years[peak] if 0 < peak < len(years) - 1 else None
         if turned is not None:
             stock.axvline(turned, color=colours['meta'], linewidth=1.0,
                           linestyle=(0, (3, 3)))
@@ -1504,7 +1543,7 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = ''):
             # `lost to date` curve, which by then is the highest thing on the
             # panel.
             late = turned > (years[0] + years[-1]) / 2
-            stock.annotate(f'{turned}: the stock peaks -- from here\n'
+            stock.annotate(f'{turned}: the stock peaks -- after this\n'
                            f'more {resource} leaves the fleet\nthan enters it',
                            xy=(turned, stock.get_ylim()[1]),
                            xytext=(-8 if late else 8, -12),
@@ -1540,8 +1579,7 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = ''):
         for place, level in enumerate((10, 25, 50, 100)):
             if level > ceiling:
                 continue
-            reached = next((year for year, value in zip(years, median)
-                            if value >= level), None)
+            reached = _crosses(years, median, level)
             contribution.axhline(level, color=colours['rule'], linewidth=0.7)
             if reached is None:
                 continue
@@ -1552,7 +1590,7 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = ''):
             # range, where a label anchored right runs off the page.
             near_end = reached > years[0] + 0.85 * (years[-1] - years[0])
             contribution.annotate(
-                f'{level}% in {reached}', xy=(reached, level),
+                f'{level}% in {round(reached)}', xy=(reached, level),
                 xytext=(-6 if near_end else 6, -14 if place % 2 else 6),
                 textcoords='offset points', color=colours['title'],
                 fontsize=11, fontweight='bold',
