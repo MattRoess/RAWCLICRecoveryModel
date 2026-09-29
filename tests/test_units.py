@@ -41,7 +41,7 @@ KEYS = ['Stock/Flow ID', 'Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
 
 
 def _solve(case: str, unit: str, engine=RecoveryModelOptimized) -> pd.DataFrame:
-    frame = engine(data_folder=f'data_folder/reference/{case}', layer_names=LAYER_NAMES,
+    frame = engine(data_folder=f'data/reference/{case}', layer_names=LAYER_NAMES,
                    working_unit=unit, years='').solve_models_and_write_to_output()
     frame['Value'] = pd.to_numeric(frame['Value'])
     for key in KEYS:

@@ -13,8 +13,8 @@ measurements and literature.
 Each case has one Excel file:
 
 ```
-data_folder/bev_electronics_wiring/input_data/case.xlsx
-data_folder/carcomposition_mockup/input_data/case.xlsx
+data/bev_electronics_wiring/input_data/case.xlsx
+data/carcomposition_mockup/input_data/case.xlsx
 ```
 
 Double-click it. It has three sheets:
@@ -124,7 +124,7 @@ The numbers, the distributions and the figures.
 Only for a **new** case. The two that exist already have theirs.
 
 ```
-./.venv/bin/python tools/make_skeleton.py data_folder/<your case>
+./.venv/bin/python tools/make_skeleton.py data/<your case>
 ```
 
 It writes one row for every coefficient the case needs, with the identifying

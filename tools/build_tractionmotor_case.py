@@ -2,7 +2,7 @@
 Build the traction motor case. This is the only traction builder.
 
     ./.venv/bin/python tools/build_tractionmotor_case.py
-    -> data_folder/tractionmotor/input_data/case.xlsx
+    -> data/tractionmotor/input_data/case.xlsx
 
 ONE CASE, ONE ANSWER. A fleet of end-of-life BEVs does not go one way. Some
 motors are taken out of the vehicle and disassembled; the rest stay in the hulk
@@ -516,7 +516,7 @@ SOURCE = pd.DataFrame([
 LISTS = pd.DataFrame({'keyed_at': ['component', 'material', 'element', None],
                       'role': ['recovered', 'loss', 'handoff', 'intermediate']})
 
-FOLDER = 'data_folder/tractionmotor'
+FOLDER = 'data/tractionmotor'
 
 
 def main() -> int:

@@ -8,7 +8,7 @@ within product P1" -- not by the input key alone. The only sum that means
 anything is therefore: for one such resource, the total over all the output
 flows it can reach.
 
-    ./.venv/bin/python check_mass_balance.py data_folder/reference/template
+    ./.venv/bin/python check_mass_balance.py data/reference/template
 
 Also checks composition closure, the single-target-layer rule (see
 documentation/DESIGN_tc_table.md), and the optional value_min/value_max
@@ -103,7 +103,7 @@ def report(folder: str, tables: dict | None = None) -> bool:
         print(f"\nNothing to check in '{folder}': missing {', '.join(missing)}")
         print(f"Expected them in {os.path.join(folder, 'input_data')}.")
         print("\nData folders that do have them:")
-        for root, _, files in os.walk('data_folder'):
+        for root, _, files in os.walk('data'):
             if 'TCs.csv' in files or 'case.xlsx' in files:
                 print(f"  {os.path.dirname(root)}")
         return False

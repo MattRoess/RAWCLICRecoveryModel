@@ -52,7 +52,7 @@ NAMES = ['product', 'component', 'material', 'element']
 
 def _deterministic(case: str) -> pd.DataFrame:
     solution = RecoveryModelOptimized(
-        data_folder=f'data_folder/reference/{case}', layer_names=NAMES, years=''
+        data_folder=f'data/reference/{case}', layer_names=NAMES, years=''
     ).solve_models_and_write_to_output()
     solution['Value'] = pd.to_numeric(solution['Value'])
     solution['Year'] = solution['Year'].astype(str)
@@ -61,7 +61,7 @@ def _deterministic(case: str) -> pd.DataFrame:
 
 def _monte_carlo(case: str, draws: int = 500, **kwargs):
     kwargs.setdefault('years', '')
-    run = solve_draws(f'data_folder/reference/{case}', NAMES, draws=draws, **kwargs)
+    run = solve_draws(f'data/reference/{case}', NAMES, draws=draws, **kwargs)
     run.keys['Year'] = run.keys['Year'].astype(str)
     return run.keys, run.values, run.report
 
@@ -151,9 +151,9 @@ def test_a_result_on_disk_is_the_same_result() -> None:
 
     from src.monte_carlo import solve_draws
 
-    resident = solve_draws(f'data_folder/reference/template', NAMES, draws=200,
+    resident = solve_draws(f'data/reference/template', NAMES, draws=200,
                            seed=0, budget_gb=1e9)
-    on_disk = solve_draws(f'data_folder/reference/template', NAMES, draws=200,
+    on_disk = solve_draws(f'data/reference/template', NAMES, draws=200,
                           seed=0, budget_gb=1e-9)
 
     assert on_disk.backing is not None, \

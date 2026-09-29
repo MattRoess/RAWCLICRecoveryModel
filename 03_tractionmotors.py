@@ -3,7 +3,7 @@
 
     Press Run. No arguments, nothing to edit.
 
-ONE CASE, ONE ANSWER: `data_folder/tractionmotor`, grade `mix`.
+ONE CASE, ONE ANSWER: `data/tractionmotor`, grade `mix`.
 
 The fleet runs BOTH roads at once and splits between them at the review's own
 step 2, "Motor removal from vehicle" (0.85 | 0.93 | 0.98, ref 6,7,8,9). What is

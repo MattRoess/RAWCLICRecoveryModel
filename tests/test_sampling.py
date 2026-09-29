@@ -56,7 +56,7 @@ TOLERANCE = 1e-12
 
 
 def _tcs(path: str) -> pd.DataFrame:
-    return pd.read_csv(f'data_folder/reference/{path}/input_data/TCs.csv',
+    return pd.read_csv(f'data/reference/{path}/input_data/TCs.csv',
                        keep_default_na=False, na_values=[])
 
 

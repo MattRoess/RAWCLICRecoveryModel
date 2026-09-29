@@ -1,13 +1,13 @@
 """
 Run both engines over a data folder and print their results side by side.
 
-The two engines agree on data_folder/reference/basic_test but not in general. This script
+The two engines agree on data/reference/basic_test but not in general. This script
 is how that was established and is how the cases in documentation/DEFECTS.md
 are reproduced:
 
-    ./.venv/bin/python tools/compare_engines.py data_folder/reference/defect_cases/tc_specificity
+    ./.venv/bin/python tools/compare_engines.py data/reference/defect_cases/tc_specificity
 
-With no argument it runs data_folder/reference/basic_test, where the two agree exactly.
+With no argument it runs data/reference/basic_test, where the two agree exactly.
 """
 
 import os
@@ -51,8 +51,8 @@ def run(model_class, data_folder: str) -> pd.DataFrame:
 
 def compare(data_folder: str) -> pd.DataFrame:
     """Outer-join both engines' solutions so that disagreements are visible."""
-    optimized = run(RecoveryModelOptimized, data_folder)
-    linear_algebra = run(RecoveryModelLA, data_folder)
+    optimized = run(RecoveryModelOptimized, data)
+    linear_algebra = run(RecoveryModelLA, data)
 
     merged = optimized.merge(
         linear_algebra, on=KEYS, how='outer', suffixes=('_optimized', '_LA')
@@ -63,7 +63,7 @@ def compare(data_folder: str) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    folder = sys.argv[1] if len(sys.argv) > 1 else "data_folder/reference/basic_test"
+    folder = sys.argv[1] if len(sys.argv) > 1 else "data/reference/basic_test"
     print(f"\n{folder}")
     result = compare(folder)
     print(result.to_string(index=False))

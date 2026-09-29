@@ -31,31 +31,31 @@ venv/
 # The input tables ARE the work, so every case folder is tracked. Only the
 # generated outputs are ignored.
 #
-# This used to be inverted: ignore data_folder/* wholesale, then un-ignore each
+# This used to be inverted: ignore data/* wholesale, then un-ignore each
 # case by name. When basic_test, defect_cases and template moved into
 # reference/, those un-ignore rules stopped matching anything -- and
-# data_folder/bev_electronics, created later, was never named at all. The real
+# data/bev_electronics, created later, was never named at all. The real
 # case, with the only hand-written coefficient table in the project, went
 # untracked for its whole life and nothing anywhere said so. Ignoring only the
 # outputs cannot fail that way.
 # The CONTENTS are ignored, not the directory itself: git cannot re-include a
 # file whose parent directory is excluded, and two files below need including.
-data_folder/**/output_data/**
+data/**/output_data/**
 
 # TCs_used.csv is the coefficient table each run actually solved -- after
 # rest-derivation, precedence and wildcard expansion. It is tracked on purpose.
 # The coefficients themselves now live in case.xlsx, and `git diff` on a
 # spreadsheet says nothing, so without this a result could change with no way
 # to see which coefficient moved. This file is text, so it diffs.
-!data_folder/**/output_data/TCs_used.csv
+!data/**/output_data/TCs_used.csv
 
 # ...but not for the fixtures. The suites solve them on every run, so their
 # TCs_used.csv would churn in every commit while saying nothing: a fixture's
 # coefficients are pinned in the test, not something anyone edits.
-data_folder/reference/**/output_data/TCs_used.csv
+data/reference/**/output_data/TCs_used.csv
 
 # The reference solution both engines are checked against.
-!data_folder/reference/basic_test/output_data/solution.csv
+!data/reference/basic_test/output_data/solution.csv
 
 # --- Figures ---
 # Not tracked at all. Every figure is regenerated from the inputs and the

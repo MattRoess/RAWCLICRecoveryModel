@@ -142,8 +142,8 @@ def cases_to_run(params) -> list[str]:
     one folder or several separated by semicolons, exactly as `groups` and
     `scenario_alias` do in a case's own source table:
 
-        data_folder = 'data_folder/battery'
-        data_folder = 'data_folder/bev_electronics_wiring; data_folder/bev_electronics_boards'
+        data_folder = 'data/battery'
+        data_folder = 'data/bev_electronics_wiring; data/bev_electronics_boards'
 
     Asked for 2026-09-25: four traction motor cases had to be run by editing
     the setting between each one, which is four edits and four presses to

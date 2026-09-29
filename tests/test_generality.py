@@ -177,7 +177,7 @@ def write_case(case: str, child_layer: str = 'element',
 def settings(root: str, case_name: str) -> Params:
     """A parameter set pointed at the synthetic item, not at the vehicle one."""
     params = Params()
-    params.run.data_folder = os.path.join('data_folder', case_name)
+    params.run.data_folder = os.path.join('data', case_name)
     params.run.scenario = 'HIGH'
     params.run.years = ''
     params.run.working_unit = 't'
@@ -201,7 +201,7 @@ def build_everything(child_layer: str = 'element', products=None,
 
     case_name = (f'pv_panels_test_{child_layer}{"_multi" if products else ""}'
                  f'{"_materials" if materials else ""}')
-    case = os.path.join('data_folder', case_name)
+    case = os.path.join('data', case_name)
     if os.path.isdir(case):
         shutil.rmtree(case)
     write_case(case, child_layer, products)

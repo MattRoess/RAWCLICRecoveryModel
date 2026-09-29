@@ -5,7 +5,7 @@
 data). That is the good case: the constraints can be designed in rather than
 retrofitted.
 
-A worked example of everything below is in `data_folder/reference/template`. It runs
+A worked example of everything below is in `data/reference/template`. It runs
 through the existing engines unchanged, and passes every check.
 
 ## 1. The principle: make sum-to-1 true by construction
@@ -46,7 +46,7 @@ Add three things to the case's `TCs` table — the `TCs` sheet of
 
 **This is backward compatible, and that is verified.** Both engines select only
 the columns in `InputDataFormat.TCs_columns`, so the extra columns are ignored:
-`data_folder/reference/template` solves correctly today with no code change. `value`
+`data/reference/template` solves correctly today with no code change. `value`
 remains the deterministic point estimate, so the existing model keeps working
 while the data is collected once.
 

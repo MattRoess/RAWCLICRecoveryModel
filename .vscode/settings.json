@@ -10,7 +10,7 @@
   "python.terminal.activateEnvInCurrentTerminal": true,
 
   // Run scripts and the console from the project root, so that the relative
-  // paths in run_model.py ("data_folder/...") resolve correctly.
+  // paths in run_model.py ("data/...") resolve correctly.
   "python.terminal.executeInFileDir": false,
   "jupyter.notebookFileRoot": "${workspaceFolder}",
 

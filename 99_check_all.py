@@ -18,7 +18,7 @@ They are kept apart because transfer coefficients change constantly, and a
 half-edited table must not look like broken code.
 
 **The code checks never read your case.** The six suites in `tests/` run
-entirely against the fixed fixtures in `data_folder/reference/`, with their own
+entirely against the fixed fixtures in `data/reference/`, with their own
 years and their own unit pinned, so nothing you do to TCs.csv -- editing it,
 emptying it, deleting it -- can make them fail. If they pass, the model is
 sound whatever state your table is in.

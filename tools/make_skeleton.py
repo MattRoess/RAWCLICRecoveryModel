@@ -4,7 +4,7 @@ tools/make_skeleton.py
 
 Write a TCs.csv with every row that needs a number, and no numbers in it.
 
-    ./.venv/bin/python tools/make_skeleton.py data_folder/bev_electronics_wiring
+    ./.venv/bin/python tools/make_skeleton.py data/bev_electronics_wiring
 
 The flow network is domain knowledge and this script does not invent it. It
 reads a small, editable list of processes and expands it against the resources
@@ -428,9 +428,9 @@ def main(case: str) -> int:
         print(f"There is no case folder called '{case}'.\n\n"
               f"Cases available:", file=sys.stderr)
         for folder in sorted(
-                os.path.join('data_folder', name)
-                for name in os.listdir('data_folder')
-                if os.path.isdir(os.path.join('data_folder', name, 'input_data'))):
+                os.path.join('data', name)
+                for name in os.listdir('data')
+                if os.path.isdir(os.path.join('data', name, 'input_data'))):
             print(f'  {folder}', file=sys.stderr)
         print(f"\nUsage: ./.venv/bin/python tools/make_skeleton.py <case folder>",
               file=sys.stderr)

@@ -5,7 +5,7 @@ tools/make_carcomposition_tcs.py
 Generate the ARTIFICIAL transfer-coefficient table for the 04_01 car-composition
 case, from the composition that stage actually exported.
 
-    ./.venv/bin/python tools/make_carcomposition_tcs.py data_folder/carcomposition_mockup
+    ./.venv/bin/python tools/make_carcomposition_tcs.py data/carcomposition_mockup
 
 WHAT IS REAL AND WHAT IS NOT
 ----------------------------

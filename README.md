@@ -14,7 +14,7 @@ stock-and-flow model; transfer coefficients are the part you write.
 Two separate questions, answered separately:
 
 - **The code** — the six test suites. They run entirely against the fixed
-  fixtures in `data_folder/reference/`, so **nothing you do to your coefficient
+  fixtures in `data/reference/`, so **nothing you do to your coefficient
   table can make them fail.** Use `--code` while a coefficient table is half-written.
 - **Your case** — the pipeline and mass balance on your data. A failure there
   names your table, not the model.
@@ -67,7 +67,7 @@ RAWCLICStockAndFlow/data/processed/element_draws/<scenario>/<flow>/*.npy
 A case folder therefore holds only what a person writes:
 
 ```
-data_folder/bev_electronics/input_data/
+data/bev_electronics/input_data/
     case.xlsx
         processes    the flow network -- seven lines
         TCs          the transfer coefficients
@@ -108,7 +108,7 @@ tests/          six suites, 106 checks
 tools/          make_skeleton.py, make_carcomposition_tcs.py (the TC tables),
                 compare_engines.py, plot_structure.py, compare_sum_rules.py,
                 tc_worklist.py, filling_sheet.py
-data_folder/    bev_electronics (the real case)
+data/    bev_electronics (the real case)
                 (every row measured, for testing), reference/ (fixtures)
 documentation/  start at documentation/README.md
 ```

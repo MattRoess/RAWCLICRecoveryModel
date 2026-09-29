@@ -105,7 +105,7 @@ actually buy. **Five rows carry 80% of the wiring case's spread. Three carry
 2026-09-02 -- the figures, and the boards structure -- are done, and what
 follows says what they became so that neither is reopened by accident.
 
-**Added 2026-09-15: a third case, `data_folder/battery`.** Fed by stage 04_04 of
+**Added 2026-09-15: a third case, `data/battery`.** Fed by stage 04_04 of
 RAWCLICStockAndFlow, which exports the mass of an element WITHIN a component for
 this -- copper in a cable and copper in an electrode foil are 16.1 kg against
 21.6 on a 60 kWh pack and go through different processes, so an element total
@@ -475,7 +475,7 @@ placeholders.
 ## 2. The architecture, in one page
 
 **One model.** `src/` knows nothing about vehicles, electronics or panels. What
-differs between studies is a **case**: a folder under `data_folder/` holding
+differs between studies is a **case**: a folder under `data/` holding
 
 ```
 input_data/
@@ -1272,7 +1272,7 @@ read the 09-17 entry for what they became.**
 ### Checking it
 
 ```bash
-./.venv/bin/python tools/plot_structure.py data_folder/battery
+./.venv/bin/python tools/plot_structure.py data/battery
 ```
 
 Draws the wiring with every coefficient beside its arrow, reads `TCs` and
@@ -1470,7 +1470,7 @@ a command makes, not what a pass does.
 The user runs by pressing Run in Positron. A setting that exists only on the
 command line does not exist. So:
 
-- `run.data_folder` is `data_folder/battery`, the case being worked on.
+- `run.data_folder` is `data/battery`, the case being worked on.
 - `combine.resources` replaced `combine.resource` + `combine.label`: a mapping
   of label to every spelling the data uses. Pressing Run on 04 draws **four
   metals across three scenarios**, twelve sets of figures, nothing typed.
@@ -1587,8 +1587,8 @@ hydrometallurgy of the concentrate.
 
 | | |
 |---|---|
-| `data_folder/tractionmotor` | Route A, selective disassembly. 39 TC rows, 20 processes |
-| `data_folder/tractionmotor_shredder` | Route B, shredding. 27 TC rows, 16 processes |
+| `data/tractionmotor` | Route A, selective disassembly. 39 TC rows, 20 processes |
+| `data/tractionmotor_shredder` | Route B, shredding. 27 TC rows, 16 processes |
 
 Both are **generated**, not hand-edited: `tools/build_tractionmotor_case.py`
 and `tools/build_tractionmotor_shredder_case.py`. Re-running either rebuilds
@@ -1694,7 +1694,7 @@ None was found by reading carefully. Each needed something to fail.
 
 ### Where to continue
 
-`run.data_folder` is left at **`data_folder/tractionmotor_shredder`** and
+`run.data_folder` is left at **`data/tractionmotor_shredder`** and
 `run.scenario` at **`mix`**.
 
 1. **Monte Carlo**, `stages/03_run_monte_carlo.py`, both cases, all four grade
@@ -1984,7 +1984,7 @@ and 02's deterministic one stayed on disk looking current.
 ### ⚠️ A correction to the entry above
 
 **The stages ignore arguments.** `02_run_model.main` says so and means it. So
-`02_run_model.py data_folder/tractionmotor_mixed` did NOT run that case -- it
+`02_run_model.py data/tractionmotor_mixed` did NOT run that case -- it
 ran the four in `run.data_folder`, which is why it printed
 `tractionmotor_split`. The claim earlier today that 01 had validated
 `tractionmotor_mixed` was wrong for the same reason: it validated the four
@@ -2008,7 +2008,7 @@ somebody chose rather than the placeholder in
 
 > **Resolved.** The fork is now the review's step 2, in
 > `tools/build_tractionmotor_case.py` — which is the ONLY traction builder
-> left, and writes `data_folder/tractionmotor`. There is no
+> left, and writes `data/tractionmotor`. There is no
 > `DISASSEMBLY_SHARE` and no `tractionmotor_fleet` any more; the case that
 > is the answer carries the plain name. `check_ratios.py` was wrong in the
 > same way and now expects `disassembly + (1 - step 2) x shredder`.
@@ -2119,8 +2119,8 @@ traces to them and right now nothing here holds them.
     M  tools/build_tractionmotor_case.py    write() guarded so it can be imported
     M  tools/compare_routes.py        the two new figures, wrapped subtitles
     D  tools/build_tractionmotor_mixed_case.py   replaced by the fleet builder
-    D  data_folder/tractionmotor_mixed/
-    ?? data_folder/tractionmotor_fleet/         ⚠️ wrong structure, see §1
+    D  data/tractionmotor_mixed/
+    ?? data/tractionmotor_fleet/         ⚠️ wrong structure, see §1
     ?? tools/build_tractionmotor_fleet_case.py  ⚠️ wrong structure, see §1
     ?? tools/check_ratios.py                    ⚠️ checks against itself, see §1
 

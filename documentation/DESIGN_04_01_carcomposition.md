@@ -5,7 +5,7 @@ Investigated 2026-08-21 against the real upstream repository.
 **BUILT 2026-08-21.** Everything below except the coefficients themselves is
 now implemented; see the corrections at the end for the two places this
 estimate was wrong. A made-up TC table on the real structure sits in
-`data_folder/carcomposition_mockup/`, and how a case is configured is in
+`data/carcomposition_mockup/`, and how a case is configured is in
 [CASES.md](CASES.md).
 
 ## Short answer
@@ -188,7 +188,7 @@ Petrol.
 
 ## The made-up table
 
-`data_folder/carcomposition_mockup/` holds a complete, self-consistent table on
+`data/carcomposition_mockup/` holds a complete, self-consistent table on
 the **real** component and material names, with **invented** coefficients. Every
 one of its 278 resources sums to 1.
 

@@ -47,8 +47,8 @@ instead of three settings you have to remember to change together.
 several separated by semicolons:
 
 ```python
-data_folder: str = 'data_folder/bev_electronics_wiring'
-data_folder: str = 'data_folder/bev_electronics_wiring; data_folder/bev_electronics_boards'
+data_folder: str = 'data/bev_electronics_wiring'
+data_folder: str = 'data/bev_electronics_wiring; data/bev_electronics_boards'
 ```
 
 **Each pass is still one case.** They are different studies — different
@@ -94,11 +94,11 @@ One more you can press when you want it:
 ## What the two pipelines are
 
 There is **one model**. The two pipelines are two **cases**: two folders under
-`data_folder/`, each with its own data and its own coefficients.
+`data/`, each with its own data and its own coefficients.
 
 | | 04_02 electronics | 04_01 car composition |
 |---|---|---|
-| folder | `data_folder/bev_electronics_wiring` | `data_folder/carcomposition_mockup` |
+| folder | `data/bev_electronics_wiring` | `data/carcomposition_mockup` |
 | covers | wiring and motors in BEVs | whole cars, five drivetrains |
 | finest resolution | **element** — Cu, Nd, Dy | **material** — calAHSS, battery |
 | years | 2030–2050 | 2040 |
@@ -113,7 +113,7 @@ at it. No code changes. See [CASES.md](CASES.md).
 ## Where the results are
 
 ```
-data_folder/<case>/output_data/
+data/<case>/output_data/
     recovery_results.xlsx        <-- open this one
     monte_carlo_summary.csv      every result row, every percentile
     solution_optimized_model.csv the deterministic answer

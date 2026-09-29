@@ -187,23 +187,37 @@ def ramp(current, improved, start: int, end: int, years,
                         pd.to_numeric(improved[column], errors='coerce'))
                for column in RAMPED
                if column in current.columns and column in improved.columns}
-    room = _headroom(current, numbers) if after == 'continue' else None
+    group = (current[[c for c in GROUP if c in current.columns]]
+             .astype(str).agg('|'.join, axis=1)
+             if any(c in current.columns for c in GROUP) else None)
 
-    blocks = []
+    blocks, held = [], {}
     for year in years:
         block = current.copy()
         weight = _weight(int(year), start, end, after)
-        # Past the end of the window, no group may be carried further than its
-        # own coefficients can go. See `_headroom`.
-        per_row = (np.minimum(weight, room) if room is not None and weight > 1
-                   else weight)
         for column, (a, b) in numbers.items():
-            mixed = a + (b - a) * per_row
+            # A SIMPLE LINEAR EXTRAPOLATION. Nothing caps the weight.
+            mixed = a + (b - a) * weight
             # A blank bound is a definitional row with no range. Blank in either
             # table stays blank rather than becoming a number out of nowhere.
             block[column] = mixed.where(a.notna() & b.notna(), current[column])
+        if weight > 1:
+            block, capped = _hold_at_the_bounds(block, group, numbers)
+            if capped:
+                held[int(year)] = capped
         block['Year'] = str(year)
         blocks.append(block)
+    if held:
+        first = min(held)
+        names = sorted({n for rows in held.values() for n in rows})
+        print(f'  improvement extrapolated past {end}; '
+              f'{len(names)} coefficient(s) reached 0 or 1 and were held '
+              f'there from {first}; any group then summing above 1 was '
+              f'set back to 1:')
+        for name in names[:6]:
+            print(f'    {name}')
+        if len(names) > 6:
+            print(f'    ... and {len(names) - 6} more')
     return pd.concat(blocks, ignore_index=True)
 
 
@@ -212,53 +226,56 @@ def ramp(current, improved, start: int, end: int, years,
 GROUP = ['Input_FlowID', 'TC_target_layer', 'TC_target_key']
 
 
-def _headroom(current, numbers) -> "np.ndarray":
+def _hold_at_the_bounds(block, group, numbers):
     """
-    How far past `improvement_end` each row's GROUP can be carried, at most.
+    Past the window, a share that would leave [0, 1] is held at the bound.
 
-    ⚠️ CAPPED PER GROUP, NOT PER ROW, and this is the whole subtlety. A group's
-    coefficients must sum to 1, which survives any weight only while every row
-    in the group shares ONE weight. Capping row by row would hold one member
-    back while its neighbours moved on, and the group would stop summing to 1 --
-    mass created or destroyed, silently.
+    ⚠️ THE RULE, SET BY MATTHIAS ON 2026-09-29: *"if it is larger 1 then set it
+    to 1 and document."* The same at the other end -- a share that would go
+    negative is held at 0. A transfer coefficient is a share of what enters a
+    flow; there is no such thing as 119% of it, or -3%.
 
-    So the cap is the group's: the largest weight at which no member of it
-    leaves [0, 1]. A rising coefficient runs out at `(1 - a) / (b - a)`, a
-    falling one at `a / (a - b)`, and one that does not move never runs out.
-    The group is carried to the first of those, and holds there.
+    AND A GROUP THAT WOULD SUM ABOVE 1 IS SET TO 1. *"If it is larger than 1
+    then set it to 1 and document."* A group of transfer coefficients is the
+    whole of what leaves a flow, so its sum IS 1 -- 1.0267 of the magnet is not
+    a pessimistic number, it is more magnet than there is.
 
-    WHY IT IS NEEDED AT ALL. `improvement_after_end = continue` extrapolates,
-    and some groups are already finished at the end of the window. The shredder
-    route's magnet is one: the review's four fates for shredded NdFeB --
-    recovered, to ferrous, to non-ferrous, to residue -- sum to 0.920 in 2030
-    and to exactly 1.000 in 2060, leaving nothing unassigned. Carried past 2060
-    the unassigned remainder goes NEGATIVE, which is where eight rows failed
-    stage 01 on 2026-09-29 before this existed.
+    The group is divided by its own sum, and only when that sum is above 1.
+    A group still summing to 1 or below is left exactly as the extrapolation
+    put it; nothing is scaled up to reach 1.
 
-    A group that saturates therefore holds from the year it saturates, and the
-    rest of the case carries on improving. That is the honest answer to "keep
-    improving after 2060": as far as the coefficients physically allow, and no
-    further.
+    Returns the block and the names of the coefficients that were held, so the
+    run can say so out loud rather than doing it silently.
     """
-    limits = []
-    for a, b in numbers.values():
-        step = b - a
-        rising = np.where(step > 0, (1 - a) / step.where(step != 0, 1), np.inf)
-        falling = np.where(step < 0, a / (-step).where(step != 0, 1), np.inf)
-        limits.append(np.where(step > 0, rising,
-                               np.where(step < 0, falling, np.inf)))
-    per_row = np.nanmin(np.vstack(limits), axis=0) if limits else None
-    if per_row is None:
-        return np.array([])
-    per_row = np.where(np.isfinite(per_row), per_row, np.inf)
+    columns = [c for c in ('value_min', 'value', 'value_max') if c in block.columns]
+    if not columns:
+        return block, []
 
-    have = [column for column in GROUP if column in current.columns]
-    if not have:
-        return np.maximum(per_row, 1.0)
-    frame = current[have].astype(str).agg('|'.join, axis=1)
-    smallest = pd.Series(per_row, index=frame.index).groupby(frame).transform('min')
-    # Never below 1: the window itself is always reachable, whatever comes after.
-    return np.maximum(smallest.to_numpy(), 1.0)
+    before = {c: pd.to_numeric(block[c], errors='coerce') for c in columns}
+    after_clip = {c: v.clip(lower=0.0, upper=1.0) for c, v in before.items()}
+    moved = np.zeros(len(block), dtype=bool)
+    for c in columns:
+        moved |= (before[c] - after_clip[c]).abs().gt(1e-12).fillna(False).to_numpy()
+
+    for c in columns:
+        block[c] = after_clip[c].where(before[c].notna(), block[c])
+
+    # Set a group that now sums above 1 back to 1.
+    if group is not None and 'value' in columns:
+        mode = pd.to_numeric(block['value'], errors='coerce')
+        total = mode.groupby(group).transform('sum')
+        over = total.gt(1.0 + 1e-12)
+        block['value'] = (mode / total).where(over & mode.notna(), block['value'])
+        moved |= over.fillna(False).to_numpy()
+
+    names = []
+    if moved.any():
+        have = [c for c in ('Input_FlowID', 'Output_FlowID', 'TC_target_key')
+                if c in block.columns]
+        if have:
+            names = sorted(block.loc[moved, have].astype(str)
+                           .agg(' -> '.join, axis=1).unique())
+    return block, names
 
 
 def coefficients(case: str, years, params=None) -> "pd.DataFrame":

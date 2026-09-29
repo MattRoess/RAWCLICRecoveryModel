@@ -17,15 +17,15 @@ silently reads one stage's draws with another stage's coefficients.
 
 So every case carries its own `source.csv`:
 
-    data_folder/<case>/input_data/
+    data/<case>/input_data/
         source.csv      where the numbers come from, and how they map to layers
         processes.csv   the flow network
         TCs.csv         the coefficients
 
 and running it is naming it:
 
-    ./.venv/bin/python stages/02_run_model.py data_folder/car_composition
-    ./.venv/bin/python stages/02_run_model.py data_folder/bev_electronics_wiring
+    ./.venv/bin/python stages/02_run_model.py data/car_composition
+    ./.venv/bin/python stages/02_run_model.py data/bev_electronics_wiring
 
 Nothing in `src/params_schema.py` changes between those two.
 

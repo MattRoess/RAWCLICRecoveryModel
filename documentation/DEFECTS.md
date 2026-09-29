@@ -12,7 +12,7 @@ than the rule. §3 is still open.
 Reproduce any case with:
 
 ```bash
-./.venv/bin/python tools/compare_engines.py data_folder/reference/defect_cases/<case>
+./.venv/bin/python tools/compare_engines.py data/reference/defect_cases/<case>
 ```
 
 Every §2 item has a committed data folder. `basic_test`, for comparison, is
@@ -32,7 +32,7 @@ than results.
 
 `from pandas.errors import SettingWithCopyWarning` — removed in pandas 3. The
 entry point raised `ImportError` before doing anything. `data_folder` also
-pointed at `data_folder/feb_2026_sensitivity`, which does not exist in the
+pointed at `data/feb_2026_sensitivity`, which does not exist in the
 repository.
 
 ### 1.2 `RecoveryModelLA` failed at construction
@@ -83,7 +83,7 @@ written down with the option not taken. §2.6 and §2.7 are refused at load.
 
 ### 2.1 Composition `Stock/ID` is ignored by the optimized engine — FIXED
 
-**Reproduce:** `data_folder/reference/defect_cases/composition_stock_id`
+**Reproduce:** `data/reference/defect_cases/composition_stock_id`
 
 The user guide defines `Stock/ID` as "Stock/Flow ID for the flow the material
 is contained in". `RecoveryModelLA` honours it.
@@ -119,7 +119,7 @@ row silently stops at product depth instead of being wrongly expanded.
 
 ### 2.2 The documented `P*` wildcard silently produces nothing — FIXED
 
-**Reproduce:** `data_folder/reference/defect_cases/wildcard_star`
+**Reproduce:** `data/reference/defect_cases/wildcard_star`
 
 The user guide documents an asterisk for "the same TC for all products in a
 layer". `fill_star_values` implements it — in `RecoveryModelLA` only
@@ -149,7 +149,7 @@ makes the two agree.
 
 ### 2.3 Overlapping TC rules — RESOLVED
 
-**Reproduce:** `data_folder/reference/defect_cases/overlapping_rules`
+**Reproduce:** `data/reference/defect_cases/overlapping_rules`
 
 A TC row names what it is about on its input side. A row naming a product is
 specific; a row naming only a component applies to that component in *every*
@@ -219,7 +219,7 @@ was applied gives the brevity without the silence.
 
 ### 2.4 Year, scenario and location matching differ — FIXED
 
-**Reproduce:** `data_folder/reference/defect_cases/scenario_prefix`
+**Reproduce:** `data/reference/defect_cases/scenario_prefix`
 
 `RecoveryModelLA` selected rows by **substring**: `str(year_target) in
 year_data`, and `.str.contains()` for scenario and additionalSpecification —
@@ -261,7 +261,7 @@ scenario-differentiated table would have been refused outright otherwise.
 
 ### 2.5 Same-layer TCs: each engine drops a different key — RESOLVED
 
-**Reproduce:** `data_folder/reference/defect_cases/same_layer_key`
+**Reproduce:** `data/reference/defect_cases/same_layer_key`
 
 For a transfer that stays within one layer, **neither engine reads both keys,
 and they drop opposite ones**:
@@ -431,7 +431,7 @@ naming the file, the column and the value.
 composition matrix and the transfer coefficients — use `.map()` and report
 what did not map, through one `encode()` helper:
 
-    InputDataError: data_folder/reference/basic_test: the inflow table has
+    InputDataError: data/reference/basic_test: the inflow table has
     1 value(s) in column 'product' that appear nowhere the model can place them:
         'NOT_A_PRODUCT'
 
@@ -1284,7 +1284,7 @@ An input that cannot be read as meaning anything. Each one used to be silent:
 Inputs that are readable but that the two engines *disagree* about. These are
 open method questions (§2.1, §2.3, §2.5), not mistakes, and the answer belongs
 to whoever owns the method — so they are reported and the run proceeds. It is
-also what keeps `data_folder/reference/defect_cases/` runnable, since those folders are
+also what keeps `data/reference/defect_cases/` runnable, since those folders are
 built from exactly these patterns.
 
 Each defect case now reports precisely its own defect and nothing else;

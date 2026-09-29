@@ -66,7 +66,7 @@ REVIEW = {
     'steel':      {'dis': (0.60, 0.71), 'shr': (0.72, 0.83)},
 }
 ANCHORS = (2030, 2060)
-CASE = 'data_folder/tractionmotor'
+CASE = 'data/tractionmotor'
 
 
 def model_ratio(case: str, scenario: str) -> pd.DataFrame:

@@ -65,7 +65,7 @@ from src.recovery_model_optimized import RecoveryModelOptimized
 LAYER_NAMES = ['product', 'component', 'material', 'element']
 KEYS = ['Stock/Flow ID', 'Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']
 
-CASE = 'data_folder/reference/basic_test'
+CASE = 'data/reference/basic_test'
 REFERENCE = f'{CASE}/output_data/solution.csv'
 
 # Compared with a tolerance rather than exactly, for two reasons: the reference
@@ -90,16 +90,16 @@ MAX_INTERMEDIATE_ROWS = 1000
 # either caught at load or documented as an input error, so there is no longer
 # a case where the two engines are expected to differ.
 DOCUMENTED_DIVERGENCES = {
-    'data_folder/reference/defect_cases/composition_stock_id': 0.0,
-    'data_folder/reference/defect_cases/wildcard_star': 0.0,
-    'data_folder/reference/defect_cases/tc_specificity': 0.0,
-    'data_folder/reference/defect_cases/scenario_prefix': 0.0,
+    'data/reference/defect_cases/composition_stock_id': 0.0,
+    'data/reference/defect_cases/wildcard_star': 0.0,
+    'data/reference/defect_cases/tc_specificity': 0.0,
+    'data/reference/defect_cases/scenario_prefix': 0.0,
 }
 
 
 # Cases that declare scenarios have to say which one they mean, since one run
 # is one scenario. Everything else has no scenario dimension at all.
-SCENARIO_FOR = {'data_folder/reference/defect_cases/scenario_prefix': 'BAU'}
+SCENARIO_FOR = {'data/reference/defect_cases/scenario_prefix': 'BAU'}
 
 
 # The committed reference and the defect cases are all written in Mg, so they
@@ -272,7 +272,7 @@ def test_validation_accepts_every_committed_case() -> None:
     """No committed data folder may fail its own loader."""
     from src.validate_inputs import check
 
-    folders = [CASE, 'data_folder/reference/template'] + list(DOCUMENTED_DIVERGENCES)
+    folders = [CASE, 'data/reference/template'] + list(DOCUMENTED_DIVERGENCES)
     for folder in folders:
         errors = [p for p in check(folder) if p.severity == 'ERROR']
         assert not errors, (
@@ -327,7 +327,7 @@ def test_a_residual_that_could_go_negative_is_refused() -> None:
     # reference/template rather than basic_test: this needs a resource reaching
     # THREE flows. With only two, one partner capped at 1 sums to exactly 1 and
     # the residual is pinned at 0 -- tight, but not negative and not a defect.
-    TEMPLATE = 'data_folder/reference/template' 
+    TEMPLATE = 'data/reference/template' 
 
     def widen(frame, residual: bool):
         frame = frame.copy()
@@ -606,7 +606,7 @@ def test_a_range_restating_its_own_group_is_reported_by_the_worklist() -> None:
 
     from src.validate_inputs import check
 
-    template = 'data_folder/reference/template'
+    template = 'data/reference/template'
     assert not [p for p in check(template) if 'already implies' in p.message], \
         'the run is warning about a reflected pair again'
 
@@ -704,7 +704,7 @@ def test_overlapping_rules_resolve_to_the_specific_one() -> None:
     harness, perfectly recovered, which is what the optimized engine used to
     report.
     """
-    folder = 'data_folder/reference/defect_cases/overlapping_rules'
+    folder = 'data/reference/defect_cases/overlapping_rules'
     expected = {('F2_dismantled', 'BEV', 'Harness'): 640.0,
                 ('F2_dismantled', 'HEV', 'Harness'): 600.0}
 
@@ -730,7 +730,7 @@ def test_scenario_is_matched_exactly() -> None:
     'BAU_high' and it returned 90 t -- silently running a different scenario
     than the one asked for.
     """
-    folder = 'data_folder/reference/defect_cases/scenario_prefix'
+    folder = 'data/reference/defect_cases/scenario_prefix'
     for engine in (RecoveryModelOptimized, RecoveryModelLA):
         solution = solve(engine, folder)
         rows = solution[(solution['Stock/Flow ID'] == 'F2')
@@ -751,7 +751,7 @@ def test_a_scenario_must_be_chosen() -> None:
     """
     from src.validate_inputs import InputDataError
 
-    folder = 'data_folder/reference/defect_cases/scenario_prefix'
+    folder = 'data/reference/defect_cases/scenario_prefix'
     try:
         RecoveryModelOptimized(data_folder=folder, layer_names=LAYER_NAMES,
                                scenario='', years=REFERENCE_YEARS)
@@ -780,7 +780,7 @@ def test_years_can_be_narrowed() -> None:
     """
     from src.validate_inputs import InputDataError
 
-    folder = 'data_folder/reference/defect_cases/year_range'   # annual, 2020 to 2070
+    folder = 'data/reference/defect_cases/year_range'   # annual, 2020 to 2070
     expected = {
         '': [str(y) for y in range(2020, 2071)],
         '2040': ['2040'],
@@ -818,7 +818,7 @@ def test_validation_rejects_a_same_layer_transformation() -> None:
     from src.validate_inputs import InputDataError, validate
 
     try:
-        validate('data_folder/reference/defect_cases/same_layer_key')
+        validate('data/reference/defect_cases/same_layer_key')
     except InputDataError as error:
         assert "'C1' -> 'C2'" in str(error), f'error does not name both keys: {error}'
     else:
@@ -853,7 +853,7 @@ _REPRODUCIBILITY_PROBE = """
 import hashlib, os, sys
 sys.path.insert(0, os.getcwd())
 from src.recovery_model_LA import RecoveryModelLA
-model = RecoveryModelLA(data_folder='data_folder/reference/basic_test',
+model = RecoveryModelLA(data_folder='data/reference/basic_test',
                         layer_names=['product', 'component', 'material', 'element'],
                         working_unit='Mg', years='')
 frame = model.solve_models_and_write_to_output()
@@ -1309,7 +1309,7 @@ def test_two_scenarios_cannot_share_a_figure_folder() -> None:
     """
     from src.figure_style import folder_for
 
-    case = 'data_folder/battery'
+    case = 'data/battery'
     plain = folder_for('figures', case)
     assert plain == os.path.join('figures', 'battery'), plain
 
@@ -1319,7 +1319,7 @@ def test_two_scenarios_cannot_share_a_figure_folder() -> None:
         assert folder == os.path.join(plain, scenario), folder
 
     # and a second case is still somewhere else entirely
-    assert folder_for('figures', 'data_folder/bev_electronics_wiring', 'S1') \
+    assert folder_for('figures', 'data/bev_electronics_wiring', 'S1') \
         != folders['S1']
 
 

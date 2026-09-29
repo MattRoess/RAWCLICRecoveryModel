@@ -53,17 +53,17 @@ class RunParams:
     #  WHICH PIPELINE RUNS.  Set it here, then press Run on the stages in
     #  order: 00, 01, 02, 03 -- or 99 to run the checks and the pipeline.
     #
-    #    'data_folder/bev_electronics_wiring'  04_02  the wiring and the
+    #    'data/bev_electronics_wiring'  04_02  the wiring and the
     #                                                motors, as MATERIALS:
     #                                                copper, alalloy, fealloy
-    #    'data_folder/bev_electronics_boards'  04_02  the boards and the
+    #    'data/bev_electronics_boards'  04_02  the boards and the
     #                                                sensors, as ELEMENTS:
     #                                                Au, Ag, Pd, Cu, Nd
-    #    'data_folder/carcomposition_mockup'   04_01  whole cars, five
+    #    'data/carcomposition_mockup'   04_01  whole cars, five
     #                                                drivetrains, as MATERIALS
-    #    'data_folder/battery'                 04_04  the pack, as ELEMENTS
+    #    'data/battery'                 04_04  the pack, as ELEMENTS
     #                                                within COMPONENTS
-    #    'data_folder/tractionmotor'           04_03  the fleet: motors
+    #    'data/tractionmotor'           04_03  the fleet: motors
     #                                                removed and disassembled,
     #                                                the rest shredded in the
     #                                                hulk, split at the
@@ -73,8 +73,8 @@ class RunParams:
     #  every one of them, in the order written, exactly as a case set up with
     #  scenarios runs all of its scenarios:
     #
-    #      data_folder = 'data_folder/bev_electronics_wiring; '
-    #                    'data_folder/bev_electronics_boards'
+    #      data_folder = 'data/bev_electronics_wiring; '
+    #                    'data/bev_electronics_boards'
     #
     #  STILL ONE STUDY PER CASE. They are different networks with different
     #  coefficients and different layers, so each one is solved, written and
@@ -94,7 +94,7 @@ class RunParams:
     # One folder holding an `input_data/`, written from the project root, or
     # several separated by semicolons.
     # SAFE TO CHANGE: yes -- this is the setting that changes on most runs.
-    data_folder: str = 'data_folder/tractionmotor'
+    data_folder: str = 'data/tractionmotor'
 
     # WHICH SCENARIO TO RUN.  Blank runs every scenario the case declares.
     #
@@ -219,12 +219,12 @@ class DataParams:
     export with a different shape. So every setting below marked BY CASE is
     really the case's business, and a case states it in its own file:
 
-        data_folder/<case>/input_data/source.csv
+        data/<case>/input_data/source.csv
 
     Running the other one is then naming it, with nothing here touched:
 
-        ./.venv/bin/python stages/02_run_model.py data_folder/carcomposition_mockup
-        ./.venv/bin/python stages/03_run_monte_carlo.py data_folder/bev_electronics_wiring
+        ./.venv/bin/python stages/02_run_model.py data/carcomposition_mockup
+        ./.venv/bin/python stages/03_run_monte_carlo.py data/bev_electronics_wiring
 
     The values here are what a case gets if it says nothing. Keeping them is
     what lets an older case with no source.csv keep working; relying on them
@@ -520,10 +520,10 @@ class CombineParams:
     # WHICH CASES ARE ADDED. Any number; battery packs and drivetrains join by
     # being listed here once they have a case folder of their own.
     # SAFE TO CHANGE: yes. A folder that does not exist is named and refused.
-    cases: tuple[str, ...] = ('data_folder/bev_electronics_wiring',
-                              'data_folder/bev_electronics_boards',
-                              'data_folder/battery',
-                              'data_folder/tractionmotor')
+    cases: tuple[str, ...] = ('data/bev_electronics_wiring',
+                              'data/bev_electronics_boards',
+                              'data/battery',
+                              'data/tractionmotor')
 
     # ******************************************************************
     #  WHICH METALS ARE DRAWN.  Every one of them, every time 04 is run:
@@ -629,7 +629,7 @@ class Params:
         folders = [part.strip() for part in self.run.data_folder.split(';')
                    if part.strip()]
         if not folders:
-            issues.append('data_folder is empty -- it needs the name of a case folder')
+            issues.append('data is empty -- it needs the name of a case folder')
 
         from src.units import AMBIGUOUS_UNITS, MASS_UNITS
         if self.run.working_unit not in MASS_UNITS:
@@ -693,14 +693,14 @@ STUDY_VARIABLE = 'RECOVERY_STUDY'
 
 STUDIES: dict[str, dict] = {
     'electronics': {
-        'run.data_folder': ('data_folder/bev_electronics_wiring; '
-                            'data_folder/bev_electronics_boards'),
+        'run.data_folder': ('data/bev_electronics_wiring; '
+                            'data/bev_electronics_boards'),
         'run.scenario': '',
         'figures.resources': ('copper', 'alalloy', 'fealloy',
                               'Ag', 'Au', 'Pd', 'Cu', 'Ni'),
     },
     'tractionmotors': {
-        # ⚠️ ONE CASE, ONE ANSWER. `data_folder/tractionmotor` runs BOTH
+        # ⚠️ ONE CASE, ONE ANSWER. `data/tractionmotor` runs BOTH
         # roads at once: motors that are removed are disassembled, motors that
         # are not stay in the hulk and are shredded with it. There used to be
         # four cases, each sending 100% of the motors one way, which meant four
@@ -714,7 +714,7 @@ STUDIES: dict[str, dict] = {
         # The pure routes are still reachable: pin `removal` in
         # `tools/build_tractionmotor_case.py` to (1,1,1) for disassembly only
         # or (0,0,0) for shredder only, and rebuild.
-        'run.data_folder': 'data_folder/tractionmotor',
+        'run.data_folder': 'data/tractionmotor',
         # ⚠️ NO SCENARIO, AND SO NO SCENARIO FOLDER. This used to say `mix`,
         # which put every output one level deeper -- `figures/tractionmotor/
         # mix/`, `output_data/mix/` -- a folder with exactly one thing in it
@@ -750,7 +750,7 @@ STUDIES: dict[str, dict] = {
         'figures.resources': ('magnet', 'Nd', 'Pr', 'Dy', 'Tb', 'copper'),
     },
     'batteries': {
-        'run.data_folder': 'data_folder/battery',
+        'run.data_folder': 'data/battery',
         'run.scenario': '',          # blank: S1, S2 and S3
         'figures.resources': ('Cu', 'Ni', 'Co', 'Li'),
     },

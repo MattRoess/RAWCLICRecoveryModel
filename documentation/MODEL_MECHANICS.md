@@ -1,7 +1,7 @@
 # Model mechanics
 
 How the model computes a result. Reconstructed by reading the code and
-verifying each claim against `data_folder/reference/basic_test`; none of this was
+verifying each claim against `data/reference/basic_test`; none of this was
 previously written down. The input *schema* is documented in
 `../doc/User guide.docx` — this document is about behaviour.
 

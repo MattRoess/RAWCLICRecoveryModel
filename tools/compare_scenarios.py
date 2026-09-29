@@ -4,7 +4,7 @@ compare_scenarios.py
 
 Put a case's SCENARIOS side by side, each solved in its own right.
 
-    ./.venv/bin/python tools/compare_scenarios.py data_folder/battery
+    ./.venv/bin/python tools/compare_scenarios.py data/battery
 
 NOT a numbered step. One run is one scenario -- `src/selection.chosen_scenario`
 refuses to guess -- so comparing them is analysis, and this does it by SOLVING

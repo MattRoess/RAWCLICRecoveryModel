@@ -19,7 +19,7 @@ another stage's coefficients and no check anywhere notices.
 ## A case folder
 
 ```
-data_folder/<case>/input_data/
+data/<case>/input_data/
     case.xlsx       one workbook, three sheets
         source      where the numbers come from, and how they map to layers
         processes   the flow network
@@ -34,9 +34,9 @@ one while the model reads the other.
 Running it is naming it:
 
 ```bash
-./.venv/bin/python stages/01_check_inputs.py    data_folder/carcomposition_mockup
-./.venv/bin/python stages/02_run_model.py       data_folder/carcomposition_mockup
-./.venv/bin/python stages/03_run_monte_carlo.py data_folder/carcomposition_mockup
+./.venv/bin/python stages/01_check_inputs.py    data/carcomposition_mockup
+./.venv/bin/python stages/02_run_model.py       data/carcomposition_mockup
+./.venv/bin/python stages/03_run_monte_carlo.py data/carcomposition_mockup
 ```
 
 With no argument each uses `run.data_folder`, so the everyday case still runs
@@ -50,17 +50,17 @@ Switching between 04_01 and 04_02 is naming the folder. **Nothing in
 ### 04_02 — BEV electronics
 
 ```bash
-./.venv/bin/python stages/01_check_inputs.py    data_folder/bev_electronics_wiring
-./.venv/bin/python stages/02_run_model.py       data_folder/bev_electronics_wiring
-./.venv/bin/python stages/03_run_monte_carlo.py data_folder/bev_electronics_wiring
+./.venv/bin/python stages/01_check_inputs.py    data/bev_electronics_wiring
+./.venv/bin/python stages/02_run_model.py       data/bev_electronics_wiring
+./.venv/bin/python stages/03_run_monte_carlo.py data/bev_electronics_wiring
 ```
 
 ### 04_01 — car composition
 
 ```bash
-./.venv/bin/python stages/01_check_inputs.py    data_folder/carcomposition_mockup
-./.venv/bin/python stages/02_run_model.py       data_folder/carcomposition_mockup
-./.venv/bin/python stages/03_run_monte_carlo.py data_folder/carcomposition_mockup
+./.venv/bin/python stages/01_check_inputs.py    data/carcomposition_mockup
+./.venv/bin/python stages/02_run_model.py       data/carcomposition_mockup
+./.venv/bin/python stages/03_run_monte_carlo.py data/carcomposition_mockup
 ```
 
 With no folder argument each uses `run.data_folder`, so the everyday case runs
@@ -124,11 +124,11 @@ resource left without coefficients.
 | 04_01 car composition | `tools/make_carcomposition_tcs.py` | the same rows **already filled with invented numbers** |
 
 ```bash
-./.venv/bin/python tools/make_skeleton.py data_folder/bev_electronics_wiring
+./.venv/bin/python tools/make_skeleton.py data/bev_electronics_wiring
 ```
 
 ```bash
-./.venv/bin/python tools/make_carcomposition_tcs.py data_folder/carcomposition_mockup
+./.venv/bin/python tools/make_carcomposition_tcs.py data/carcomposition_mockup
 ```
 
 **`make_skeleton.py` merges, and deletes nothing.** Re-run it whenever the case
@@ -611,7 +611,7 @@ be computed around it.
 1. Upstream: a year-sliced `.npy` export, mirroring the one in
    `04_02_BEVelectronics.py`. Whole-run pickles are tens of GB; a year slice is
    under one.
-2. Here: `mkdir data_folder/<case>/input_data`, write the three files, run it.
+2. Here: `mkdir data/<case>/input_data`, write the three files, run it.
 
 No code change, unless the new stage's children sit at a layer neither
 `element` nor `material` describes — in which case `src/source.py` gains a

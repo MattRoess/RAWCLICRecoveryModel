@@ -4,7 +4,7 @@ process does. Nothing is scaled by mass -- this is the diagram for
 understanding the setup, not for reading quantities off.
 
     ./.venv/bin/python tools/plot_structure.py                    # the case in params_schema.py
-    ./.venv/bin/python tools/plot_structure.py data_folder/reference/basic_test
+    ./.venv/bin/python tools/plot_structure.py data/reference/basic_test
     ./.venv/bin/python tools/plot_structure.py --list
 
 Everything about the output -- which formats, which resolution, which palette --
@@ -30,7 +30,7 @@ from matplotlib.path import Path
 from src.figure_style import MONO, PALETTE, canvas, folder_for, label, write
 from src.params_schema import Params, current
 
-SEARCH_ROOTS = ('data_folder', '.')
+SEARCH_ROOTS = ('data', '.')
 
 
 # --------------------------------------------------------------------------
@@ -41,7 +41,7 @@ def find_cases(roots=SEARCH_ROOTS) -> list[str]:
     """
     Every folder under the roots that holds an input_data/TCs.csv.
 
-    The roots overlap ('.' contains 'data_folder'), so paths are normalised
+    The roots overlap ('.' contains 'data'), so paths are normalised
     before de-duplicating or the same case is listed twice under two spellings.
     """
     found = set()

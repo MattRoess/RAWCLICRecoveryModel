@@ -1,6 +1,6 @@
 # The battery recycling study
 
-**The source for `data_folder/battery`.** It lives here, inside the repository,
+**The source for `data/battery`.** It lives here, inside the repository,
 for the same reason the traction motor study does: a document that only exists
 in `~/Downloads` is a document the next session cannot check a coefficient
 against.
@@ -12,7 +12,7 @@ against.
 | `1-s2.0-S0956053X2600543X-main.pdf` | a journal article, *not* the study — see below |
 
 ⚠️ **THE JOURNAL ARTICLE IS NOT THE STUDY.** `1-s2.0-...` had been sitting
-loose in `data_folder/battery/` since the case was built, with nothing saying
+loose in `data/battery/` since the case was built, with nothing saying
 what it was or which coefficient it supported. It was moved here on 2026-09-29
 after being mistaken, by me, for the source document. It is a cited paper
 beside the study, not the study.
