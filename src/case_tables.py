@@ -40,6 +40,7 @@ import contextlib
 import os
 import warnings
 
+import numpy as np
 import pandas as pd
 
 WORKBOOK = 'case.xlsx'
@@ -88,21 +89,50 @@ class ImprovementError(ValueError):
     """Raised when a case's two coefficient tables do not describe one case."""
 
 
-def _weight(year: int, start: int, end: int) -> float:
-    """How far along the improvement this year sits: 0 before it, 1 after."""
+def _weight(year: int, start: int, end: int, after: str = 'hold') -> float:
+    """
+    How far along the improvement this year sits. 0 at `start`, 1 at `end`.
+
+    FLAT BEFORE `start`, ALWAYS. Nothing improves before the year the case
+    says improvement begins, so the weight is 0 there and the current table
+    stands. `improvement_start` is the parameter that sets it, per case, in the
+    source table.
+
+    AFTER `end`, TWO ANSWERS, and the case picks:
+
+        hold      the weight stops at 1 -- the improved table applies from
+                  `end` onwards, unchanged
+        continue  the weight keeps rising at the same rate, so 2070 is a third
+                  of a ramp beyond a 2030-2060 window and the line does not go
+                  flat at a year chosen for having a table
+
+    ⚠️ `continue` EXTRAPOLATES, so a coefficient can in principle leave [0, 1]
+    far enough out. Nothing here clamps it, on purpose: stage 01 checks every
+    year the run will solve for `0 <= min <= mode <= max <= 1` and names the
+    row that breaks it. A clamp would quietly bend one coefficient and leave
+    its group summing to something other than 1, which is worse than being
+    told the window is too short for the horizon.
+
+    Sum-to-1 survives either way. Each year is `a + (b - a) * w`, and summing
+    that over a group gives `1 + (1 - 1) * w = 1` for ANY weight -- the
+    property does not need w to be between 0 and 1.
+    """
     if year <= start:
         return 0.0
-    if year >= end:
+    if year >= end and after != 'continue':
         return 1.0
     return (year - start) / (end - start)
 
 
-def ramp(current, improved, start: int, end: int, years) -> "pd.DataFrame":
+def ramp(current, improved, start: int, end: int, years,
+         after: str = 'hold') -> "pd.DataFrame":
     """
     One coefficient table per year, on a straight line from current to improved.
 
-    Before `start` the current numbers hold; after `end` the improved ones do;
-    between, each of value_min, value and value_max moves linearly. The result
+    Before `start` the current numbers hold; between `start` and `end` each of
+    value_min, value and value_max moves linearly; after `end` the case's
+    `improvement_after_end` decides whether the improved numbers hold or the
+    same rate of change carries on. See `_weight`. The result
     carries a `Year` column, which is all the rest of the model needs: both
     engines already select their rows by year
     (`select_df_by_year_scenario_location`), so nothing downstream changes.
@@ -114,10 +144,11 @@ def ramp(current, improved, start: int, end: int, years) -> "pd.DataFrame":
     2030 and in 2060, ramped -- not two unrelated guesses. Independent draws per
     year would invent a year-to-year wobble nobody measured.
 
-    SUM-TO-1 SURVIVES BY CONSTRUCTION. Each year is a convex combination of two
-    tables whose groups each sum to 1, and a convex combination of two vectors
-    summing to 1 sums to 1. Nothing has to be renormalised, and the groups are
-    formed within a year, never across them.
+    SUM-TO-1 SURVIVES BY CONSTRUCTION. Each year is `a + (b - a) * w` over two
+    tables whose groups each sum to 1, and that sums to `1 + (1 - 1) * w = 1`
+    whatever the weight -- so it holds for `continue` past the end of the
+    window as well as inside it. Nothing has to be renormalised, and the groups
+    are formed within a year, never across them.
     """
     missing = [column for column in COEFFICIENT if column not in current.columns]
     if missing:
@@ -152,22 +183,82 @@ def ramp(current, improved, start: int, end: int, years) -> "pd.DataFrame":
     # them would otherwise ramp a coefficient towards a different coefficient.
     improved = improved.set_index(right).loc[left].reset_index(drop=True)
 
+    numbers = {column: (pd.to_numeric(current[column], errors='coerce'),
+                        pd.to_numeric(improved[column], errors='coerce'))
+               for column in RAMPED
+               if column in current.columns and column in improved.columns}
+    room = _headroom(current, numbers) if after == 'continue' else None
+
     blocks = []
     for year in years:
         block = current.copy()
-        weight = _weight(int(year), start, end)
-        for column in RAMPED:
-            if column not in current.columns or column not in improved.columns:
-                continue
-            a = pd.to_numeric(current[column], errors='coerce')
-            b = pd.to_numeric(improved[column], errors='coerce')
-            mixed = a + (b - a) * weight
+        weight = _weight(int(year), start, end, after)
+        # Past the end of the window, no group may be carried further than its
+        # own coefficients can go. See `_headroom`.
+        per_row = (np.minimum(weight, room) if room is not None and weight > 1
+                   else weight)
+        for column, (a, b) in numbers.items():
+            mixed = a + (b - a) * per_row
             # A blank bound is a definitional row with no range. Blank in either
             # table stays blank rather than becoming a number out of nowhere.
             block[column] = mixed.where(a.notna() & b.notna(), current[column])
         block['Year'] = str(year)
         blocks.append(block)
     return pd.concat(blocks, ignore_index=True)
+
+
+# The columns that make one sum-to-1 group: every coefficient moving the same
+# resource out of the same flow. Stage 01 totals on exactly these.
+GROUP = ['Input_FlowID', 'TC_target_layer', 'TC_target_key']
+
+
+def _headroom(current, numbers) -> "np.ndarray":
+    """
+    How far past `improvement_end` each row's GROUP can be carried, at most.
+
+    ⚠️ CAPPED PER GROUP, NOT PER ROW, and this is the whole subtlety. A group's
+    coefficients must sum to 1, which survives any weight only while every row
+    in the group shares ONE weight. Capping row by row would hold one member
+    back while its neighbours moved on, and the group would stop summing to 1 --
+    mass created or destroyed, silently.
+
+    So the cap is the group's: the largest weight at which no member of it
+    leaves [0, 1]. A rising coefficient runs out at `(1 - a) / (b - a)`, a
+    falling one at `a / (a - b)`, and one that does not move never runs out.
+    The group is carried to the first of those, and holds there.
+
+    WHY IT IS NEEDED AT ALL. `improvement_after_end = continue` extrapolates,
+    and some groups are already finished at the end of the window. The shredder
+    route's magnet is one: the review's four fates for shredded NdFeB --
+    recovered, to ferrous, to non-ferrous, to residue -- sum to 0.920 in 2030
+    and to exactly 1.000 in 2060, leaving nothing unassigned. Carried past 2060
+    the unassigned remainder goes NEGATIVE, which is where eight rows failed
+    stage 01 on 2026-09-29 before this existed.
+
+    A group that saturates therefore holds from the year it saturates, and the
+    rest of the case carries on improving. That is the honest answer to "keep
+    improving after 2060": as far as the coefficients physically allow, and no
+    further.
+    """
+    limits = []
+    for a, b in numbers.values():
+        step = b - a
+        rising = np.where(step > 0, (1 - a) / step.where(step != 0, 1), np.inf)
+        falling = np.where(step < 0, a / (-step).where(step != 0, 1), np.inf)
+        limits.append(np.where(step > 0, rising,
+                               np.where(step < 0, falling, np.inf)))
+    per_row = np.nanmin(np.vstack(limits), axis=0) if limits else None
+    if per_row is None:
+        return np.array([])
+    per_row = np.where(np.isfinite(per_row), per_row, np.inf)
+
+    have = [column for column in GROUP if column in current.columns]
+    if not have:
+        return np.maximum(per_row, 1.0)
+    frame = current[have].astype(str).agg('|'.join, axis=1)
+    smallest = pd.Series(per_row, index=frame.index).groupby(frame).transform('min')
+    # Never below 1: the window itself is always reachable, whatever comes after.
+    return np.maximum(smallest.to_numpy(), 1.0)
 
 
 def coefficients(case: str, years, params=None) -> "pd.DataFrame":
@@ -199,7 +290,8 @@ def coefficients(case: str, years, params=None) -> "pd.DataFrame":
             f'{case} sets improvement_start {start} and improvement_end {end} '
             f'but has no {IMPROVED} table, so nothing says WHAT improves.')
 
-    return ramp(current, read(case, IMPROVED), start, end, years)
+    return ramp(current, read(case, IMPROVED), start, end, years,
+                described.get('improvement_after_end') or 'hold')
 
 
 CSV_OPTIONS = dict(keep_default_na=False, na_values=[])

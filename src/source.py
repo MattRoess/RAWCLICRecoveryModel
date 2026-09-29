@@ -115,6 +115,7 @@ FALLBACK = {
     'draws': 'draws',
     'improvement_start': None,
     'improvement_end': None,
+    'improvement_after_end': None,
     'scenario_alias': None,
 }
 
@@ -126,8 +127,17 @@ DEFAULTS = {
     'child_layer': 'element',
     'improvement_start': '',      # blank: this case does not improve over time
     'improvement_end': '',
+    # WHAT HAPPENS AFTER improvement_end. `hold` keeps the improved table from
+    # that year on; `continue` carries the same annual rate of change onwards,
+    # so the line does not go flat at a year chosen for having a table.
+    #
+    # `hold` is the default because it is what every case did before
+    # 2026-09-29, so no existing result moves by adding this key.
+    'improvement_after_end': 'hold',
     'scenario_alias': '',         # blank: this case's folders are named as the run is
 }
+
+AFTER_END = ('hold', 'continue')
 
 
 class SourceError(ValueError):
@@ -277,6 +287,16 @@ def read(case: str, params) -> dict:
             f"{path_for(case)}: improvement_start {out['improvement_start']} is "
             f"not before improvement_end {out['improvement_end']}. A ramp needs "
             f"somewhere to go.")
+
+    after = str(out['improvement_after_end']).strip().lower() or 'hold'
+    if after not in AFTER_END:
+        raise SourceError(
+            f"{path_for(case)}: improvement_after_end is "
+            f"{out['improvement_after_end']!r}, but must be one of "
+            f"{', '.join(AFTER_END)}.\n"
+            f"  hold      the improved table applies from improvement_end on\n"
+            f"  continue  the same annual rate of change carries on past it")
+    out['improvement_after_end'] = after
 
     if out['child_layer'] not in CHILD_LAYERS:
         raise SourceError(

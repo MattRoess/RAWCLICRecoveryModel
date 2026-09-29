@@ -493,6 +493,16 @@ SOURCE = pd.DataFrame([
     ('group_marker', '__component__'), ('material_suffix', None),
     ('groups', None), ('draws', 200000),
     ('improvement_start', 2030), ('improvement_end', 2060),
+    # ⚠️ FLAT UNTIL 2030, THEN IT NEVER GOES FLAT AGAIN. `improvement_start`
+    # holds the 2030 table until 2030 -- nothing improves before the year the
+    # study says improvement begins. `continue` then carries the 2030-2060
+    # rate of change past 2060 instead of stopping dead there: 2060 is the year
+    # the review happens to publish a second table, not the year recycling
+    # stops getting better. Asked for on 2026-09-29.
+    #
+    # Over this horizon that is one extra third of a ramp (2070 is weight
+    # 1.33). Stage 01 checks every solved year stays inside [0, 1].
+    ('improvement_after_end', 'continue'),
     # ⚠️ SO 05 CAN ADD THIS CASE. `05_combine_cases.py` runs over the
     # BATTERY's scenarios, S1/S2/S3, and asks every case for each of them in
     # turn. This case has one export, `mix` -- the magnet grade drawn per draw
