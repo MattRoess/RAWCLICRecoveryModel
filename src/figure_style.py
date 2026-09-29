@@ -117,16 +117,23 @@ def folder_for(out_dir: str, case: str, scenario: str = '') -> str:
 # open answers the question, and the rest is one directory further in for when
 # a number needs chasing.
 #
+#     structure      the network itself: what flows where, and at what rate
 #     over_time      what comes back per year, with its 95% band
 #     recovery_rate  the share of what was collected
 #     account        the whole account -- in, out, recovered, lost, never collected
 #     losses         why it does not come back, and how much of each reason
+#     fleet          the total mass in the fleet, and when recovery counts
 #     total          the Sankey: where the mass actually went
 #     pdf_all        every resource's distribution on one page
 #
+# ⚠️ `structure` WAS IN `detail/` AND THAT WAS WRONG. It is the schema -- the
+# picture of what the case IS -- so it is the first thing to look at and not
+# something to go one directory deeper for. Said on 2026-09-29: *"why the hell
+# do you not show the schema in the top level figures."*
+#
 # A stem not named here is detail, so a new figure lands in `detail/` unless
 # somebody decides it belongs in the six.
-ESSENTIAL = ('over_time', 'recovery_rate', 'total', 'pdf_all')
+ESSENTIAL = ('structure', 'over_time', 'recovery_rate', 'total', 'pdf_all')
 
 # The same, one file per resource: `account_Nd`, `losses_copper`. A grid of six
 # was unreadable, so each resource gets its own figure and they all belong at
