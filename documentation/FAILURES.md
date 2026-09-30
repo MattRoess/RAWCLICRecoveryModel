@@ -485,6 +485,16 @@ reported success, and was wrong, and he found it rather than any check of mine.
 
 ---
 
+## The record this is drawn from
+
+`DIALOG.md` holds the whole conversation, both sessions merged in time order,
+2026-08-17 to 2026-09-30 — 1,707 turns, 497 of them Matthias's. Every entry
+above can be read back to the exchange it came from, in his words rather than
+my summary of them. Kept in the repository at his instruction on 2026-09-30:
+*"I want documentation of all your failures."*
+
+---
+
 *Kept current. A new failure gets an entry on the day it is found, not at the
 next handover. If an entry here is ever fixed, the fix is named in it — an
 entry with no fix named is still open.*

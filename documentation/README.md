@@ -10,6 +10,7 @@ rather than from anyone's recollection.
 | [SETUP.md](SETUP.md) | Getting running on a new machine: Python 3.14 without conda, the venv, and Positron. Start here on a fresh Mac. |
 | [MODEL_MECHANICS.md](MODEL_MECHANICS.md) | How the model actually computes a result. The nesting rule, how composition and TCs are applied, what the two engines do differently by design. Read this first. |
 | [DEFECTS.md](DEFECTS.md) | Every defect and engine divergence found, each with a measurement and a one-command reproduction. |
+| [DIALOG.md](DIALOG.md) | The whole conversation, both sessions merged in time order, 2026-08-17 to 2026-09-30. What was said; what was run is in `git log`. |
 | [FAILURES.md](FAILURES.md) | What Claude got wrong, when, who caught it and what now stops it. Six recurring patterns at the end. |
 | [DESIGN_tc_table.md](DESIGN_tc_table.md) | How to build the TC table so that sum-to-1 holds by construction. Proposal, with a worked example in `data/reference/template`. **Both cases now have tables built this way** — what they lack is measured numbers, not structure. See CASES.md for the rules as implemented. |
 | [DESIGN_04_01_carcomposition.md](DESIGN_04_01_carcomposition.md) | What it would take to read stage 04_01 (car composition) as well as 04_02. Effort estimate, layer mapping, and a made-up TC table on the real component and material names. **Built 2026-08-21** — see `data/carcomposition_mockup`, and the document's own record of what building it proved the estimate had wrong. |
