@@ -48,6 +48,7 @@ list.
 | 24 | 09-29 | A cache inserted into the wrong function | Matthias's run | every 03 run crashed on `UnboundLocalError` |
 | 25 | 09-29 | 05's own figures buried in `detail/`, one stream named `copper` | Matthias | "what is the copper, and why is it in the details folder" |
 | 26 | 09-29 | Warned about a problem in 05 that did not exist | me | sent him into a run braced for an axis bug that was fixed in September |
+| 27 | 09-30 | Defended a band as correct that was five times too narrow | Matthias | every traction interval overconfident, and I argued it was fine |
 
 ---
 
@@ -421,12 +422,46 @@ Not a defect in the code — a defect in what I told him, which sent him into a
 run braced for a bug that had been fixed three weeks earlier.
 
 
+## 27. I defended a band that was five times too narrow — 09-30
+
+He asked why the in-fleet band on `fleet_<r>.png` was so small at the end when
+every other range widens, and whether the Monte Carlo had been done properly.
+
+I measured, and answered that it was correct: the fleet stock is
+`inflow - outflow`, both read straight from upstream, so it carries no transfer
+coefficient and only inherits the upstream's own spread of ±4.9%. I showed the
+correlation of 0.991 between inflow and outflow and called the narrow band
+arithmetically right. I then went one step further and told him the *upstream*
+was the confident one, and that this caveat applied to every case equally.
+
+**All of that was wrong, and he found it in one sentence:** the inflow is
+vehicle count times composition, the count alone has a CV of 12.1%, so the
+product cannot have a CV of 2.5%. A product of two uncertain things cannot be
+more certain than either of them.
+
+`04_03` in `RAWCLICStockAndFlow` uses the tracker's point-estimate vehicle
+counts; `04_02` uses the per-draw counts in `bev_draws/`, which sit in the same
+folder and are written by the same run. So every traction interval is about
+five times too narrow — `sqrt(12.10² + 2.53²) = 12.36%` against 2.53% — and
+the caveat I said applied everywhere applied to exactly one of the two exports.
+
+See `DEFECTS.md` 3.25.
+
+**Why this one is worth its own entry.** I did measure before answering, which
+is the habit the rest of this file exists to enforce. Measuring was not enough:
+I measured the thing I was asked about and stopped, instead of asking what the
+number had to be consistent with. A band that is too narrow looks like nothing
+at all — no check fails, no figure misdraws, the interval is simply a lie about
+precision. *Verifying a number against itself is the first pattern in this
+file, and I did it again while quoting statistics at him.*
+
+
 ## Patterns
 
-Twenty-six failures, seven shapes. The shapes repeat; the instances do not matter
+Twenty-seven failures, seven shapes. The shapes repeat; the instances do not matter
 much.
 
-**1. Verified against itself.** #7, #8, #14. A Sankey that balances, an account
+**1. Verified against itself.** #7, #8, #14, #27. A Sankey that balances, an account
 that closes by construction, a check that blends at the number it is checking.
 All three were internally consistent and all three were wrong. *A figure or a
 check that can only be tested against itself is not tested.* Every check must

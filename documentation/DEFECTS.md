@@ -1231,6 +1231,72 @@ be checked against itself is not checked.
 
 ---
 
+### 3.25 The traction motor carries no fleet uncertainty — **OPEN, UPSTREAM**
+
+⚠️ **Every interval on the traction motor is about five times too narrow.**
+Nothing in this repository is wrong; the export it reads is. Do not quote a
+traction confidence interval until this is fixed.
+
+**How it was found.** Matthias asked why the in-fleet band on `fleet_<r>.png`
+was so tight when the others widen. The answer given first — that the stock
+carries no transfer coefficient, so it only inherits the upstream's spread —
+was true and beside the point. He then put it in one line: the inflow is
+vehicle count times composition, the count alone has a CV of 12.1%, so the
+product cannot have a CV of 2.5%. *A product of two uncertain things cannot be
+more certain than either of them.*
+
+**Measured**, copper at 2070, 200,000 draws:
+
+| | CV | what varies |
+|---|---|---|
+| vehicle count, all segments | 12.10% | — |
+| wiring copper inflow (`04_02`) | 14.61% | count × composition |
+| traction copper inflow (`04_03`) | **2.53%** | composition only |
+
+Separating the wiring figure in quadrature puts its composition spread near
+8.2% against the traction motor's 2.53%, so the motor study IS about three
+times better characterised — that part is real. The other 12.1 points are not
+a characterisation difference at all: one export draws the fleet and the other
+does not.
+
+    should be   sqrt(12.10^2 + 2.53^2)  =  12.36%
+    is                                      2.53%
+
+**The mechanism.** `code/04_03_tractionmotors.py` in `RAWCLICStockAndFlow`
+loads `tracker_keyed_BAU` — the tracker's point-estimate vehicle counts — and
+`src/traction_draws.coefficients()` puts them in its deterministic matrix. Its
+own docstring says so plainly:
+
+> ⚠️ EVERYTHING DETERMINISTIC LIVES HERE AND NOTHING ELSE DOES. The vehicle
+> count, the motor-type share, the voltage share and the year factor are all
+> scalars; the only random thing in the product is the draw vector this
+> multiplies.
+
+`04_02` does the opposite: it loads `bev_draws/<scenario>/BEV_<segment>_<flow>.npy`,
+which is *(draws, years), millions of vehicles*, and pairs draw *i* of the
+fleet with draw *i* of the electronics. **The per-draw counts already exist, in
+the same folder, written by the same 03_02 run. `04_03` simply does not read
+them.**
+
+**What it affects here.** Everything the traction study reports an interval
+for: `account_<r>`, `losses_<r>`, `fleet_<r>`, the recovery rate, the Sankey's
+95% labels, `spread`, `pdf_<r>`, and the traction share of every figure
+`05_combine_cases.py` draws. Means and modes are unaffected — the point
+estimate of the vehicle count is the one the tracker gives either way. **It is
+only the spread that is wrong, and only in the direction of overconfidence.**
+
+**It also makes 05 inconsistent.** When copper is added across the four cases,
+the wiring contribution carries fleet uncertainty and the traction contribution
+does not, so the combined band is too narrow by an amount that depends on the
+mix and is stated nowhere.
+
+**The fix is not in this repository.** `04_03` would have to multiply by the
+`bev_draws` counts per draw instead of the tracker's scalars, the way `04_02`
+already does, keeping draw *i* of the fleet with draw *i* of the motor. Whether
+that alignment already holds there has not been checked.
+
+---
+
 ## 4. Code quality notes
 
 The docstrings are reasonable throughout. What is missing is not docstrings but
