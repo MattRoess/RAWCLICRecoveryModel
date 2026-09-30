@@ -222,6 +222,20 @@ def ramp(current, improved, start: int, end: int, years,
                     numeric = pd.to_numeric(block[column], errors='coerce')
                     block[column] = numeric.round(12).where(numeric.notna(),
                                                             block[column])
+        # ⚠️ ZERO-WIDTH ROWS ARE LEFT ALONE, AND AN ATTEMPT TO WIDEN THEM IS
+        # WHY THIS NOTE EXISTS. A row with min == mode == max looked like the
+        # cause of "a constrained group has no draw with any weight at all",
+        # so every such row was given 1e-6 of space. It is not the cause:
+        # `sampling.condition` counts rows with spread > 0, skips a group where
+        # none has one, and never weights a point mass -- so a point mass
+        # cannot zero a group.
+        #
+        # Widening them broke something else instead. A constrained group of a
+        # single row had spread 0 and was skipped; with 1e-6 it became "one row
+        # with a range and the rest fixed", which the sampler refuses outright,
+        # and all six cases stopped. The real fault was one row whose MODE had
+        # caught its MAX -- see `_hold_at_the_bounds`.
+
         block['Year'] = str(year)
         blocks.append(block)
     if held:
@@ -361,6 +375,37 @@ def _hold_at_the_bounds(block, group, numbers, roles=None):
         block['value'] = held.where(mode.notna(), block['value'])
         block['value_min'] = ordered_low.where(low.notna(), block['value_min'])
         block['value_max'] = ordered_high.where(high.notna(), block['value_max'])
+
+    # ⚠️ A MODE THAT HAS CAUGHT ITS OWN MAXIMUM IS GIVEN ROOM TO 1.
+    #
+    # Past the window a rising coefficient reaches the ceiling the study wrote
+    # for it and stops: the battery's cathode nickel is min 0.97, mode 0.99,
+    # max 0.99 at 2065. That row is then the widest in its group, so the
+    # sampler makes it the derived one and forces it to take `1 - the others`
+    # -- which, with the others down at 1e-6, is 0.990001 to 0.999181. Every
+    # one of those is above its maximum of 0.99, so every draw gets density
+    # zero and the run stops with "a constrained group has no draw with any
+    # weight at all".
+    #
+    # Said on 2026-09-30: *"If you are close to min == mode == max after 2060
+    # then keep the min and have mode and max == 1."* The minimum stays where
+    # the study put it, so the row keeps its spread downwards and its shape;
+    # what changes is that the top of the triangle reaches 1, which is where
+    # the extrapolated trend was heading anyway.
+    #
+    # ONLY PAST THE WINDOW, and only where the mode has actually met the
+    # maximum -- inside the window the study's own ceiling stands.
+    if {'value_min', 'value', 'value_max'} <= set(columns):
+        mode = pd.to_numeric(block['value'], errors='coerce')
+        high = pd.to_numeric(block['value_max'], errors='coerce')
+        caught = mode.notna() & high.notna() & (high - mode).abs().le(1e-12) \
+            & mode.gt(0.5)
+        if caught.any():
+            moved |= caught.fillna(False).to_numpy()
+            block['value'] = mode.mask(caught, 1.0).where(mode.notna(),
+                                                          block['value'])
+            block['value_max'] = high.mask(caught, 1.0).where(high.notna(),
+                                                              block['value_max'])
 
     # Set a group that now sums above 1 back to 1.
     if group is not None and 'value' in columns:
