@@ -1721,10 +1721,22 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = '',
         # 25% and then `_ruling` rounded that up again, so a curve reaching 5%
         # was drawn on an axis running to 12 -- the double padding wasted more
         # of the panel than the fixed 0-105 it replaced.
-        step, count = _ruling(float(np.clip(np.nanmax(high), 1e-9, 100.0)))
+        # ⚠️ 100% IS NOT A CEILING, AND THIS USED TO CLIP THE AXIS THERE.
+        # The share is recovered over what the fleet BUYS, and a fleet that has
+        # stopped growing returns more than it takes: the battery's cobalt
+        # passes 100% around 2055 and keeps going, which is the finding, not an
+        # artefact. Clipped at 100 the curve ran along the top of the panel and
+        # read as a hard limit it had hit. Said on 2026-09-30: *"why not go
+        # beyond -- there is more Co coming back than being used. This is true.
+        # It is not a hard 100%."*
+        #
+        # (The recovery rate on `account_<r>.png` IS capped at 100 and stays
+        # so: that one is recovered over COLLECTED, and nothing can come back
+        # more than once.)
+        step, count = _ruling(float(max(np.nanmax(high), 1e-9)))
         ceiling = step * count
         marked = 0
-        for place, level in enumerate((10, 25, 50, 100)):
+        for place, level in enumerate((10, 25, 50, 100, 150, 200)):
             if level > ceiling:
                 continue
             reached = _crosses(years, median, level)
@@ -1767,10 +1779,15 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = '',
                                 fontsize=13)
         contribution.set_xlabel('year', color=colours['meta'], fontsize=13)
         contribution.tick_params(colors=PALETTE[2], labelsize=14)
+        # Two lines: one title and one gloss. On one line it ran off the
+        # right edge the moment the 100% sentence grew.
         contribution.set_title(
             f'{resource}: when does recovery start contributing to what the '
-            f'fleet buys?  at 100% every new car is built from old ones',
-            color=colours['title'], fontsize=13, fontweight='bold')
+            f'fleet buys?\n'
+            f'100% = every new car could be built from old ones.  '
+            f'Above it, the fleet gives back more than it takes.',
+            color=colours['title'], fontsize=13, fontweight='bold',
+            linespacing=1.5)
 
         for panel in (stock, contribution):
             panel.tick_params(labelsize=15)
