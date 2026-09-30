@@ -49,6 +49,7 @@ list.
 | 25 | 09-29 | 05's own figures buried in `detail/`, one stream named `copper` | Matthias | "what is the copper, and why is it in the details folder" |
 | 26 | 09-29 | Warned about a problem in 05 that did not exist | me | sent him into a run braced for an axis bug that was fixed in September |
 | 27 | 09-30 | Defended a band as correct that was five times too narrow | Matthias | every traction interval overconfident, and I argued it was fine |
+| 28 | 09-30 | Answered a question about spread by measuring means, then said stop | Matthias | would have halted the real fix and started a wrong investigation |
 
 ---
 
@@ -456,9 +457,42 @@ precision. *Verifying a number against itself is the first pattern in this
 file, and I did it again while quoting statistics at him.*
 
 
+## 28. I measured means to answer a question about spread — 09-30
+
+Having established that the traction export omits the fleet count's
+uncertainty, I proposed a correction and called its first step: *check that the
+tracker's counts equal the mean of `bev_draws`.* I ran it, found they disagree
+badly before 2060 — 83% at 2035 on collected — and reported:
+
+> **Step 1 says: not well-posed. Do not proceed to step 2 yet.**
+
+**That recommendation was wrong and it was the expensive kind of wrong.** The
+correction injects spread by multiplying by `count_draw / count_mean`, a ratio
+whose mean is 1. The means can disagree by any factor at all and it changes
+nothing about whether the CV can be injected. I had invented a precondition,
+failed it, and told him to stop work on a real defect and go investigate
+something unrelated in another stage.
+
+He stopped it in one line: *"We talk about CV and not the means."*
+
+The useful measurement took two minutes once the question was the right one:
+the count CV runs 7% to 21% by year against a composition CV of 2.5%, so the
+traction intervals are 2.9x to 6.6x too narrow depending on the year.
+
+**The pattern.** #27 was answering the question asked and stopping too early.
+This is worse: substituting a question I could measure for the one that was
+asked, and then giving a confident instruction based on the substitute. The
+mean disagreement may well be a real problem -- it is now on the record as a
+separate one -- but it was not an answer to anything being asked, and dressing
+it as a blocking result cost a step of the actual work.
+
+*Before reporting a check as blocking, state what it would have to show to
+block, and confirm that is the thing being measured.*
+
+
 ## Patterns
 
-Twenty-seven failures, seven shapes. The shapes repeat; the instances do not matter
+Twenty-eight failures, seven shapes. The shapes repeat; the instances do not matter
 much.
 
 **1. Verified against itself.** #7, #8, #14, #27. A Sankey that balances, an account

@@ -1290,6 +1290,33 @@ the wiring contribution carries fleet uncertainty and the traction contribution
 does not, so the combined band is too narrow by an amount that depends on the
 mix and is stated nowhere.
 
+**HOW MUCH IS MISSING, PER YEAR.** The count dominates in every year --
+composition is 2.5-3.3% throughout, the count 7-21%:
+
+| year | composition | count | combined | too narrow by |
+|---|---|---|---|---|
+| 2020 | 3.29% | 21.43% | 21.68% | 6.6x |
+| 2030 | 2.85% | 11.86% | 12.20% | 4.3x |
+| 2040 | 2.63% | 10.56% | 10.88% | 4.1x |
+| 2050 | 2.52% | 6.94% | 7.38% | 2.9x |
+| 2060 | 2.48% | 9.33% | 9.65% | 3.9x |
+| 2070 | 2.47% | 12.23% | 12.48% | 5.0x |
+
+Neodymium is the least bad case, its composition spread being larger to begin
+with: 5.50% at 2070, combining to 13.41%.
+
+**The correction.** Multiply each exported `(draws, years)` array elementwise by
+`count_draw[draw, year] / count_mean[year]` for its flow. That ratio has mean
+1, so no mean moves -- only the spread. It composes correctly with the
+composition spread because the two are drawn independently.
+
+⚠️ THE MEANS OF THE TWO ARTEFACTS DISAGREE BEFORE 2060 -- 83% on collected at
+2035, converging to 0.08% by 2070 -- and that is a SEPARATE question. It does
+not block this correction, because the ratio's mean is 1 whatever the two
+means are. It is recorded here because it was found while looking at this, and
+because `04_02` uses the draws while `04_03` uses the tracker, so the two
+studies do not describe the same fleet before 2060.
+
 **The fix is not in this repository.** `04_03` would have to multiply by the
 `bev_draws` counts per draw instead of the tracker's scalars, the way `04_02`
 already does, keeping draw *i* of the fleet with draw *i* of the motor. Whether
