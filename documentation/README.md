@@ -10,6 +10,7 @@ rather than from anyone's recollection.
 | [SETUP.md](SETUP.md) | Getting running on a new machine: Python 3.14 without conda, the venv, and Positron. Start here on a fresh Mac. |
 | [MODEL_MECHANICS.md](MODEL_MECHANICS.md) | How the model actually computes a result. The nesting rule, how composition and TCs are applied, what the two engines do differently by design. Read this first. |
 | [DEFECTS.md](DEFECTS.md) | Every defect and engine divergence found, each with a measurement and a one-command reproduction. |
+| [SPEC_04_03_sample_the_count.md](SPEC_04_03_sample_the_count.md) | For RAWCLICStockAndFlow: `04_03` does not sample the vehicle count, so every traction interval is 3-7x too narrow. The change, and everything else still a scalar. |
 | [DIALOG.md](DIALOG.md) | The whole conversation, both sessions merged in time order, 2026-08-17 to 2026-09-30. What was said; what was run is in `git log`. |
 | [FAILURES.md](FAILURES.md) | What Claude got wrong, when, who caught it and what now stops it. Six recurring patterns at the end. |
 | [DESIGN_tc_table.md](DESIGN_tc_table.md) | How to build the TC table so that sum-to-1 holds by construction. Proposal, with a worked example in `data/reference/template`. **Both cases now have tables built this way** — what they lack is measured numbers, not structure. See CASES.md for the rules as implemented. |
