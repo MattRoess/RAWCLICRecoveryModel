@@ -125,7 +125,7 @@ def _weight(year: int, start: int, end: int, after: str = 'hold') -> float:
 
 
 def ramp(current, improved, start: int, end: int, years,
-         after: str = 'hold') -> "pd.DataFrame":
+         after: str = 'hold', roles: dict | None = None) -> "pd.DataFrame":
     """
     One coefficient table per year, on a straight line from current to improved.
 
@@ -202,9 +202,26 @@ def ramp(current, improved, start: int, end: int, years,
             # table stays blank rather than becoming a number out of nowhere.
             block[column] = mixed.where(a.notna() & b.notna(), current[column])
         if weight > 1:
-            block, capped = _hold_at_the_bounds(block, group, numbers)
+            block, capped = _hold_at_the_bounds(block, group, numbers, roles)
             if capped:
                 held[int(year)] = capped
+            # ⚠️ AND THE FLOAT DUST IS SWEPT UP. The steps above are each exact
+            # in their own terms and the arithmetic between them is not: the
+            # battery's loss row takes a shortfall of `1 - 0.99`, which is
+            # 0.010000000000000009, and lands 4e-17 above a maximum of 0.01.
+            # `numeric_bounds` round-trips the bounds through strings on the
+            # way to the checker and the dust survives in one column and not
+            # the other, so the row is rejected for being 0.000000000000000044
+            # out of range.
+            #
+            # Twelve decimals keeps every digit any of these coefficients
+            # means -- the builders round to six -- and leaves nothing for the
+            # exact comparison in stage 01 to trip over.
+            for column in RAMPED:
+                if column in block.columns:
+                    numeric = pd.to_numeric(block[column], errors='coerce')
+                    block[column] = numeric.round(12).where(numeric.notna(),
+                                                            block[column])
         block['Year'] = str(year)
         blocks.append(block)
     if held:
@@ -240,7 +257,7 @@ GROUP = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
          'TC_target_layer', 'TC_target_key']
 
 
-def _hold_at_the_bounds(block, group, numbers):
+def _hold_at_the_bounds(block, group, numbers, roles=None):
     """
     Past the window, a share that would leave [0, 1] is held at the bound.
 
@@ -309,6 +326,64 @@ def _hold_at_the_bounds(block, group, numbers):
         block['value'] = (mode / total).where(over & mode.notna(), block['value'])
         moved |= over.fillna(False).to_numpy()
 
+    # ⚠️ AND A GROUP THAT NOW SUMS BELOW 1 GIVES THE SHORTFALL TO ITS LOSS
+    # FLOW. Holding a coefficient at a bound takes mass out of its group, and
+    # a group summing to 0.99 is a group destroying 1% of what enters it --
+    # which stage 01 refuses, rightly.
+    #
+    # The battery is the plain case. `F_cells cathodeActiveMaterial -> Ni`
+    # recovers 0.99 and loses the rest; the review caps recovery at 0.99 and
+    # the mode reaches it by 2060, so past that the recovered coefficient is
+    # held at 0.99 and the loss row, falling, is clipped to 0. The group then
+    # sums to 0.99 and 1% of the nickel exists in 2065 and not in 2070.
+    #
+    # It goes to the LOSS flow because that is what the missing mass IS: what
+    # is not recovered is lost. Not spread across the group -- that would move
+    # recovered coefficients nobody clipped, to hide the clipping. Decided on
+    # 2026-09-30: *"put the shortfall on the loss flow."*
+    #
+    # Several loss flows in one group share it equally. A group with NO loss
+    # flow keeps its shortfall and stage 01 reports it: there is nowhere
+    # honest to put it, and inventing a home would be the silent kind of wrong.
+    if group is not None and roles and 'Output_FlowID' in block.columns:
+        mode = pd.to_numeric(block['value'], errors='coerce')
+        total = mode.groupby(group).transform('sum')
+        short = (1.0 - total).where(total.lt(1.0 - 1e-12), 0.0)
+        loss = block['Output_FlowID'].astype(str).map(
+            lambda flow: roles.get(flow) == 'loss')
+        per_group = loss.astype(float).groupby(group).transform('sum')
+        share = (short / per_group).where(loss & per_group.gt(0), 0.0)
+        if share.abs().gt(1e-12).any():
+            raised = (mode + share).clip(lower=0.0, upper=1.0)
+            moved |= (raised - mode).abs().gt(1e-12).fillna(False).to_numpy()
+            block['value'] = raised.where(mode.notna(), block['value'])
+            # The bound follows the value it now has to contain, rather than
+            # the value being pushed back under a bound and the mass lost
+            # again.
+            if 'value_max' in block.columns:
+                high = pd.to_numeric(block['value_max'], errors='coerce')
+                block['value_max'] = np.maximum(high, raised).where(
+                    high.notna(), block['value_max'])
+
+    # ⚠️ THE INVARIANT IS ASSERTED ONCE, AT THE END. Each step above preserves
+    # `min <= mode <= max` on its own, and between them floating point does
+    # not: the battery's loss row takes a shortfall of `1 - 0.99`, which is
+    # 0.010000000000000009, and lands 4e-17 above a maximum of 0.01. Stage 01
+    # compares exactly and is right to -- but the fault is arithmetic noise,
+    # not a coefficient out of range.
+    #
+    # So rather than each step defending the invariant against the next, the
+    # bounds are widened to whatever the mode actually is, last. It moves a
+    # bound by less than 1e-16 in the float case and is exact in every other.
+    if {'value_min', 'value', 'value_max'} <= set(columns):
+        mode = pd.to_numeric(block['value'], errors='coerce')
+        low = pd.to_numeric(block['value_min'], errors='coerce')
+        high = pd.to_numeric(block['value_max'], errors='coerce')
+        block['value_min'] = np.minimum(low, mode).where(
+            low.notna() & mode.notna(), block['value_min'])
+        block['value_max'] = np.maximum(high, mode).where(
+            high.notna() & mode.notna(), block['value_max'])
+
     names = []
     if moved.any():
         have = [c for c in ('Input_FlowID', 'Output_FlowID', 'TC_target_key')
@@ -348,8 +423,10 @@ def coefficients(case: str, years, params=None) -> "pd.DataFrame":
             f'{case} sets improvement_start {start} and improvement_end {end} '
             f'but has no {IMPROVED} table, so nothing says WHAT improves.')
 
+    from src.rest import flow_roles          # imported here: rest imports this
     return ramp(current, read(case, IMPROVED), start, end, years,
-                described.get('improvement_after_end') or 'hold')
+                described.get('improvement_after_end') or 'hold',
+                roles=flow_roles(case))
 
 
 CSV_OPTIONS = dict(keep_default_na=False, na_values=[])

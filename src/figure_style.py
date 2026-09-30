@@ -117,7 +117,8 @@ def folder_for(out_dir: str, case: str, scenario: str = '') -> str:
 # open answers the question, and the rest is one directory further in for when
 # a number needs chasing.
 #
-#     structure      the network itself: what flows where, and at what rate
+#     structure                the network: what flows where
+#     structure_coefficients   the number on every one of its arrows
 #     over_time      what comes back per year, with its 95% band
 #     recovery_rate  the share of what was collected
 #     account        the whole account -- in, out, recovered, lost, never collected
@@ -133,8 +134,8 @@ def folder_for(out_dir: str, case: str, scenario: str = '') -> str:
 #
 # A stem not named here is detail, so a new figure lands in `detail/` unless
 # somebody decides it belongs in the six.
-ESSENTIAL = ('structure', 'coefficients', 'over_time', 'recovery_rate',
-             'total', 'pdf_all')
+ESSENTIAL = ('structure', 'structure_coefficients', 'over_time',
+             'recovery_rate', 'total', 'pdf_all')
 
 # The same, one file per resource: `account_Nd`, `losses_copper`. A grid of six
 # was unreadable, so each resource gets its own figure and they all belong at

@@ -225,8 +225,10 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light',
             position[node] = (left + index * (box_w + col_gap), top + offset + i * (box_h + gap_y))
 
     label(axes, left, 26, f'{case} — how the flows connect', 17, colours['title'], 'bold')
-    label(axes, left, 50, f'Structure only, nothing scaled by mass. {len(nodes)} flows, '
-                          f'{len(edges)} processes, {len(tcs)} transfer coefficients.',
+    label(axes, left, 50, f'Page 1 of 2.  Structure only, nothing scaled by '
+                          f'mass. {len(nodes)} flows, {len(edges)} processes, '
+                          f'{len(tcs)} transfer coefficients -- the numbers '
+                          f'themselves are on structure_coefficients.png.',
           12.5, colours['sub'])
 
     placed: list[tuple[float, float]] = []
@@ -279,8 +281,15 @@ def render(tcs: pd.DataFrame, case: str, theme: str = 'light',
 #
 # Two files now, both at the top level of the case's folder:
 #
-#     structure.png      what connects to what
-#     coefficients.png   the number on every arrow, with its range and source
+#     structure.png                what connects to what
+#     structure_coefficients.png   the number on every arrow, with its range
+#                                  and its source
+#
+# ⚠️ THE SECOND NAME CARRIES THE FIRST. Called plainly `coefficients.png` it
+# sat in the folder with nothing to say it belonged to the diagram, and sorted
+# nowhere near it. Said on 2026-09-30: *"one does not understand that the
+# coefficients belong to the structure."* Sharing the stem puts them side by
+# side in any listing and says what they are without opening either.
 #
 # Neither is a detail, and neither has to be shrunk to make room for the other.
 TABLE_COLUMNS = 3
@@ -308,11 +317,13 @@ def render_coefficients(tcs: pd.DataFrame, case: str, theme: str = 'light'):
     width, height = 1920, top + tallest * 15 + 40
     figure, axes, colours = canvas(width, height, theme)
 
-    label(axes, left, 26, f'{case} — the number on every arrow', 17,
+    label(axes, left, 26,
+          f'{case} — how the flows connect: the number on every arrow', 17,
           colours['title'], 'bold')
     label(axes, left, 50,
-          f'{len(edges)} processes, {len(tcs)} transfer coefficients.  '
-          f'The diagram they belong to is structure.png.',
+          f'Page 2 of 2.  The diagram these belong to is structure.png -- '
+          f'same case, same {len(edges)} processes, and these are the '
+          f'{len(tcs)} transfer coefficients behind its arrows.',
           12.5, colours['sub'])
 
     span = (width - 2 * left) / TABLE_COLUMNS
@@ -359,8 +370,8 @@ def draw(target: str | None = None, params: Params | None = None) -> None:
     for stem, figure in (
             ('structure', render(tcs, case, theme=params.figures.theme,
                                  roles=flow_roles(folder))),
-            ('coefficients', render_coefficients(tcs, case,
-                                                 theme=params.figures.theme))):
+            ('structure_coefficients',
+             render_coefficients(tcs, case, theme=params.figures.theme))):
         written += write(figure, root, stem,
                          params.figures.enabled(), params.figures.dpi)
         plt.close(figure)
