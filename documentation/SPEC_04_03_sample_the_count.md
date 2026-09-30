@@ -4,7 +4,14 @@
 where the defect was found and measured; see `DEFECTS.md` 3.25 and
 `FAILURES.md` 27–28.
 
-**Status: not started. Nothing in either repository has been changed for it.**
+**Status: IMPLEMENTED 2026-09-30**, `RAWCLICStockAndFlow` commit `8e4b4e3`.
+Stage `04_03` has not been re-run, so the arrays on disk are still the old ones.
+
+⚠️ **AND IT WAS ALREADY KNOWN.** This was proved in that repository on
+2026-09-22 — `code/proof_0403_vehicle_draws.py`, with the finding written up in
+its `documentation/HANDOVER.md`. This specification rediscovered it. Read that
+handover first; it is the primary record and it settles things this document
+originally got wrong.
 
 ---
 
@@ -53,9 +60,18 @@ The count dominates in every single year. Neodymium is the least bad case
 because its own composition spread is larger — 5.50% at 2070, combining to
 13.41% — and even there the count is the bigger term.
 
-**Only the spread is wrong.** Every mean and mode is unaffected: the tracker's
-count is the mean of the draws for `inflow` to within 0.00%. The error is
-overconfidence, which is why nothing fails and no figure misdraws.
+**The spread is wrong, and the means are too.** ⚠️ This document originally
+said means were unaffected and must not move. That was wrong, and it had
+already been settled here on 2026-09-22:
+
+> Outflow is a nonlinear function of the drawn lifetime, so
+> `E[outflow(λ)] ≠ outflow(E[λ])`. The tracker is one deterministic run at the
+> point lifetime and therefore CANNOT equal the Monte Carlo mean. The draws are
+> the correct quantity; the tracker's collected is **biased high by 2–6%**.
+
+So the drawn count REPLACES the tracker's, and the medians move: `inflow`
+−0.5%, `collected` −6.9% at 2040 and −2.7% at 2060. Holding the means fixed
+would preserve a measured bias and call it an uncertainty fix.
 
 ## 3. What must NOT be done
 
@@ -138,12 +154,17 @@ Put it in the docstring of whatever does the scaling, not in a commit message.
 
 ## 8. How to know it worked
 
-1. **Means must not move.** Compare every exported array's per-year mean before
-   and after. Any change is a bug in the alignment or the scaling, not the
-   uncertainty.
-2. **The CV must land on the combined column of §2.** Copper `collected` at
-   2070: 2.47% → ≈12.48%. At 2050: 2.52% → ≈7.38%.
-3. **Check a second resource.** Nd at 2070: 5.50% → ≈13.41%.
+1. **The medians must move, by the amounts the Jensen bias predicts:** `inflow`
+   −0.3 to −0.7%, `collected` −2 to −7%. A mean that does NOT move means the
+   ratio was taken against the draws' own mean instead of the tracker's, which
+   preserves the bias.
+2. **The 95% band must land on the 22-September proof.** Copper `inflow` 2060
+   9.7% → 45.1% (proof: 44.5%); copper `collected` 2060 9.7% → 37.1% (proof:
+   37.2%); magnet `inflow` 2060 11.9% → 45.5% (proof: 44.7%). **Measured, and
+   it does.**
+3. **Composed flows too.** The tracker has no `outflow` row, so it needs the
+   sum of its parts as a denominator or a third of the arrays keep a
+   deterministic count silently.
 4. Then re-export, and in `RAWCLICRecoveryModel` re-run `03_tractionmotors.py`
    and `05_combine_cases.py`. Every traction interval widens; no mean should
    move by more than Monte Carlo noise.

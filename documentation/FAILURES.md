@@ -50,6 +50,7 @@ list.
 | 26 | 09-29 | Warned about a problem in 05 that did not exist | me | sent him into a run braced for an axis bug that was fixed in September |
 | 27 | 09-30 | Defended a band as correct that was five times too narrow | Matthias | every traction interval overconfident, and I argued it was fine |
 | 28 | 09-30 | Answered a question about spread by measuring means, then said stop | Matthias | would have halted the real fix and started a wrong investigation |
+| 29 | 09-30 | Rediscovered a defect already proved, then preserved the bias it named | me / the record | a day spent re-deriving 22 September, and a first fix that kept a known 2-6% bias |
 
 ---
 
@@ -490,9 +491,47 @@ it as a blocking result cost a step of the actual work.
 block, and confirm that is the thing being measured.*
 
 
+## 29. I rediscovered a solved problem, then got it wrong in the way the record warned about — 09-30
+
+Everything in entries 27 and 28 — the traction export not sampling the vehicle
+count, the measurement of how narrow the intervals are, the proposed fix, even
+the decision to leave the cohort mix deterministic — **was already done in
+`RAWCLICStockAndFlow` on 2026-09-22.** There is a committed script,
+`code/proof_0403_vehicle_draws.py`, that names the exact line
+(`src/traction_draws.py:222`), states the proposed formula, and measures the
+effect. The finding is written up in that project's `HANDOVER.md` under a
+heading reading **"THE BLOCKER IS RESOLVED"**.
+
+I never looked. A day went into re-deriving it, and I wrote Matthias a
+specification for a decision he had already taken and recorded.
+
+**Then I got the substance wrong in the precise way that record warns about.**
+My implementation divided by the draws' own mean so that no mean would move,
+and my specification stated "means must not move" as an acceptance criterion.
+The 22 September analysis had already established the opposite:
+
+> Outflow is a nonlinear function of the drawn lifetime, so
+> `E[outflow(λ)] ≠ outflow(E[λ])`. The tracker is one deterministic run at the
+> point lifetime and therefore CANNOT equal the Monte Carlo mean. The draws are
+> the correct quantity; the tracker's collected is biased high by 2–6%.
+
+So "no mean moves" is not the safe choice. It preserves a measured bias and
+presents the result as an uncertainty fix. Corrected: the drawn count replaces
+the tracker's, and the medians fall — `inflow` 0.5%, `collected` 6.9% at 2040.
+
+**What this costs beyond the day.** In entry 28 I reported the tracker/draws
+disagreement as a blocker and was told it was not the question. It genuinely
+was a blocker once — the 22 September handover opens with it as one — and had
+been resolved the same day, with a cause. I had the disagreement in front of me
+and no idea it had been diagnosed, because I was measuring instead of reading.
+
+*Two repositories, one model. Before investigating anything upstream, read the
+upstream handover.*
+
+
 ## Patterns
 
-Twenty-eight failures, seven shapes. The shapes repeat; the instances do not matter
+Twenty-nine failures, eight shapes. The shapes repeat; the instances do not matter
 much.
 
 **1. Verified against itself.** #7, #8, #14, #27. A Sankey that balances, an account
@@ -532,7 +571,14 @@ somewhere in this repository while the other caller stayed wrong for weeks.
 *When a fix is worth making, find every caller of the thing it fixes — the
 second one is where the defect survives.*
 
-**7. Widened the scope past the ask.** #17, #18, and the hundreds of figures.
+**7. Measured instead of reading.** #29. A committed proof script, a handover
+section headed "THE BLOCKER IS RESOLVED", and a decision with a date on it — all
+sitting in the sibling repository while I re-derived them from the arrays. The
+project's own record is faster than any measurement and it carries the reasons,
+which measurements do not. *Read the handover of the repository you are about to
+investigate, before you investigate it.*
+
+**8. Widened the scope past the ask.** #17, #18, and the hundreds of figures.
 Four cases when one was wanted; a refactor when a rename was wanted; every
 resource drawn when he had said twice it was the magnet, its elements, and
 copper. *Do what was asked, at the size it was asked.*

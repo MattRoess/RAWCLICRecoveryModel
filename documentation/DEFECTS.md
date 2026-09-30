@@ -1231,7 +1231,7 @@ be checked against itself is not checked.
 
 ---
 
-### 3.25 The traction motor carries no fleet uncertainty — **OPEN, UPSTREAM**
+### 3.25 The traction motor carries no fleet uncertainty — **FIXED UPSTREAM 2026-09-30**, re-export pending
 
 ⚠️ **Every interval on the traction motor is about five times too narrow.**
 Nothing in this repository is wrong; the export it reads is. Do not quote a
