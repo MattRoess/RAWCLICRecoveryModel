@@ -256,6 +256,10 @@ def ramp(current, improved, start: int, end: int, years,
 GROUP = ['Input_FlowID', 'Input_layer', 'Input_layer_key',
          'TC_target_layer', 'TC_target_key']
 
+# What a coefficient extrapolated onto zero is given instead, so it stays a
+# distribution rather than a point mass. See `_hold_at_the_bounds`.
+FLOOR = 1e-6
+
 
 def _hold_at_the_bounds(block, group, numbers, roles=None):
     """
@@ -294,6 +298,46 @@ def _hold_at_the_bounds(block, group, numbers, roles=None):
 
     for c in columns:
         block[c] = after_clip[c].where(before[c].notna(), block[c])
+
+    # ⚠️ A COEFFICIENT EXTRAPOLATED TO NOTHING KEEPS A TRACE OF ITSELF.
+    #
+    # Both tables narrow as they improve, so past the window the three bounds
+    # of a falling coefficient converge and then cross: the battery's
+    # `F_cells -> F_loss_cell` for nickel is 0.018 wide in 2060, 0.006 in 2065
+    # and lands on min = mode = max = 0 in 2070. Zero on all three is not a
+    # small number, it is a point mass at nothing -- the draws for that
+    # coefficient stop varying, and this is a Monte Carlo. Said on 2026-09-30:
+    # *"keep in mind we run here Monte Carlo and deal with uncertainties"*,
+    # and then: *"in these cases you can fake a 0 with 0.000001 for mode and
+    # max."*
+    #
+    # So mode and max are floored at 1e-6 where the extrapolation flattened
+    # them onto zero. The minimum stays at 0, which is true -- the coefficient
+    # may be nothing.
+    #
+    # IT GOES IN BEFORE THE GROUP IS BALANCED, deliberately. 1e-6 is a
+    # thousand times the closure tolerance (1e-9), so a floor applied after
+    # balancing would break the sum it had just fixed. Applied here, the steps
+    # below take it into account and the group still closes exactly.
+    #
+    # ⚠️ AND ONLY WHERE THE ZERO WAS MADE BY EXTRAPOLATING. Twelve of the
+    # battery's coefficients are 0.0 in BOTH sheets -- the support frame
+    # contributes nothing to the cells, and the study says so exactly. Floored
+    # without this condition they read 0 from 2020 to 2060 and 1e-6 at 2065 and
+    # 2070: mass invented, in the years nobody looks at, for a flow the study
+    # states is empty. A coefficient that was always zero stays zero.
+    if {'value', 'value_max'} <= set(columns):
+        mode = pd.to_numeric(block['value'], errors='coerce')
+        high = pd.to_numeric(block['value_max'], errors='coerce')
+        source_a, source_b = numbers['value']
+        real = source_a.fillna(0).abs().gt(0) | source_b.fillna(0).abs().gt(0)
+        flat = mode.le(0.0) & high.le(0.0) & real
+        if flat.any():
+            moved |= flat.fillna(False).to_numpy()
+            block['value'] = mode.mask(flat, FLOOR).where(mode.notna(),
+                                                          block['value'])
+            block['value_max'] = high.mask(flat, FLOOR).where(high.notna(),
+                                                              block['value_max'])
 
     # ⚠️ AND THE MODE IS HELD INSIDE ITS OWN RANGE. Extrapolating moves
     # value_min, value and value_max at three different rates, so the mode can
