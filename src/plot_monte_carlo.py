@@ -1736,7 +1736,11 @@ def figure_trapped(run, theme: str, unit: str, resources=(), only: str = '',
         step, count = _ruling(float(max(np.nanmax(high), 1e-9)))
         ceiling = step * count
         marked = 0
-        for place, level in enumerate((10, 25, 50, 100, 150, 200)):
+        # 75 IS THERE BECAUSE IT IS THE ONE WORTH DATING. Asked for on
+        # 2026-09-30. Between 50% and 100% is where a metal stops being a
+        # minor contribution and starts being most of the supply, and the gap
+        # in the marks ran across exactly that stretch.
+        for place, level in enumerate((10, 25, 50, 75, 100, 150, 200)):
             if level > ceiling:
                 continue
             reached = _crosses(years, median, level)

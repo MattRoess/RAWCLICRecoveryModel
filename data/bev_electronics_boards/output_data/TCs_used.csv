@@ -845,56 +845,56 @@ F_shredded,Layer 2,PCB,F_loss_general,Layer 3,W,1.0,1.0,1.0,general_recycling,sh
 F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,W,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2060
 F_shredded,Layer 2,PCB,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2060
 F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2060
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,PCB,0.95,0.85,0.99,disassembly,manual,,2065
-F_collected,Layer 1,BEV,F_in_car,Layer 2,PCB,0.05,0.010000000000000002,0.15,disassembly,manual,,2065
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,PCB,0.966666666667,0.875,0.996666666667,disassembly,manual,,2065
+F_collected,Layer 1,BEV,F_in_car,Layer 2,PCB,0.033333333333,0.003333333333,0.125,disassembly,manual,,2065
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,PCB,1.0,1.0,1.0,stays_in_car,definitional,,2065
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Sensors,0.95,0.85,0.99,disassembly,manual,,2065
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Sensors,0.04999999999999999,0.009999999999999995,0.15,disassembly,manual,,2065
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Sensors,0.975,0.883333333333,1.0,disassembly,manual,,2065
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Sensors,0.025,0.0,0.116666666667,disassembly,manual,,2065
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Sensors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too.",2065
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ag,0.96,0.93,0.98,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ag,0.96,0.93,0.98,element_recovery,one_per_element,,2065
-F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ag,0.04,0.010000000000000002,0.1,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ag,0.04,0.010000000000000002,0.1,element_recovery,one_per_element,,2065
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.98,0.96,0.995,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.98,0.96,0.995,element_recovery,one_per_element,,2065
-F_ground,Layer 2,PCB,F_loss_own,Layer 3,Au,0.02,0.005000000000000001,0.04999999999999999,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Au,0.02,0.005000000000000001,0.04999999999999999,element_recovery,one_per_element,,2065
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Cu,0.975,0.95,0.99,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Cu,0.975,0.95,0.99,element_recovery,one_per_element,,2065
-F_ground,Layer 2,PCB,F_loss_own,Layer 3,Cu,0.025,0.01,0.04999999999999999,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Cu,0.025,0.01,0.04999999999999999,element_recovery,one_per_element,,2065
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ni,0.88,0.8,0.94,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ni,0.88,0.8,0.94,element_recovery,one_per_element,,2065
-F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ni,0.12,0.05,0.25,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ni,0.12,0.05,0.25,element_recovery,one_per_element,,2065
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Pd,0.965,0.93,0.985,element_recovery,one_per_element,,2065
-F_ground,Layer 2,PCB,F_loss_own,Layer 3,Pd,0.035,0.02,0.08000000000000002,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,B,0.1,0.0,0.25,element_recovery,one_per_element,"Boron is not recovered: no process at this scale separates a trace dopant out of a ground board. Written as a definite 0 with NO range, like `rest`, rather than 0 with a band up to 0.1 -- that band said ""maybe a tenth of it"" on no evidence at all, and it left this group with one ranged row against one fixed one, which src/sampling.py rightly refuses: the constraint pins the loss at 1 - B, so B's range would be discarded without a word.",2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,B,0.9,0.7,1.0,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Co,0.7,0.5,0.85,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Co,0.3,0.09999999999999998,0.5,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Dy,0.45,0.25,0.65,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Dy,0.55,0.25,0.75,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ga,0.4,0.2,0.6,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ga,0.6,0.35,0.7,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ge,0.45,0.25,0.65,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ge,0.55,0.3,0.7,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,In,0.55,0.3,0.75,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,In,0.45,0.3,0.6,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Li,0.15,0.0,0.35,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Li,0.85,0.7,0.98,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Mn,0.35,0.15,0.55,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Mn,0.65,0.5,0.8,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Nd,0.5,0.3,0.7,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Nd,0.5,0.25,0.7,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Pt,0.945,0.9,0.975,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Pt,0.05499999999999999,0.02,0.12,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ta,0.45,0.25,0.65,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ta,0.55,0.35,0.7,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ti,0.25,0.1,0.45,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ti,0.75,0.6,0.9,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,W,0.4,0.2,0.6,element_recovery,one_per_element,,2065
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,W,0.6,0.4,0.8,element_recovery,one_per_element,,2065
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ag,0.966666666667,0.943333333333,0.985,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ag,0.966666666667,0.943333333333,0.985,element_recovery,one_per_element,,2065
+F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ag,0.033333333333,0.005833333333,0.083333333333,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ag,0.033333333333,0.005833333333,0.083333333333,element_recovery,one_per_element,,2065
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.985,0.97,0.9975,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.985,0.97,0.9975,element_recovery,one_per_element,,2065
+F_ground,Layer 2,PCB,F_loss_own,Layer 3,Au,0.015,0.0,0.025,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Au,0.015,0.0,0.025,element_recovery,one_per_element,,2065
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Cu,0.980833333333,0.961666666667,0.993333333333,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Cu,0.980833333333,0.961666666667,0.991666666667,element_recovery,one_per_element,,2065
+F_ground,Layer 2,PCB,F_loss_own,Layer 3,Cu,0.019166666667,0.008333333333,0.025,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Cu,0.019166666667,0.008333333333,0.019166666667,element_recovery,one_per_element,,2065
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ni,0.901666666667,0.833333333333,0.955,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ni,0.901666666667,0.833333333333,0.938333333333,element_recovery,one_per_element,,2065
+F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ni,0.098333333333,0.041666666667,0.233333333333,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ni,0.098333333333,0.041666666667,0.238333333333,element_recovery,one_per_element,,2065
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Pd,0.9725,0.943333333333,0.989166666667,element_recovery,one_per_element,,2065
+F_ground,Layer 2,PCB,F_loss_own,Layer 3,Pd,0.0275,0.02,0.043333333333,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,B,0.116666666667,0.0,0.288333333333,element_recovery,one_per_element,"Boron is not recovered: no process at this scale separates a trace dopant out of a ground board. Written as a definite 0 with NO range, like `rest`, rather than 0 with a band up to 0.1 -- that band said ""maybe a tenth of it"" on no evidence at all, and it left this group with one ranged row against one fixed one, which src/sampling.py rightly refuses: the constraint pins the loss at 1 - B, so B's range would be discarded without a word.",2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,B,0.883333333333,0.653333333333,1.0,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Co,0.775,0.566666666667,0.925,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Co,0.225,0.025,0.433333333333,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Dy,0.525,0.291666666667,0.75,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Dy,0.475,0.166666666667,0.708333333333,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ga,0.466666666667,0.233333333333,0.691666666667,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ga,0.533333333333,0.283333333333,0.65,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ge,0.525,0.291666666667,0.75,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ge,0.475,0.225,0.65,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,In,0.633333333333,0.35,0.85,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,In,0.366666666667,0.225,0.536666666667,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Li,0.175,0.0,0.405,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Li,0.825,0.666666666667,0.976666666667,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Mn,0.4,0.175,0.616666666667,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Mn,0.6,0.433333333333,0.766666666667,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Nd,0.583333333333,0.35,0.808333333333,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Nd,0.416666666667,0.141666666667,0.65,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Pt,0.955833333333,0.908333333333,0.9825,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Pt,0.044166666667,0.015,0.098333333333,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ta,0.525,0.291666666667,0.75,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ta,0.475,0.258333333333,0.65,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ti,0.291666666667,0.116666666667,0.516666666667,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ti,0.708333333333,0.55,0.883333333333,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,W,0.466666666667,0.233333333333,0.691666666667,element_recovery,one_per_element,,2065
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,W,0.533333333333,0.316666666667,0.766666666667,element_recovery,one_per_element,,2065
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,rest,1.0,1.0,1.0,element_recovery,one_per_element,"Unspecified material -- board laminate, plastics. Not recovered.",2065
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,element_recovery,one_per_element,"Unspecified material -- board laminate, plastics. Not recovered.",2065
 F_disassembled,Layer 1,BEV,F_ground,Layer 2,PCB,1.0,1.0,1.0,grinding,mill,"DEFINITIONAL: everything taken out whole is ground, so all of it arrives at the mill.",2065
@@ -907,10 +907,10 @@ F_shredded,Layer 2,PCB,F_loss_general,Layer 3,B,1.0,1.0,1.0,general_recycling,sh
 F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,B,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2065
 F_shredded,Layer 2,PCB,F_loss_general,Layer 3,Co,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2065
 F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,Co,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2065
-F_shredded,Layer 2,PCB,F_cu_general,Layer 3,Cu,0.94,0.85,0.98,general_recycling,shredder,,2065
-F_shredded,Layer 2,Sensors,F_cu_general,Layer 3,Cu,0.94,0.85,0.98,general_recycling,shredder,,2065
-F_shredded,Layer 2,PCB,F_loss_general,Layer 3,Cu,0.06,0.03,0.12,general_recycling,shredder,,2065
-F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,Cu,0.06,0.03,0.12,general_recycling,shredder,,2065
+F_shredded,Layer 2,PCB,F_cu_general,Layer 3,Cu,0.996666666667,0.925,1.0,general_recycling,shredder,,2065
+F_shredded,Layer 2,Sensors,F_cu_general,Layer 3,Cu,0.996666666667,0.925,1.0,general_recycling,shredder,,2065
+F_shredded,Layer 2,PCB,F_loss_general,Layer 3,Cu,0.003333333333,0.001666666667,0.056666666667,general_recycling,shredder,,2065
+F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,Cu,0.003333333333,0.001666666667,0.056666666667,general_recycling,shredder,,2065
 F_shredded,Layer 2,PCB,F_loss_general,Layer 3,Dy,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2065
 F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,Dy,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2065
 F_shredded,Layer 2,PCB,F_loss_general,Layer 3,Ga,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2065
@@ -939,56 +939,56 @@ F_shredded,Layer 2,PCB,F_loss_general,Layer 3,W,1.0,1.0,1.0,general_recycling,sh
 F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,W,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2065
 F_shredded,Layer 2,PCB,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2065
 F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,rest,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2065
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,PCB,0.95,0.85,0.99,disassembly,manual,,2070
-F_collected,Layer 1,BEV,F_in_car,Layer 2,PCB,0.05,0.010000000000000002,0.15,disassembly,manual,,2070
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,PCB,0.983333333333,0.9,1.0,disassembly,manual,,2070
+F_collected,Layer 1,BEV,F_in_car,Layer 2,PCB,0.016666666667,0.0,0.1,disassembly,manual,,2070
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,PCB,1.0,1.0,1.0,stays_in_car,definitional,,2070
-F_collected,Layer 1,BEV,F_disassembled,Layer 2,Sensors,0.95,0.85,0.99,disassembly,manual,,2070
-F_collected,Layer 1,BEV,F_in_car,Layer 2,Sensors,0.04999999999999999,0.009999999999999995,0.15,disassembly,manual,,2070
+F_collected,Layer 1,BEV,F_disassembled,Layer 2,Sensors,1.0,0.916666666667,1.0,disassembly,manual,,2070
+F_collected,Layer 1,BEV,F_in_car,Layer 2,Sensors,0.0,0.0,0.083333333333,disassembly,manual,,2070
 F_in_car,Layer 1,BEV,F_shredded,Layer 2,Sensors,1.0,1.0,1.0,stays_in_car,definitional,"DEFINITIONAL: the car goes to the shredder, so what is in it goes too.",2070
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ag,0.96,0.93,0.98,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ag,0.96,0.93,0.98,element_recovery,one_per_element,,2070
-F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ag,0.04,0.010000000000000002,0.1,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ag,0.04,0.010000000000000002,0.1,element_recovery,one_per_element,,2070
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.98,0.96,0.995,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.98,0.96,0.995,element_recovery,one_per_element,,2070
-F_ground,Layer 2,PCB,F_loss_own,Layer 3,Au,0.02,0.005000000000000001,0.04999999999999999,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Au,0.02,0.005000000000000001,0.04999999999999999,element_recovery,one_per_element,,2070
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Cu,0.975,0.95,0.99,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Cu,0.975,0.95,0.99,element_recovery,one_per_element,,2070
-F_ground,Layer 2,PCB,F_loss_own,Layer 3,Cu,0.025,0.01,0.04999999999999999,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Cu,0.025,0.01,0.04999999999999999,element_recovery,one_per_element,,2070
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ni,0.88,0.8,0.94,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ni,0.88,0.8,0.94,element_recovery,one_per_element,,2070
-F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ni,0.12,0.05,0.25,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ni,0.12,0.05,0.25,element_recovery,one_per_element,,2070
-F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Pd,0.965,0.93,0.985,element_recovery,one_per_element,,2070
-F_ground,Layer 2,PCB,F_loss_own,Layer 3,Pd,0.035,0.02,0.08000000000000002,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,B,0.1,0.0,0.25,element_recovery,one_per_element,"Boron is not recovered: no process at this scale separates a trace dopant out of a ground board. Written as a definite 0 with NO range, like `rest`, rather than 0 with a band up to 0.1 -- that band said ""maybe a tenth of it"" on no evidence at all, and it left this group with one ranged row against one fixed one, which src/sampling.py rightly refuses: the constraint pins the loss at 1 - B, so B's range would be discarded without a word.",2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,B,0.9,0.7,1.0,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Co,0.7,0.5,0.85,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Co,0.3,0.09999999999999998,0.5,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Dy,0.45,0.25,0.65,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Dy,0.55,0.25,0.75,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ga,0.4,0.2,0.6,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ga,0.6,0.35,0.7,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ge,0.45,0.25,0.65,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ge,0.55,0.3,0.7,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,In,0.55,0.3,0.75,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,In,0.45,0.3,0.6,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Li,0.15,0.0,0.35,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Li,0.85,0.7,0.98,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Mn,0.35,0.15,0.55,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Mn,0.65,0.5,0.8,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Nd,0.5,0.3,0.7,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Nd,0.5,0.25,0.7,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Pt,0.945,0.9,0.975,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Pt,0.05499999999999999,0.02,0.12,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ta,0.45,0.25,0.65,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ta,0.55,0.35,0.7,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ti,0.25,0.1,0.45,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ti,0.75,0.6,0.9,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,W,0.4,0.2,0.6,element_recovery,one_per_element,,2070
-F_ground,Layer 2,Sensors,F_loss_own,Layer 3,W,0.6,0.4,0.8,element_recovery,one_per_element,,2070
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ag,0.973333333333,0.956666666667,0.99,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ag,0.973333333333,0.956666666667,0.99,element_recovery,one_per_element,,2070
+F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ag,0.026666666667,0.001666666667,0.066666666667,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ag,0.026666666667,0.001666666667,0.066666666667,element_recovery,one_per_element,,2070
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Au,0.99,0.98,1.0,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Au,0.99,0.98,1.0,element_recovery,one_per_element,,2070
+F_ground,Layer 2,PCB,F_loss_own,Layer 3,Au,0.01,0.0,0.01,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Au,0.01,0.0,0.01,element_recovery,one_per_element,,2070
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Cu,0.986666666667,0.973333333333,0.996666666667,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Cu,0.986666666667,0.973333333333,0.993333333333,element_recovery,one_per_element,,2070
+F_ground,Layer 2,PCB,F_loss_own,Layer 3,Cu,0.013333333333,0.0,0.013333333333,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Cu,0.013333333333,0.0,0.013333333333,element_recovery,one_per_element,,2070
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Ni,0.923333333333,0.866666666667,0.97,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ni,0.923333333333,0.866666666667,0.936666666667,element_recovery,one_per_element,,2070
+F_ground,Layer 2,PCB,F_loss_own,Layer 3,Ni,0.076666666667,0.033333333333,0.216666666667,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ni,0.076666666667,0.033333333333,0.226666666667,element_recovery,one_per_element,,2070
+F_ground,Layer 2,PCB,F_recovered_own,Layer 3,Pd,0.98,0.956666666667,0.993333333333,element_recovery,one_per_element,,2070
+F_ground,Layer 2,PCB,F_loss_own,Layer 3,Pd,0.02,0.006666666667,0.02,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,B,0.133333333333,0.0,0.326666666667,element_recovery,one_per_element,"Boron is not recovered: no process at this scale separates a trace dopant out of a ground board. Written as a definite 0 with NO range, like `rest`, rather than 0 with a band up to 0.1 -- that band said ""maybe a tenth of it"" on no evidence at all, and it left this group with one ranged row against one fixed one, which src/sampling.py rightly refuses: the constraint pins the loss at 1 - B, so B's range would be discarded without a word.",2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,B,0.866666666667,0.606666666667,1.0,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Co,0.85,0.633333333333,1.0,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Co,0.15,0.0,0.366666666667,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Dy,0.6,0.333333333333,0.85,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Dy,0.4,0.083333333333,0.666666666667,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ga,0.533333333333,0.266666666667,0.783333333333,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ga,0.466666666667,0.216666666667,0.6,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ge,0.6,0.333333333333,0.85,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ge,0.4,0.15,0.6,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,In,0.716666666667,0.4,0.95,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,In,0.283333333333,0.15,0.473333333333,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Li,0.2,0.0,0.46,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Li,0.8,0.633333333333,0.973333333333,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Mn,0.45,0.2,0.683333333333,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Mn,0.55,0.366666666667,0.733333333333,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Nd,0.666666666667,0.4,0.916666666667,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Nd,0.333333333333,0.033333333333,0.6,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Pt,0.966666666667,0.916666666667,0.99,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Pt,0.033333333333,0.01,0.076666666667,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ta,0.6,0.333333333333,0.85,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ta,0.4,0.166666666667,0.6,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,Ti,0.333333333333,0.133333333333,0.583333333333,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,Ti,0.666666666667,0.5,0.866666666667,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_recovered_own,Layer 3,W,0.533333333333,0.266666666667,0.783333333333,element_recovery,one_per_element,,2070
+F_ground,Layer 2,Sensors,F_loss_own,Layer 3,W,0.466666666667,0.233333333333,0.733333333333,element_recovery,one_per_element,,2070
 F_ground,Layer 2,PCB,F_loss_own,Layer 3,rest,1.0,1.0,1.0,element_recovery,one_per_element,"Unspecified material -- board laminate, plastics. Not recovered.",2070
 F_ground,Layer 2,Sensors,F_loss_own,Layer 3,rest,1.0,1.0,1.0,element_recovery,one_per_element,"Unspecified material -- board laminate, plastics. Not recovered.",2070
 F_disassembled,Layer 1,BEV,F_ground,Layer 2,PCB,1.0,1.0,1.0,grinding,mill,"DEFINITIONAL: everything taken out whole is ground, so all of it arrives at the mill.",2070
@@ -1001,10 +1001,10 @@ F_shredded,Layer 2,PCB,F_loss_general,Layer 3,B,1.0,1.0,1.0,general_recycling,sh
 F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,B,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2070
 F_shredded,Layer 2,PCB,F_loss_general,Layer 3,Co,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2070
 F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,Co,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2070
-F_shredded,Layer 2,PCB,F_cu_general,Layer 3,Cu,0.94,0.85,0.98,general_recycling,shredder,,2070
-F_shredded,Layer 2,Sensors,F_cu_general,Layer 3,Cu,0.94,0.85,0.98,general_recycling,shredder,,2070
-F_shredded,Layer 2,PCB,F_loss_general,Layer 3,Cu,0.06,0.03,0.12,general_recycling,shredder,,2070
-F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,Cu,0.06,0.03,0.12,general_recycling,shredder,,2070
+F_shredded,Layer 2,PCB,F_cu_general,Layer 3,Cu,0.999999000001,0.999999000001,1.0,general_recycling,shredder,,2070
+F_shredded,Layer 2,Sensors,F_cu_general,Layer 3,Cu,0.999999000001,0.999999000001,1.0,general_recycling,shredder,,2070
+F_shredded,Layer 2,PCB,F_loss_general,Layer 3,Cu,9.99999e-07,0.0,1e-06,general_recycling,shredder,,2070
+F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,Cu,9.99999e-07,0.0,1e-06,general_recycling,shredder,,2070
 F_shredded,Layer 2,PCB,F_loss_general,Layer 3,Dy,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2070
 F_shredded,Layer 2,Sensors,F_loss_general,Layer 3,Dy,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2070
 F_shredded,Layer 2,PCB,F_loss_general,Layer 3,Ga,1.0,1.0,1.0,general_recycling,shredder,"DEFINITIONAL: nothing but copper is recovered from a shredded board. A trace element ground into mixed shredder residue is not separated by anybody, so all of it is lost on this road.",2070
