@@ -1,6 +1,8 @@
 """
 03_tractionmotors.py -- the traction motor recycling study.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     Press Run. No arguments, nothing to edit.
 
 ONE CASE, ONE ANSWER: `data/tractionmotor`, grade `mix`.

@@ -1,6 +1,8 @@
 """
 Draw the schema of the four traction motor recovery cases.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     ./.venv/bin/python tools/draw_tractionmotor_cases_overview.py
 
 ⚠️ A DOCUMENT, NOT A RUN OUTPUT, which is why it is written to

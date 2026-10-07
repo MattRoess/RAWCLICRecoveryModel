@@ -2,6 +2,8 @@
 src/case_tables.py
 ==================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Where a case's three tables live, and how to read them.
 
 WHY A WORKBOOK

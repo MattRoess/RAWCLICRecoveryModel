@@ -2,6 +2,8 @@
 src/source.py
 =============
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 What a case is, and where its numbers come from — declared by the case itself.
 
 WHY THIS EXISTS

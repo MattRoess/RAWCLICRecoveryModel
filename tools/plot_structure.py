@@ -2,6 +2,8 @@
 plot_structure.py
 =================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Draw HOW THE MODEL IS WIRED: one page showing every flow, every process, and
 the transfer coefficients behind each arrow.
 

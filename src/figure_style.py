@@ -2,6 +2,8 @@
 src/figure_style.py
 ===================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 The rendering settings both plot scripts share: matplotlib configuration, the
 two colour schemes, and the writer that turns one figure into every requested
 format.

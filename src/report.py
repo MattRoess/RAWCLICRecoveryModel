@@ -2,6 +2,8 @@
 src/report.py
 =============
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Everything the run produced, in one Excel workbook.
 
 WHY A WORKBOOK AND NOT A CSV

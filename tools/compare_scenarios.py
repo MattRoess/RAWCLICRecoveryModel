@@ -2,6 +2,8 @@
 compare_scenarios.py
 ====================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Put a case's SCENARIOS side by side, each solved in its own right.
 
     ./.venv/bin/python tools/compare_scenarios.py data/battery

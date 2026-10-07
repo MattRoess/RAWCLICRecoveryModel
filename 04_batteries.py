@@ -1,6 +1,8 @@
 """
 04_batteries.py -- the battery recycling study.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     Press Run. No arguments, nothing to edit.
 
 One case and three chemistry scenarios, S1, S2 and S3, so three passes.

@@ -1,6 +1,8 @@
 """
 Build the traction motor case. This is the only traction builder.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     ./.venv/bin/python tools/build_tractionmotor_case.py
     -> data/tractionmotor/input_data/case.xlsx
 

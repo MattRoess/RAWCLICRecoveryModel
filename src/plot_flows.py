@@ -1,6 +1,8 @@
 """
 Draw the flow network of a data folder as a Sankey diagram.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     ./.venv/bin/python plot_flows.py                       # the case in params_schema.py
     ./.venv/bin/python plot_flows.py data/reference/basic_test
 

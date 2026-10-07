@@ -2,6 +2,8 @@
 src/selection.py
 ================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Choosing the rows that belong to one year, scenario, location and
 additionalSpecification.
 

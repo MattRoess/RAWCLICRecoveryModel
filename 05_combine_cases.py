@@ -2,6 +2,8 @@
 05_combine_cases.py
 ===================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 **One metal across several streams, added per draw.**
 
 Press Run. Nothing to type. What is added, and which metal, is set in

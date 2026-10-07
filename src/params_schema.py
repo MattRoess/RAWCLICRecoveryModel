@@ -2,6 +2,8 @@
 src/params_schema.py
 ====================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 **This is the file you edit to change a setting.**
 
 Every value the model uses is written below, with a plain-language comment

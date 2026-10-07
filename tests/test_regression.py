@@ -2,6 +2,8 @@
 Pin the deterministic behaviour of the model, so that later work cannot move it
 without saying so.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     ./.venv/bin/python test_regression.py
 
 Plain asserts and no test framework, so it needs nothing that is not already in

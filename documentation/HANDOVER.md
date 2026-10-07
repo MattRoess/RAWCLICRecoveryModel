@@ -1,5 +1,25 @@
 # Handover
 
+## 2026-10-07 — the copyright notice and the licence
+
+**52 of the 54 Python files carry `**Copyright notice:** Copyright © 2026 Empa, Matthias
+Roesslein`** in the module docstring, after the title block, and **a new Python file must get it
+too**. The two that do not are the engines this project received, `src/recovery_model_LA.py` and
+`src/recovery_model_optimized.py`: 408 of 640 and 231 of 512 of their lines still come from the
+first commit, "recovery model as received". The notice would claim code he did not write, so how
+to mark them is his decision. Four of the 52 hold a few received lines as well and carry the
+notice: `src/model_run.py` (7 of 77 lines), `src/selection.py` (18 of 235),
+`tests/test_units.py` (3 of 222) and `tests/test_regression.py` (4 of 1,348).
+
+`LICENSE` is CC BY 4.0, the official text. The README says what it does not cover: the two
+engines, `data/reference/basic_test/` (byte for byte the received test case), `doc/User guide.docx`
+(Harmjan de Vries) and the journal article in `documentation/BatteryStudy/`. A Creative Commons
+licence cannot be withdrawn for copies already made. Checked before the push: the code is
+identical outside the docstrings, and `99_check_all.py --code` passes in a sandbox clone (all seven
+suites).
+
+Found and not touched: `documentation/SETUP.md` still says the repository is private.
+
 ## GIT: DONE. `main` holds everything.
 
     origin/main   49195d6   2026-09-28   everything, both machines

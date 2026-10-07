@@ -2,6 +2,8 @@
 src/params_io.py
 ================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Writes `params.xlsx` and the Markdown parameter reference from the values in
 `src/params_schema.py`.
 

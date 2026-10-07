@@ -2,6 +2,8 @@
 src/sampling.py
 ===============
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Drawing transfer coefficients from their asymmetric triangular ranges.
 
 This module is the whole of the "what value does a coefficient take on draw i"

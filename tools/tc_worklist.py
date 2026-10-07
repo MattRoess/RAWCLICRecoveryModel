@@ -2,6 +2,8 @@
 tc_worklist.py
 ==============
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Say, per sum-to-1 group, WHERE A SECOND MEASUREMENT WOULD BUY SOMETHING.
 
     ./.venv/bin/python tools/tc_worklist.py

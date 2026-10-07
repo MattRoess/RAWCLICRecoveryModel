@@ -1,6 +1,8 @@
 """
 Check that the Monte Carlo engine solves the same model as the deterministic one.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     ./.venv/bin/python test_monte_carlo.py
 
 Plain asserts and no test framework, matching test_regression.py.

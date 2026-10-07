@@ -2,6 +2,8 @@
 tools/make_carcomposition_tcs.py
 ================================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Generate the ARTIFICIAL transfer-coefficient table for the 04_01 car-composition
 case, from the composition that stage actually exported.
 

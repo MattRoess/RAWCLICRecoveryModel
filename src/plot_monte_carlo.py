@@ -2,6 +2,8 @@
 src/plot_monte_carlo.py
 =======================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Figures that show what the Monte Carlo actually did.
 
 A Monte Carlo result is a distribution per row, and a table of medians throws

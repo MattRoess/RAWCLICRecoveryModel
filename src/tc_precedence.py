@@ -2,6 +2,8 @@
 src/tc_precedence.py
 ====================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Resolve transfer coefficients that describe the same material twice, and say
 what was resolved.
 

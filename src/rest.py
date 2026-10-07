@@ -2,6 +2,8 @@
 src/rest.py
 ===========
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Making the unspecified part of a composition explicit.
 
 THE PROBLEM

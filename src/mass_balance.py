@@ -2,6 +2,8 @@
 Report what the transfer coefficients in a data folder actually sum to, and
 check the structural rules a TC table has to obey.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 A TC is applied by joining on BOTH layer columns, so the resource it transfers
 is identified by the *pair* (Input_layer_key, TC_target_key) -- "component C1
 within product P1" -- not by the input key alone. The only sum that means

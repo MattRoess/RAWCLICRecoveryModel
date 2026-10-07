@@ -130,3 +130,18 @@ No conda. See [documentation/SETUP.md](documentation/SETUP.md).
 ```bash
 python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
 ```
+
+## Licence
+
+The code and the documentation written for this repository are licensed under
+[Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/)
+(CC BY 4.0): you may share and adapt them, commercially too, as long as you give credit,
+link to the licence and say if you changed anything. The full text is in
+[LICENSE](LICENSE), and every Python file written for this repository carries the notice
+`Copyright © 2026 Empa, Matthias Roesslein`.
+
+**Not covered by it:** the two model engines `src/recovery_model_LA.py` and
+`src/recovery_model_optimized.py` and the test case `data/reference/basic_test/`, all as this
+project received them (the engines carry changes made here); the user guide
+`doc/User guide.docx` (Harmjan de Vries); and the journal article in
+`documentation/BatteryStudy/`. They stay under the terms of whoever holds the rights to them.

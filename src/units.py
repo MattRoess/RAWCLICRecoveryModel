@@ -2,6 +2,8 @@
 src/units.py
 ============
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Mass units, and converting between them.
 
 WHY THIS EXISTS

@@ -2,6 +2,8 @@
 00_parameters.py
 ================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Regenerates `params.xlsx` and `documentation/PARAMETER_REFERENCE.md` from the
 values in `src/params_schema.py`.
 

@@ -1,6 +1,8 @@
 """
 Check `src/sampling.py` against the mathematics it claims to implement.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     ./.venv/bin/python test_sampling.py
 
 Plain asserts and no test framework, matching test_regression.py.

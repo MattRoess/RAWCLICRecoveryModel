@@ -1,6 +1,8 @@
 """
 Run both engines over a data folder and print their results side by side.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 The two engines agree on data/reference/basic_test but not in general. This script
 is how that was established and is how the cases in documentation/DEFECTS.md
 are reproduced:

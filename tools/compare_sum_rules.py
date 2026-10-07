@@ -2,6 +2,8 @@
 compare_sum_rules.py
 ====================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Show WHICH RESULTS DEPEND ON THE SUM-TO-1 RULE, and by how much.
 
     ./.venv/bin/python tools/compare_sum_rules.py

@@ -2,6 +2,8 @@
 tools/make_skeleton.py
 ===================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Write a TCs.csv with every row that needs a number, and no numbers in it.
 
     ./.venv/bin/python tools/make_skeleton.py data/bev_electronics_wiring

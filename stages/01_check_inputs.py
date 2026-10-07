@@ -2,6 +2,8 @@
 01_check_inputs.py
 ========================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 STEP 2 -- check that a dataset's numbers add up, before trusting a result.
 
     ./.venv/bin/python stages/01_check_inputs.py

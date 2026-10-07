@@ -1,6 +1,8 @@
 """
 Pin the handling of incomplete composition -- the `rest` child.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     ./.venv/bin/python test_rest.py
 
 Real composition data is incomplete in a particular way: the copper in a wire

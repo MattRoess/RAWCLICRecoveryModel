@@ -1,6 +1,8 @@
 """
 Every name a stage calls exists.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     ./.venv/bin/python tests/test_stages.py
 
 WHY THIS EXISTS

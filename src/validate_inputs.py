@@ -2,6 +2,8 @@
 src/validate_inputs.py
 ======================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Check the three input tables before the model uses them.
 
 WHY THIS EXISTS

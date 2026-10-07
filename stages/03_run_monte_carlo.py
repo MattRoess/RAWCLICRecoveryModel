@@ -2,6 +2,8 @@
 03_run_monte_carlo.py
 =====================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Run the model over many draws and write the figures that show what the spread
 actually is.
 

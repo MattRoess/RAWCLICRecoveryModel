@@ -2,6 +2,8 @@
 src/monte_carlo.py
 ==================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Solving the flow network for many draws at once.
 
 THE IDEA

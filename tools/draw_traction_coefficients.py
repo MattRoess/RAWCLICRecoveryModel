@@ -1,6 +1,8 @@
 """
 tools/draw_traction_coefficients.py -- every process and its coefficient, drawn.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     ./.venv/bin/python tools/draw_traction_coefficients.py
 
 ⚠️ EVERY NUMBER IS READ FROM THE WORKBOOK. Nothing on this figure is typed

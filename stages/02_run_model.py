@@ -2,6 +2,8 @@
 02_run_model.py
 ===============
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 STEP 1 -- solve the model and draw its figures.
 
     ./.venv/bin/python stages/02_run_model.py

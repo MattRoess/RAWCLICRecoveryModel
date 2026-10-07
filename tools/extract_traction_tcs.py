@@ -1,6 +1,8 @@
 """
 tools/extract_traction_tcs.py -- the study's coefficients, every one referenced.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     ./.venv/bin/python tools/extract_traction_tcs.py
 
 ⚠️ SO THAT EVERY NUMBER CAN BE CHECKED AGAINST THE DOCUMENT IT CAME FROM.

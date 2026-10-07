@@ -2,6 +2,8 @@
 src/upstream.py
 ===============
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Read the inflow and the composition straight from the upstream draws.
 
 THERE IS NO IMPORT STEP

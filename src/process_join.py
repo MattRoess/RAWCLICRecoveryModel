@@ -2,6 +2,8 @@
 src/process_join.py
 ===================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Which transfer coefficient applies to which inflow row, for one process.
 
 This is the join at the centre of the model, and it is here rather than inside

@@ -2,6 +2,8 @@
 99_check_all.py
 ===============
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Run everything and say, in one line, whether it is all still working.
 
     ./.venv/bin/python 99_check_all.py

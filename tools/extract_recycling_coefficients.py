@@ -1,6 +1,8 @@
 """
 Every transfer coefficient in the RAWCLIC recycling documents, as one table.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 ⚠️ THE POINT IS COMPLETENESS, NOT CONVENIENCE. The two case builders each take
 the coefficients they need; this reads ALL of them, from every sheet, and marks
 which are used. A coefficient that exists in the source and in no case then

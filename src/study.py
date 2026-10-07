@@ -2,6 +2,8 @@
 src/study.py
 ============
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Run one study's stages, from the file you pressed Run on.
 
 WHY A FILE PER STUDY RATHER THAN A SETTING. Three studies go through this model

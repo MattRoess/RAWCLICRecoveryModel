@@ -2,6 +2,8 @@
 filling_sheet.py
 ================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 The coefficients still waiting for a real number, HARDEST-HITTING FIRST.
 
     ./.venv/bin/python tools/filling_sheet.py

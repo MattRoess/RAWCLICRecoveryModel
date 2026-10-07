@@ -1,6 +1,8 @@
 """
 02_electronics.py -- the electronics recycling study.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     Press Run. No arguments, nothing to edit.
 
 Two cases: the wiring and motors, resolved as materials, and the boards

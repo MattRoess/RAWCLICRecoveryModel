@@ -2,6 +2,8 @@
 Pin the unit conversion, which is the one thing in this project that can be
 wrong by a clean factor of 1000 without looking wrong.
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     ./.venv/bin/python test_units.py
 
 The model multiplies fractions, so every ratio in the output stays correct

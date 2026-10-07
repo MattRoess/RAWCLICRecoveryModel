@@ -2,6 +2,8 @@
 src/bootstrap.py
 ================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Make every script run under the project's own interpreter, whatever was typed.
 
 WHY

@@ -2,6 +2,8 @@
 src/model_run.py
 ================
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
 Solving a case and drawing its figures. The stage that calls this is
 `stages/02_run_model.py`; the logic lives here because a file whose name starts with
 a digit cannot be imported by another file.

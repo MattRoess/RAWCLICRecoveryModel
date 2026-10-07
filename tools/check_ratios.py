@@ -1,6 +1,8 @@
 """
 tools/check_ratios.py -- does the fleet case agree with the review?
 
+**Copyright notice:** Copyright © 2026 Empa, Matthias Roesslein
+
     ./.venv/bin/python tools/check_ratios.py
 
 ONE FIGURE, ONE QUESTION. The fleet case runs both routes at once, and the
