@@ -2263,3 +2263,114 @@ what the figures need, a redraw reads it back.
 - `DECISIONS.md` is missing three weeks of decisions that live only here.
 - The schema's lower-left is empty — cosmetic, inherent to the layered layout.
 - The other Mini: `git fetch origin && git reset --hard origin/main`.
+
+---
+
+## 2026-10-07 (evening) — HANDOVER
+
+**Tree clean, both repos pushed. Continuing tomorrow on the other Mac.**
+
+### ⚠️ FIRST, ON THE OTHER MAC
+
+    git fetch origin && git reset --hard origin/main      # in BOTH repos
+
+`RAWCLICStockAndFlow` especially: its git was **broken** — `.git` pointed at a
+`~/gitdirs/` directory that did not exist, and `.git 2` was an empty iCloud
+conflict copy. It had been unversioned since 22 September, so
+`src/traction_export.py` had **never been committed**. Restored by cloning the
+remote bare into the gitdir and pointing `core.worktree` back at the tree.
+Check the other Mac has the same wiring before working there.
+
+### WHAT IS WAITING TO BE RUN
+
+Nothing is broken; these are out of date.
+
+    02_electronics.py      03_tractionmotors.py      04_batteries.py
+    05_combine_cases.py
+
+`04_03_tractionmotors.py` upstream HAS been re-run (07-10, 08:55) and its
+export is verified — the vehicle count is sampled now.
+
+### WHERE THE DAY WENT
+
+**1. The traction export did not sample the vehicle count.** Mass is
+count x composition, and a product of two uncertain quantities cannot be more
+certain than either; the count alone has a CV of 7–21% by year against the
+composition's 2.5–3.3%. Every traction interval was 2.9x to 6.6x too narrow.
+
+Fixed in `RAWCLICStockAndFlow` `8e4b4e3`, per segment, which is the resolution
+`bev_draws` exists at. Verified against that project's own 22-September proof:
+copper `inflow` 2060 band **9.7% -> 45.1%** (proof said 44.5%).
+
+⚠️ **The medians moved too, and should**: `inflow` −0.5%, `collected` −6.9% at
+2040. The tracker is one deterministic run at the point lifetime, so Jensen
+makes its `collected` biased high by 2–6%. A first version held the means
+fixed, preserving that bias — `FAILURES.md` 29.
+
+⚠️ **It was all already proved on 22 September** in
+`RAWCLICStockAndFlow/code/proof_0403_vehicle_draws.py` and that project's
+HANDOVER, under a heading reading "THE BLOCKER IS RESOLVED". A day went into
+rediscovering it. **Read the upstream handover before investigating upstream.**
+
+**2. Extrapolation past 2060.** `improvement_after_end` = `hold` (default) or
+`continue`; all four cases are `continue` now. Linear; a value passing 0 or 1
+is set to it; a group summing above 1 is set back to 1; a shortfall goes to the
+group's loss flow.
+
+⚠️ The one that cost three failed runs: past the window a rising coefficient
+reaches its own ceiling and the mode meets the max — the battery's cathode
+nickel at `0.97 / 0.99 / 0.99`. That row is then the widest in its group, so
+the sampler forces it to take `1 - the others`, which is 0.990001 to 0.999181,
+all above its maximum: every draw weighs zero and the run stops. Rule: past
+2060, where the mode has met the max and sits above 0.5, **keep the min and set
+mode = max = 1**.
+
+**3. Figures.** Shared units per figure type; crossing dots interpolated onto
+the drawn line; the stock integrated over the year gaps (it had summed
+5-yearly samples as annual, ~5x low); axes that use the panel; `structure.png`
+and `structure_coefficients.png` as two top-level pages; `routes.png` removed;
+the fleet share no longer capped at 100%.
+
+### ⚠️ WHERE WORK STOPPED — THE BATTERY STUDY
+
+Two new documents arrived today in `documentation/BatteryStudy/`:
+
+    1-s2.0-S0956053X2600543X-main.pdf    Maisel et al., 15 pages
+    1-s2.0-S0956053X2600543X-mmc1.xlsx   supplementary data, 25 sheets
+
+Read and written up in **`documentation/BATTERY_COEFFICIENTS.md`**, extracted
+by `tools/extract_battery_tcs.py` (reads and never writes the study):
+
+- **Three process families** — mechanical 1,216 coefficients, hydro 630,
+  thermal 496, plus preparation for reuse 404.
+- **A family is not a route.** The five routes are chains of families.
+  Mechanical is Route 3 *and* the pre-treatment inside 1, 2 and 4. **Direct
+  recycling is Route 5 alone, LFP only** — it keeps the cathode compound rather
+  than dissolving it. That was the question asked, and answered.
+- Per-element min/median/max with data quality (1 best, 4 worst) and reference
+  counts for Ni, Co, Li, Mn, Cu, Al, Fe, P, graphite, C.
+- The mixture moves hard: Route 3 `0.799 -> 0.286`, Route 2 `0.100 -> 0.696`.
+  Direct recycling stays near zero at **TRL 4**.
+
+⚠️ **THE OPEN QUESTION, AND IT IS A MODELLING DECISION.** The wanted split is
+**NMC low / middle / high, LFP, LMFP and two sodium**. The coefficients are
+**chemistry-blind**: `NMC`, `LFP` and `LMFP` appear ZERO times in all 2,746
+rows, and the paper states that as a limitation in its own words. Sodium IS
+there (`SIB` 99 times, `battNaRechargeable` 200 rows).
+
+So chemistry cannot come from these coefficients. It has to enter through
+COMPOSITION — the same family coefficients applied to different element mixes —
+with Route 5 the one exception defined per chemistry. **That decision has not
+been taken.** It is the first thing to settle.
+
+Still unread: the paper's Fig. 5, and the ten `LIB_Route* BAU/REC` sheets,
+which hold route-level recovery with uncertainty per element.
+
+### SMALLER THINGS
+
+- `pypdf` was installed into this repo's `.venv` to read the paper. The venv's
+  `pip` shebang still points at the old pre-iCloud path — use
+  `./.venv/bin/python -m pip`.
+- `documentation/DIALOG.md` holds the whole conversation, both sessions, 1,707
+  turns, 2026-08-17 to 09-30. `FAILURES.md` is the register drawn from it:
+  29 entries, eight patterns.
