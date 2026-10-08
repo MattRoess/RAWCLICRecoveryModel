@@ -60,13 +60,25 @@ them matching none.
   the 90 PLACEHOLDER rows of the 2030 table (20, 22, 20 and 28; `BATTERY_ROUTES.md` §4) and the dismantling
   of `batteryCellUnitemised` are his to confirm.
 
-**Git.** This Mac's git had not been fetched since 2026-09-16 and holds a stray ref from August,
-`refs/heads/main 2` (and `refs/remotes/origin/main 2`), that makes `git fetch` fail with "bad object". The
-reorganisation that `git status` showed as pending here is already on GitHub (`9ea56fe`, 2026-10-07). The
-battery work was therefore committed and pushed from a clean clone of GitHub's `main`, and not from this
-git directory. **The command in "The other Mini, whenever it is next opened" below,
-`git fetch origin && git reset --hard origin/main`, is safe again once the stray refs are moved out of
-`refs/` and this work is on GitHub; before that it would throw this work away.**
+**Git.** This Mac's git had not been fetched since 2026-09-16 and held two stray refs from August,
+`refs/heads/main 2` and `refs/remotes/origin/main 2`, that made `git fetch` fail with "bad object". The
+reorganisation that `git status` showed as pending here was already on GitHub (`9ea56fe`, 2026-10-07), so
+the battery work was committed and pushed (`96de773`) from a clean clone of GitHub's `main`. **Then, the same
+day, git here was fixed, on his word:**
+
+- the two stray refs were moved, not deleted, to `~/gitdirs/RAWCLICRecoveryModel.git/stray-refs-2026-10-08/`;
+  they pointed at `e74504f` of 2026-08-14, which is on `main` anyway. `git fsck` is clean;
+- the 52 commits that existed only on this Mac (09-17 to 09-25, 204 commits in all) are kept on the branch
+  `local-history-2026-09-25`. All 45 files they touched are on GitHub, byte for byte in the 09-28 snapshot
+  or changed again since; one, `tools/build_tractionmotor_shredder_case.py`, was removed on purpose in
+  `e33d84c` of 09-29;
+- `main` was moved to `origin/main` with `git reset --mixed`, which leaves the working folder alone. `git
+  status` is empty and `main` equals `origin/main`.
+
+RAWCLICStockAndFlow got the same: its two commits only on this Mac are kept on `local-history-2026-09-24`.
+So the command in "The other Mini, whenever it is next opened" below has been done; its `--hard` form
+would throw away uncommitted work, so use it only on a tree with none. **The rule stays: commit and push on
+one Mac, pull on the other.**
 
 ## 2026-10-07 — the copyright notice and the licence
 
