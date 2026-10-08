@@ -2,8 +2,9 @@
 
 ## 2026-10-08 — the battery is five cases, one per chemistry, and each has its own roads
 
-**Built and tested; not run on real draws, because the draws do not exist yet.** All of it is in
-`documentation/BATTERY_ROUTES.md`; the decisions are DECISIONS.md 42–52. The user asked on the day
+**Built, tested, and every case checked on the real export. The study itself, `04_batteries.py`, has not
+been run and is his; where things stand at the end of the day is the entry at the foot of this file.**
+All of it is in `documentation/BATTERY_ROUTES.md`; the decisions are DECISIONS.md 42–52. The user asked on the day
 whether the three main processes beside the pretreatment (hydrometallurgy, pyrometallurgy, direct
 recycling) were in the model. Only hydrometallurgy was.
 
@@ -22,20 +23,18 @@ recycling) were in the model. Only hydrometallurgy was.
 - **Handed-on mass** is neither recovered nor lost, and has its own line in the figures. The existing
   figures are byte-identical.
 - **Upstream**, `RAWCLICStockAndFlow/code/04_04_batteries.py` now writes the recovery export per chemistry
-  (`battery_recovery_draws_by_chemistry/`) and no longer sums it. Prepared and compared with the old code on
-  synthetic inputs; **not run**. See its handover of the same date.
-- Tests: all seven suites, 158 tests, pass. Documented: `BATTERY_ROUTES.md`, `DECISIONS.md`, `CASES.md`,
+  (`battery_recovery_draws_by_chemistry/`) and no longer sums it. **He ran it the same day**, about six
+  hours, and the export checked out; the evening entry at the foot has the checks. See also its handover of
+  the same date.
+- Tests: all seven suites, 160 tests, pass. Documented: `BATTERY_ROUTES.md`, `DECISIONS.md`, `CASES.md`,
   `RUNNING.md`, `BATTERY_COEFFICIENTS.md` (two errors corrected), `BatteryStudy/README.md`.
 
 **What to run, in order — the large runs are yours**
 
-1. In RAWCLICStockAndFlow: `00_parameters.py`, then `04_04_batteries.py` (an hour or more, about 48 GB).
-   Check that `data/processed/battery_recovery_draws_by_chemistry/` holds 14 chemistry × scenario folders.
+1. **Done, 2026-10-08:** in RAWCLICStockAndFlow `00_parameters.py`, then `04_04_batteries.py`.
+   `data/processed/battery_recovery_draws_by_chemistry/` holds the 14 chemistry × scenario folders.
 2. Here: press Run on `04_batteries.py`. Twelve passes. Stage 01 comes first and says what is wrong.
 3. To see BAU or REC, change `run.variants` and press Run again; nothing is overwritten.
-
-Until step 1 the electronics and the traction motor run as before, and `04_batteries.py` stops in stage
-01 with "The export … does not exist".
 
 **What I got wrong on the way, and corrected** (the second and third in the same day they were said):
 the REC lithium "dip to 0.50 in 2028" is the regulation's target, not a copy error; BAU does recover
@@ -2454,3 +2453,122 @@ which hold route-level recovery with uncertainty per element.
 - `documentation/DIALOG.md` holds the whole conversation, both sessions, 1,707
   turns, 2026-08-17 to 09-30. `FAILURES.md` is the register drawn from it:
   29 entries, eight patterns.
+
+## 2026-10-08 (evening) — HANDOVER
+
+**Both repositories pushed, git aligned on this Mac, tree clean. 04_04 has been run and its export checked.
+The next step is his: press Run on `04_batteries.py`.**
+
+### ⚠️ FIRST, ON THE OTHER MAC
+
+    git fetch origin && git reset --hard origin/main      # in BOTH repos
+
+Safe, because the working folder is the shared iCloud tree and everything in it is on GitHub now: after
+the fetch, `git diff origin/main --stat` must print nothing. If it prints something, stop -- that is work
+that was not pushed. (This Mac needed more than the one command; see "Git" in the entry above. If `git
+fetch` fails there with "bad object", look for a stray ref in `refs/` whose name has a space and ` 2`.)
+
+### WHAT IS WAITING TO BE RUN
+
+    04_batteries.py       twelve passes, 200,000 draws, `run.variants` = own + mechanical
+    02_electronics.py     03_tractionmotors.py     05_combine_cases.py     as out of date as before
+
+I have not timed `04_batteries.py` at full width. At 300 draws, stage 03 of one case took 45 s, most of
+it figures. Then change `run.variants` to `tc_set=BAU` and `tc_set=REC` (and, for sodium,
+`sodium_route=mechanical_direct`) and press Run again; every choice has its own folder, after the
+scenario, under `figures/<case>/` and `data/<case>/output_data/`.
+
+### WHERE THE DAY WENT
+
+**1. The battery is five cases.** LFP, LMFP, NMC_high, sodium, solid-state; each with its own roads, three
+sets of coefficients, one setting. Everything about it is in `BATTERY_ROUTES.md`; the decisions are
+DECISIONS 42–52, and 21 now says large runs are his.
+
+**2. He ran 04_04, and the export is right.** The first of the three flows was exported at 14:11, the second
+at 17:00, the third at 19:38, the summary files and figures by 19:41: **about six hours**, not the "an hour
+or more" in the older notes. Checked, read-only:
+
+- 14 chemistry × scenario folders, 9.4 GB: LFP, LMFP and NMC_high in S1–S3, the two sodium cells in S2–S3,
+  solid-state in S3, each with `inflow`, `outflow` and `collected`. Every array is (200000, 11), float32,
+  finite, none negative; no N or F; `batteryCellUnitemised` only in the sodium cells.
+- **Against `battery_draws/` of the same run, draw by draw: 3.4e-7**, the worst relative difference,
+  components and elements, in 21 of the 42 folder-flow pairs (all 14 `collected`, and seven of `inflow` and
+  `outflow`); nothing missing, nothing extra. That is the check that counts: both were written by one run
+  from the same arrays.
+- Against the old summed export of 10-07 the means agree to four decimals (new/old = 1.0000) and the draws
+  do not. That is not the export; it is point 4.
+
+Collected mass in 2050, kt (the sum of the component totals):
+
+| | LFP | LMFP | NMC_high | Na layered | Na Prussian white | solid-state |
+|---|---:|---:|---:|---:|---:|---:|
+| S1 | 2,130 | 1,274 | 878 | | | |
+| S2 | 2,034 | 1,266 | 419 | 335 | 719 | |
+| S3 | 1,946 | 1,197 | 400 | 309 | 684 | 62 |
+
+**3. Each case was run on the real export** before he pressed Run, one at a time at 300 draws: the input
+check, the check of every version, and a Monte Carlo of every version in every scenario the case has.
+Everything passed; the numbers are a check, not a result.
+
+| case | scenarios | versions | all terminal flows / collected | |
+|---|---|---|---:|---|
+| `battery_lfp` | S1–S3 | own, BAU, REC | 100.01–100.03 % | |
+| `battery_lmfp` | S1–S3 | own, BAU, REC | 100.24–100.25 % | 100.11–100.12 % at 5,000 draws |
+| `battery_nmc_high` | S1–S3 | own, BAU, REC | 100.48–100.57 % | |
+| `battery_sodium` | S2, S3 | 3 sets × 2 routes | 99.99 % | handed on 27–28 % (mechanical), 14 % (mechanical_direct) |
+| `battery_solid_state` | S3 | — | 100.23 % | handed on 8.9 %; stages 02 and 03 ran in a sandbox |
+
+The excess over 100 % is the composition files' own noise, not mass made by the model: at the full 200,000
+draws the elements of a component add up to at most 0.03 % above the component (the enclosures, where iron
+and aluminium are nearly all of it), and at a few hundred draws the noise is larger. It shrinks with the
+draws. The stand-in export I had used before had that noise clipped out.
+
+**⚠️ The real export found a crash the stand-in could not.** The solid-state pass stopped with
+`'NoneType' object has no attribute 'mean'`: solid-state has nothing in S3 before 2040, so in those years
+the composition has no row for it and nothing was kept to add up. Any case with a leading run of empty
+years would have done the same, and it would have stopped his twelve passes at the last. **Fixed** in
+`Draws.inflow` (a year with no mass is zero; components named that the export lacks is an error that says
+so), with two tests, the first of which reproduced the real traceback. DEFECTS 3.26, FAILURES 30. Stages
+02 and 03 then ran on solid-state in a sandbox, figures and workbook included; the zero years draw as
+zero.
+
+**4. Found upstream, not fixed: 04_04 draws a different pack-size world on every run.**
+`RAWCLICStockAndFlow/src/battery_capacity.py:81` and `src/battery_voltage.py:107` seed each segment with
+`abs(hash(segment))`, and Python salts the hash of a string per process. Shown directly: the same call with
+the same seed gives `[33.7, 35.8, 34.1, ...]` kWh in one process and `[33.7, 29.9, 34.1, ...]` in the next,
+and the same numbers in both with `PYTHONHASHSEED=0`. Within a run nothing is wrong -- one draw is one world
+in everything the run wrote -- but two runs of 04_04 differ, so an export cannot be reproduced. The fix is
+`zlib.crc32(segment.encode())` in both places, as `battery_chemistry.py` already does; it changes the
+draws once and takes effect with the next run of 04_04, six hours. **Not made: it is his decision.**
+DEFECTS 3.27.
+
+**5. Git on this Mac was fixed**, on his word (the entry above has the details): two stray refs moved, not
+deleted; 204 commits of old local history kept on `local-history-2026-09-25` and `local-history-2026-09-24`;
+`main` equals `origin/main` in both repositories.
+
+**6. The numbers in the documents were read back against the data** before anything was pushed. Eleven
+statements in the first draft of `BATTERY_ROUTES.md` were wrong, and three wrong statements had already gone
+to him in chat (FAILURES 31). The pushed document has none of them.
+
+### OPEN — HIS
+
+- **The `hash(segment)` fix** (point 4), and whether to re-run 04_04 after it.
+- Put the five cases into `combine.cases` in place of `data/battery`? A case without the scenario stops 05:
+  S1 has three of them, S2 four, S3 five (`BATTERY_ROUTES.md` §13).
+- Add Fe, P, Mn, Na, C and Al to `figures.resources` of the batteries study; it draws Cu, Ni, Co and Li.
+- Retire `data/battery`? It still runs, from the old summed export (`battery_recovery_draws/`, 2.8 GB), which
+  nothing writes any more.
+- The chemistry cases draw the same random numbers where a coefficient has the same name (correlation 1.000),
+  so their sum in 05 is wider than independent cases would give. A `stream` key per case would fix it; it was
+  left out as complicated.
+- The 90 PLACEHOLDER rows (20, 22, 20 and 28; `BATTERY_ROUTES.md` §4), `own` borrowing the paper's REC where he
+  has no numbers, and the dismantling of `batteryCellUnitemised`, which is an assumption.
+- Two things on disk that are his to delete, and I have not: the old single-sodium `Na_ion*` files in
+  `battery_draws/` (8.2 GB, not read any more), and the old summed export above once `data/battery` is gone.
+
+### SMALLER THINGS
+
+- Registers: DEFECTS 3.26 and 3.27, FAILURES 30 and 31, DECISIONS 42–52.
+- The index of `documentation/README.md` lists `BATTERY_ROUTES.md`.
+- Scratch from today is outside the repositories: about 100 MB of stand-in data in the system temp folder,
+  and the check scripts in the session's scratchpad. None of it is needed.

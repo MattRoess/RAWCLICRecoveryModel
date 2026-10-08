@@ -13,9 +13,9 @@ Sodium has two ways of being treated, and the same setting picks between them.
 
 **You press Run on `04_batteries.py`.** It runs the five cases, each in the
 scenarios its chemistry exists in (12 passes), once for the choice in
-`run.variants`. Nothing here needs a command line. **None of it can run until
-the upstream stage has written the per-chemistry export (§12): stage 01 says so
-and stops.**
+`run.variants`. Nothing here needs a command line. **It needs the per-chemistry
+export of the upstream stage (§12), which was written on 2026-10-08; without it
+stage 01 says so and stops.**
 
 | § | |
 |---|---|
@@ -476,6 +476,8 @@ To add a chemistry: copy the nearest case folder, edit its `source` table
   `2 component(s) in 6 row(s) are not in this case's composition, so those rows never
   fire: anodeActiveMaterial, cathodeActiveMaterial`. That warning is expected; the rows
   are there for the day they do.
+  In S3 it has nothing before 2040, so those years are zero in its figures (a case with an
+  empty year used to stop the Monte Carlo: DEFECTS 3.26).
 * **Warnings that are expected** in the other cases: the `rest` rows of components
   that have no `rest` ("so those rows never fire: rest") and, in the version check,
   "improvement extrapolated past 2060; N coefficient(s) reached 0 or 1 and were held
@@ -556,12 +558,21 @@ read. Nothing writes the old folder any more; the old 2.8 GB folder stays on dis
 you delete it, and `data/battery` runs from it until then (its `upstream_dir` names
 it).
 
-**Status: prepared, tested on synthetic inputs, not run.** The old and the new export
-blocks of `04_04_batteries.py` were run on the same small synthetic inputs and compared:
-the chemistries of a scenario add up to the old arrays (90 arrays, worst relative error
-2e-7). The real 04_04 takes an hour or more and is yours to run, after `00_parameters.py`
-upstream; see its `documentation/HANDOVER.md` of 2026-10-08. Until then none of the five
-cases has data to read, and stage 01 says so:
+**Status: run on 2026-10-08, and checked.** It took about six hours (not the "an hour or
+more" of the older notes) and left 9.4 GB: exactly the 14 chemistry × scenario folders, each with
+`inflow`, `outflow` and `collected`, every array (200000, 11), float32, finite, none negative, no N
+or F, and `batteryCellUnitemised` only in the sodium cells. Against `battery_draws/` of the same
+run the export agrees **draw by draw to 3.4e-7**, components and elements, in 21 of the 42
+folder-flow pairs. Before the run, the old and the new export code had been run on the same small
+synthetic inputs and compared (90 arrays, worst relative error 2e-7). The upstream
+`documentation/HANDOVER.md` of 2026-10-08 has the details.
+
+**Two runs of 04_04 do not give the same draws** (`hash(segment)` seeds the pack size and
+voltage; DEFECTS 3.27), so the new export agrees with the old summed one of 10-07 in its means
+(to four decimals) and not draw by draw. Re-running 04_04 will move the draws a little until
+that is fixed, which is his decision.
+
+If the export is not there, stage 01 says so:
 
 ```
 The export ../RAWCLICStockAndFlow/data/processed/battery_recovery_draws_by_chemistry does not exist.
@@ -570,8 +581,7 @@ It is `upstream_dir` (data/processed/battery_recovery_draws_by_chemistry) in the
 since the export became one folder per chemistry, or `upstream_dir` is wrong.
 ```
 
-**After the run**, the stand-in checks done here can be repeated on the real arrays:
-adding the chemistries of one scenario, array by array, must give the old summed folder.
+A chemistry folder that appears in the export and that no case names stops the run (§8).
 
 ---
 
@@ -628,4 +638,10 @@ mode, and stage 01 refuses what does not.
 * Verified here, outside the repository: all five cases in every version they offer
   ran end to end on a stand-in export built from the real composition files
   (validate, every-choice check, Monte Carlo at a few hundred draws), and the mass
-  balance closed to exactly 100.00 % in every version.
+  balance closed to exactly 100.00 % in every version -- **and on the real export**
+  (2026-10-08), one case at a time at 300 draws. The real export reads 99.99 to 100.57 %,
+  not 100.00 %: the composition files' own sampling noise, which a stand-in made without it
+  did not have, and which shrinks with the draws (the elements of a component add up to at
+  most 0.03 % above the component at 200,000). The real export also found what the stand-in
+  could not: a year in which a case has no mass at all stopped the Monte Carlo
+  (solid-state before 2040; DEFECTS 3.26, fixed).

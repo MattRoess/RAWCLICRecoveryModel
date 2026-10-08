@@ -78,10 +78,10 @@ traction motor) ignore the setting and have no such folder. A choice a case does
 offer, or a case that offers one the setting leaves out, is refused with a message.
 
 **The battery cases need the upstream export written per chemistry**
-(`data/processed/battery_recovery_draws_by_chemistry/`, one folder per chemistry). Until
-RAWCLICStockAndFlow's `04_04_batteries.py` has been run since it changed, stage 01 stops
-and says the export does not exist. What it does, the three sets and every number's
-source: `BATTERY_ROUTES.md`.
+(`data/processed/battery_recovery_draws_by_chemistry/`, one folder per chemistry). It was
+written by RAWCLICStockAndFlow's `04_04_batteries.py` on 2026-10-08 (about six hours). If it
+is ever missing, stage 01 stops and says the export does not exist. What the cases do, the
+three sets and every number's source: `BATTERY_ROUTES.md`.
 
 ## 2. Open each file in Positron and press Run, in order
 
