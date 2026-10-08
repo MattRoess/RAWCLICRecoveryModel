@@ -811,6 +811,71 @@ def test_the_monte_carlo_runs_on_a_different_item() -> None:
         shutil.rmtree(case, ignore_errors=True)
 
 
+def test_a_year_in_which_the_case_has_no_mass_at_all_solves_as_zero() -> None:
+    """
+    A chemistry that starts late leaves years in which the export holds zeros for
+    the whole case -- solid-state in S3 has nothing before 2040 -- and the Monte
+    Carlo used to stop there with `'NoneType' object has no attribute 'mean'`.
+
+    Found 2026-10-08 on the first run of the real export: the stand-in had mass
+    in every year, so nothing before it had a year with none. In such a year the
+    composition has no row for the product, so no domain is kept, and there was
+    nothing to add up. The year is zero, every flow in it is zero, and the years
+    around it are solved as they always were.
+    """
+    from src.upstream import load
+
+    params, case, root = build_everything()
+    try:
+        # The first year of the export holds nothing, in every array of every flow.
+        for dirpath, _, files in os.walk(os.path.join(root, 'upstream', 'HIGH')):
+            for name in files:
+                if name.endswith('.npy') and name != 'years.npy':
+                    path = os.path.join(dirpath, name)
+                    array = np.load(path)
+                    array[:, 0] = 0.0
+                    np.save(path, array)
+
+        tables = load(params, params.run.data_folder, quiet=True)
+        coefficients(case, tables['composition'])
+        run = solve_draws(case, NAMES, draws=200, seed=0, tables=tables, years='',
+                          scenario=params.run.scenario)
+
+        years = run.keys['Year'].astype(str).to_numpy()
+        empty, later = years == str(YEARS[0]), years == str(YEARS[1])
+        assert empty.any() and later.any(), f'the years are {sorted(set(years))}'
+        assert run.values[empty].max() == 0.0, 'a year with no mass has mass in it'
+        assert run.values[later].max() > 0.0, 'the year after it was not solved'
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
+def test_components_the_export_lacks_are_named_not_a_crash() -> None:
+    """
+    The other way a year can have no inflow: the composition names components and
+    the export has an array for none of them. That is a mismatch between two
+    things that should agree, not a year with no mass, so it is said in words.
+    """
+    from src.upstream import UpstreamError, load
+
+    params, case, root = build_everything()
+    try:
+        tables = load(params, params.run.data_folder, quiet=True)
+        draws = tables['draws']
+        try:
+            draws.inflow(PRODUCT, YEARS[1], ['NoSuchComponent'], 0, 10)
+        except UpstreamError as error:
+            assert 'NoSuchComponent' in str(error), str(error)
+        else:
+            raise AssertionError('components the export does not have gave an answer')
+        # and no components at all is a year with nothing in it
+        assert not draws.inflow(PRODUCT, YEARS[1], [], 0, 10).any()
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(case, ignore_errors=True)
+
+
 def test_the_source_sheet_offers_the_child_layer_choices() -> None:
     """
     Writing `source` constrains the cell beside `child_layer` to the two

@@ -1322,6 +1322,58 @@ studies do not describe the same fleet before 2060.
 already does, keeping draw *i* of the fleet with draw *i* of the motor. Whether
 that alignment already holds there has not been checked.
 
+### 3.26 A year in which a case has no mass at all stopped the Monte Carlo — **FIXED 2026-10-08**
+
+`AttributeError: 'NoneType' object has no attribute 'mean'`, in
+`Draws.mean_inflow`, on the first real run of the solid-state case.
+
+Solid-state is exported for S3 with nothing before 2040: the arrays are zero, so
+the composition table has no row for it in those years, so `upstream_values`
+kept no component, so `Draws.inflow` had nothing to add up and returned `None`.
+The code a line below already meant to treat a zero year as zero
+(`scale = ... if average > 0 else 0.0`); it never got that far. Any case with a
+leading run of empty years would have failed the same way -- a chemistry that
+starts late, a product with no inflow yet.
+
+It was not found by the stand-in export the five battery cases were first checked
+on, because that had mass in every year. It was found by running each case on the
+real export before the study was pressed (FAILURES 30).
+
+**FIXED:** no component kept is a year with no mass, and `inflow` returns zeros.
+Components that the composition names and the export has none of is a different
+thing, a mismatch between two things that should agree, and is now an
+`UpstreamError` that says so. Two tests in `tests/test_generality.py`; the first
+reproduced the real traceback before the fix.
+
+### 3.27 04_04 draws a different pack-size world on every run — **OPEN, upstream**
+
+Found 2026-10-08 comparing the per-chemistry export with the old summed one. The
+means agree to four decimals (new/old = 1.0000 on every array looked at), the
+individual draws do not: the correlation between the two runs across draws is
+0.06 for 2020 inflow, where the pack size dominates, and 0.97 for 2050, where
+the vehicle count does. The vehicle counts (`bev_draws`) and the composition
+files were not rewritten between the runs; the pack size and voltage are.
+
+**Cause:** `RAWCLICStockAndFlow/src/battery_capacity.py:81` and
+`src/battery_voltage.py:107` seed each segment's stream with
+`abs(hash(segment))`. Python salts the hash of a `str` per process, so the seed is
+different in every run. Shown directly: the same call with the same seed gives
+`[33.7, 35.8, 34.1, ...]` kWh in one process and `[33.7, 29.9, 34.1, ...]` in the
+next, and identical numbers in both with `PYTHONHASHSEED=0`. These are the last
+two uses of `hash()` for a seed in the code; `battery_chemistry.py` and
+`04_02` already use `zlib.crc32`, and the upstream handover of 2026-09-28 says
+"crc32, never `hash`".
+
+**What it costs:** nothing within a run -- the capacity and voltage are drawn once
+per segment and shared by every chemistry and scenario, so one draw is one world
+in everything the run wrote. What is lost is that two runs of 04_04 differ, so an
+export cannot be reproduced, and this model's results shift a little with each
+re-run.
+
+**The fix, not made:** `zlib.crc32(segment.encode())` in both places. It changes
+the draws once and for good, so it takes effect only with the next run of 04_04,
+which is six hours.
+
 ---
 
 ## 4. Code quality notes

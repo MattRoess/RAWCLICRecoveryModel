@@ -529,9 +529,52 @@ and no idea it had been diagnosed, because I was measuring instead of reading.
 upstream handover.*
 
 
+## 30. I said the battery cases ran end to end, on a stand-in that had mass in every year — 10-08
+
+I built five cases and checked them on a stand-in export made from the real
+composition files, and reported that every case ran in every version with the mass
+balance at exactly 100.00 %. It was true of the stand-in. The stand-in had mass in
+every year; the real export has years in which solid-state has none (S3, before
+2040), and on the real export that pass stopped with `'NoneType' object has no
+attribute 'mean'` (DEFECTS 3.26). The 100.00 % was also a product of the
+stand-in: I had clipped the composition files' own noise out of it, and the real
+export reads between 99.99 and 100.57 % at a few hundred draws.
+
+It would have stopped his twelve-pass run at its last pass, hours in. It did not,
+because I ran each case on the real export, one at a time at a few hundred draws,
+after his 04_04 finished and before he pressed Run. Five commands, about fifteen
+seconds each.
+
+*A stand-in has the shapes you thought of. "Ran end to end" is a statement about
+the thing it ran on; say what that was, and run the real one before he does.*
+
+## 31. I typed numbers into the document that says where its numbers come from — 10-08
+
+`BATTERY_ROUTES.md` exists to say where every number comes from. Its first draft
+had numbers I had not looked up: a deviation of "up to 14 points" that I had
+measured on the paper's target series and not on the estimates the model uses
+(11.7); "Route 4's rates are taken to be Route 1's; they agree at the targets"
+(they differ, the aluminium foil most); "3.5 % of everything collected" (3.5 % of
+the cell stream, 2.1 % of what is collected); handed-on mass "not subtracted from
+lost" (it is: lost is collected less recovered less handed on); "combine S2 and S3
+with all five" (solid-state has no S2); and a loss flow labelled with the first
+road's process, so that the loss figure would have charged hydrometallurgy with
+mass that never reached it. Three wrong statements had already gone to him in chat:
+the REC lithium "copy error" (it is the regulation's target), that BAU never
+recovers manganese (it does), and the deviation figures, measured on the targets
+(the first item above).
+
+I caught them, before anything was pushed, by reading every number in the
+document back against the workbooks, the paper's sheets and the code. None of that
+needed him.
+
+*A number in a document is read from the data when it is written, not remembered
+from the day it was found.*
+
+
 ## Patterns
 
-Twenty-nine failures, eight shapes. The shapes repeat; the instances do not matter
+Thirty-one failures, eight shapes. The shapes repeat; the instances do not matter
 much.
 
 **1. Verified against itself.** #7, #8, #14, #27. A Sankey that balances, an account
@@ -541,7 +584,7 @@ check that can only be tested against itself is not tested.* Every check must
 compare against something produced by a different path — the `Recovered` sheet,
 the review's published values, the upstream arrays.
 
-**2. Verified in the source, not in the output.** #15, #16, #11, #12. I read
+**2. Verified in the source, not in the output.** #15, #16, #11, #12, #30, #31. I read
 code and concluded the output was right; I wrote a table and pushed it before
 reading it; I named a document without opening it. This is the single most
 expensive pattern in the list — it cost more days than every other entry

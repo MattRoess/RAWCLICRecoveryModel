@@ -985,6 +985,16 @@ class Draws:
         summed to 1.
         """
         domain_mass, _ = self.per_product[product]
+
+        # NO DOMAIN KEPT IS A YEAR WITH NO MASS, not a failure. The caller reads the
+        # domains off the composition table, and the table has no row for a product in
+        # a year in which the export holds nothing of it -- a chemistry that starts
+        # late, solid-state in S3 before 2040. That year is zero, and what was here
+        # returned None, which stopped the Monte Carlo at `.mean()` on the first
+        # real export that had one (2026-10-08).
+        if not len(domains):
+            return np.zeros(stop - start)
+
         total = None
         for domain in domains:
             array = domain_mass.get(domain)
@@ -992,6 +1002,15 @@ class Draws:
                 continue
             piece = self._at(array, year, start, stop)
             total = piece if total is None else total + piece
+
+        # DOMAINS NAMED AND NONE OF THEM IN THE EXPORT is the other way to arrive with
+        # nothing, and it is a different thing: the table and the arrays are meant to
+        # list the same components. Said in words, not left to fail further on.
+        if total is None:
+            raise UpstreamError(
+                f'The composition names {", ".join(str(d) for d in domains)} for {product} '
+                f'in {year}, and the export holds an array for none of them. The table '
+                f'and the arrays should list the same components.')
         return total
 
     def mean_inflow(self, product: str, year, domains) -> float:
