@@ -174,6 +174,38 @@ class RunParams:
     # because it is the more correct of the two.
     engine: str = 'optimized'
 
+    # WHICH VERSION OF THE COEFFICIENTS TO USE, where a case offers more than one.
+    # Added 2026-10-08. A case can hold several versions of some of its
+    # coefficients in the SAME workbook -- rows tagged in the `variant` column
+    # of `TCs` and `TCs_improved` -- and this setting picks one of each:
+    #
+    #     tc_set          which set of coefficients drives the recovery
+    #         own   your own numbers (the report's Table 2 for the
+    #               hydrometallurgical road); where you have none -- pyrometallurgy,
+    #               direct recycling, the split between roads, sodium -- the
+    #               paper's REC numbers are borrowed and the tags say so
+    #         BAU   the paper's business-as-usual numbers throughout
+    #         REC   the paper's recovery scenario (EU targets met on time)
+    #
+    #     sodium_route    how sodium-ion cells are treated
+    #         mechanical          mechanical treatment only, as in the paper
+    #         mechanical_direct   part of the cells goes to direct recycling
+    #                             instead (prepared, placeholder numbers)
+    #
+    # Several are separated by semicolons, exactly as `data_folder` is:
+    #     variants = 'tc_set=REC; sodium_route=mechanical'
+    #
+    # A case that offers none of these ignores this setting, so the electronics
+    # and traction motor cases are not affected. A case that offers a choice this
+    # setting does not make is REFUSED, naming what it offers: a silent default
+    # would give an answer that looks like any other.
+    #
+    # Results of different choices are written to different folders -- the
+    # choice is part of the path, like the scenario -- so a REC run never
+    # overwrites an `own` run.
+    # SAFE TO CHANGE: yes -- it must name a choice the case offers.
+    variants: str = 'tc_set=own; sodium_route=mechanical'
+
     # THE MASS UNIT THIS PROJECT WORKS IN.
     # Every inflow is converted into this on load, from whatever its own file
     # declares in the 'Unit' column, and every number the model writes is in it.
@@ -633,6 +665,14 @@ class Params:
         if not folders:
             issues.append('data is empty -- it needs the name of a case folder')
 
+        # Whether the choices read as <name>=<choice>. WHICH choices a case
+        # offers is the case's business and is checked against the case.
+        from src.case_tables import VariantError, parse_selection
+        try:
+            parse_selection(self.run.variants)
+        except VariantError as error:
+            issues.append(str(error))
+
         from src.units import AMBIGUOUS_UNITS, MASS_UNITS
         if self.run.working_unit not in MASS_UNITS:
             known = ', '.join(sorted(MASS_UNITS))
@@ -752,8 +792,22 @@ STUDIES: dict[str, dict] = {
         'figures.resources': ('magnet', 'Nd', 'Pr', 'Dy', 'Tb', 'copper'),
     },
     'batteries': {
-        'run.data_folder': 'data/battery',
-        'run.scenario': '',          # blank: S1, S2 and S3
+        # ⚠️ ONE CASE PER CHEMISTRY, from 2026-10-08. A recycler treats a lithium iron
+        # phosphate cell, a nickel-manganese-cobalt cell and a sodium-ion cell differently,
+        # so each has its own case with its own roads -- see tools/build_battery_cases.py
+        # and documentation/BATTERY_ROUTES.md. Each reads its chemistry's own export, and
+        # each runs the scenarios that chemistry exists in: LFP, LMFP and NMC in S1, S2 and
+        # S3, sodium in S2 and S3, solid-state in S3 only.
+        #
+        # `data/battery`, the one blended case, is NOT here. It is untouched and can still
+        # be run by naming it in `run.data_folder`; it reads the summed export.
+        #
+        # WHICH VERSION OF THE COEFFICIENTS (own, BAU or REC) and which road for sodium is
+        # `run.variants`, one setting for the whole study. It is NOT set here, so it is
+        # visible in one place.
+        'run.data_folder': ('data/battery_lfp; data/battery_lmfp; data/battery_nmc_high; '
+                            'data/battery_sodium; data/battery_solid_state'),
+        'run.scenario': '',          # blank: every scenario each case exports
         'figures.resources': ('Cu', 'Ni', 'Co', 'Li'),
     },
 }

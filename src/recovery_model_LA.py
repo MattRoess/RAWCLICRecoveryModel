@@ -436,6 +436,13 @@ class RecoveryModelLA:
         parts = [self.data_folder, OUTPUT_DATA_FOLDER_NAME]
         if getattr(self, 'scenario', None):
             parts.append(self.scenario)
+        # AND ONE PER CHOICE of the coefficients the case offers (run.variants,
+        # src/case_tables.py), after the scenario, so a REC run does not replace
+        # an `own` run. A case that offers none has no such folder.
+        from src import case_tables
+        choice = case_tables.label(self.data_folder)
+        if choice:
+            parts.append(choice)
         folder = os.path.join(*parts)
         os.makedirs(folder, exist_ok=True)
         return os.path.join(folder, filename)

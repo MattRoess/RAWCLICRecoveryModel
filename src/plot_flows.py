@@ -543,7 +543,9 @@ def draw(folder: str | None = None, params: Params | None = None,
 
     print(f'{folder}: {len(flows)} flows, {len(edges)} transfers, '
           f'showing {shows}' + (f' of {of_many} combinations' if of_many > 1 else ''))
-    root = folder_for(params.figures.out_dir, case, params.run.scenario)
+    # The FOLDER, not its name: the choice a case offers (run.variants) is read from the
+    # case's own tables, and a bare name cannot be opened. `folder_for` takes the name from it.
+    root = folder_for(params.figures.out_dir, folder, params.run.scenario)
     written = []
     for element in elements:
         figure = figure_for(case, edges, flows, element, unit,

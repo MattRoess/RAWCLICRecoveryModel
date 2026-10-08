@@ -52,6 +52,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.bootstrap import ensure_venv
 ensure_venv()
 
+import contextlib
+import io
 import shutil
 import tempfile
 import traceback
@@ -1609,6 +1611,453 @@ def test_the_account_does_not_count_a_component_and_its_material_twice():
     assert total('cu', 2050) == 10.0, (
         f"cu totals {total('cu', 2050)}, not 10: one resource arriving from "
         f"two components must still be added")
+
+
+def _case_with_a_handoff(handoff: bool):
+    """
+    The panel recycler with a third road out of the leaching step: material sent
+    on to another model. With `handoff` False it is the ordinary two-road case.
+    """
+    from src.upstream import load
+
+    params, case, root = build_everything()
+    # The fixture exports `collected` and `inflow`; an ACCOUNT also needs the
+    # flow that leaves the fleet. Written here, 25% above what was collected, so
+    # some of it is never collected -- and not added to the shared fixture,
+    # whose other tests read the folders' levels by position.
+    scenario = os.path.join(params.data.upstream_root, 'HIGH')
+    shutil.copytree(os.path.join(scenario, 'collected'), os.path.join(scenario, 'outflow'))
+    for name in os.listdir(os.path.join(scenario, 'outflow')):
+        if name.endswith('.npy') and name != 'years.npy':
+            path = os.path.join(scenario, 'outflow', name)
+            np.save(path, (np.load(path) * 1.25).astype(np.float32))
+    tables = load(params, case, quiet=True)
+    processes = pd.read_csv(os.path.join(case, 'input_data', 'processes.csv'))
+    if handoff:
+        processes.loc[len(processes)] = dict(
+            Input_FlowID='PV_delaminated', Output_FlowID='PV_exported',
+            process='export', technology='logistics', keyed_at='element',
+            role='handoff')
+        processes.to_csv(os.path.join(case, 'input_data', 'processes.csv'), index=False)
+
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        'make_skeleton', os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), 'tools', 'make_skeleton.py'))
+    skeleton = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(skeleton)
+    tcs = skeleton.build(case, composition=tables['composition'])
+    first = tcs['Input_FlowID'] == FLOW
+    # every group gets ranges of its own on all rows but the loss, which is the
+    # residual -- so the sampler has something to condition and nothing to refuse
+    shares = {'PV_delaminated': ('0.7', '0.5', '0.9'),
+              'PV_recovered': ('0.5' if handoff else '0.7', '0.3' if handoff else '0.5',
+                               '0.6' if handoff else '0.9'),
+              'PV_exported': ('0.3', '0.2', '0.4')}
+    for flow, (mode, low, high) in shares.items():
+        rows = tcs['Output_FlowID'] == flow
+        tcs.loc[rows, ['value', 'value_min', 'value_max']] = [mode, low, high]
+    # the first step loses 0.3 either way; the leaching step loses 0.3, or 0.2
+    # once 0.3 of it is sent on -- each group closes to exactly 1
+    for flow, share in (('PV_loss_handling', '0.3'),
+                        ('PV_loss_leaching', '0.2' if handoff else '0.3')):
+        rows = tcs['Output_FlowID'] == flow
+        tcs.loc[rows, ['value', 'value_min', 'value_max']] = [share, '', '']
+        tcs.loc[rows, 'is_residual'] = '1'
+    tcs.to_csv(os.path.join(case, 'input_data', 'TCs.csv'), index=False)
+    return params, case, root, tables
+
+
+def test_mass_handed_on_is_neither_recovered_nor_lost() -> None:
+    """
+    THE BLACK MASS OF A MECHANICAL-ONLY ROAD, in miniature (2026-10-08).
+
+    `lost` was `collected - recovered`, so anything sent on to another model
+    was reported as LOST INSIDE RECYCLING -- which says the recycler destroyed
+    what it in fact passed along. The account now has a fourth part, `handed`,
+    and the four close to the outflow in every draw.
+
+    And a case with no handoff flow must be exactly what it was: `handed` is
+    zero and `lost` is collected minus recovered, so no existing figure moves.
+    """
+    from src.monte_carlo import solve_draws
+    from src.plot_monte_carlo import account, losses
+
+    for handoff in (False, True):
+        params, case, root, tables = _case_with_a_handoff(handoff)
+        try:
+            run = solve_draws(case, NAMES, draws=200, seed=0, tables=tables, years='',
+                              scenario=params.run.scenario)
+            got = account(run, 'Si')
+            assert got is not None, 'the account could not be built'
+            closes = (got['recovered'] + got['handed'] + got['lost']
+                      + got['uncollected'] - got['outflow'])
+            assert np.abs(closes).max() < 1e-6 * np.abs(got['outflow']).max(), \
+                f'handoff={handoff}: the four parts do not sum to the outflow, off by {np.abs(closes).max():g}'
+            assert got['lost'].min() > -1e-9, 'lost went negative: handed on was subtracted twice'
+
+            if not handoff:
+                assert np.all(got['handed'] == 0), 'a case with no handoff flow has handed-on mass'
+                assert np.allclose(got['lost'], got['collected'] - got['recovered']), \
+                    'without a handoff flow lost must still be collected - recovered'
+                assert 'handed on (not counted here)' not in losses(run, 'Si')['reasons']
+            else:
+                assert got['handed'].mean(axis=0).min() > 0, 'nothing was handed on'
+                share = (got['handed'] / got['collected']).mean()
+                assert 0.05 < share < 0.35, f'handed on is {share:.2f} of what was collected'
+                assert np.allclose(got['lost'], got['collected'] - got['recovered'] - got['handed'])
+                reasons = losses(run, 'Si')['reasons']
+                assert 'handed on (not counted here)' in reasons, list(reasons)
+                total = sum(reasons.values()) + got['recovered']
+                assert np.allclose(total, got['outflow'], rtol=1e-6), \
+                    'the reasons plus what was recovered do not sum to the outflow'
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+            shutil.rmtree(case, ignore_errors=True)
+
+
+# ----------------------------------------------------------------------
+#  An export written per chemistry (2026-10-08)
+# ----------------------------------------------------------------------
+
+def _chemistry_export(names, scale=None):
+    """
+    A synthetic export written once per chemistry, the layout `source.py`
+    describes:  <export>/<chemistry>/<scenario>/<flow>/<array>.npy
+
+    Every chemistry is the panel fixture; `scale` multiplies one of them, so a
+    sum of two is told apart from either alone.
+    """
+    root = tempfile.mkdtemp()
+    export = os.path.join(root, 'upstream')
+    for name in names:
+        write_upstream(os.path.join(export, name))
+        factor = (scale or {}).get(name, 1.0)
+        if factor != 1.0:
+            for dirpath, _, files in os.walk(os.path.join(export, name)):
+                for file in files:
+                    if file.endswith('.npy') and file != 'years.npy':
+                        array = np.load(os.path.join(dirpath, file))
+                        np.save(os.path.join(dirpath, file),
+                                (array * factor).astype(np.float32))
+    return root, export
+
+
+def _chemistry_case(name: str, claims: str, export: str):
+    """A case folder under data/ that names the chemistries it treats."""
+    case = os.path.join('data', name)
+    if os.path.isdir(case):
+        shutil.rmtree(case)
+    write_case(case)
+    path = os.path.join(case, 'input_data', 'source.csv')
+    table = pd.read_csv(path)
+    table.loc[len(table)] = ['chemistries', claims]
+    table.to_csv(path, index=False)
+    params = settings(export, name)
+    params.data.inflow_draws_dir = '.'
+    return case, params
+
+
+def test_a_case_adds_the_chemistries_it_names_array_by_array() -> None:
+    """
+    A recycler receives the mix, so a case that names two chemistries reads both
+    and adds them per draw -- and one that names a single chemistry reads that
+    one, untouched.
+
+    A is the panel fixture and B is the same at twice the mass, so the sum is
+    three times A. Every number is exact, which is the point: an average of the
+    two, or the first one read, or both counted twice, would all show.
+    """
+    from src.upstream import load
+
+    roots, cases = [], []
+    try:
+        # A SEPARATE EXPORT FOR EACH CASE. One export holding both chemistries
+        # with a case that names only one of them is refused by the check in
+        # the next test -- which is the point of it.
+        mass, drawn = {}, {}
+        for name, held, claims in (('only A', ['A_x'], 'A_x'),
+                                   ('A and B', ['A_x', 'B_x'], 'A_x; B_x'),
+                                   ('only B', ['B_x'], 'B_x')):
+            root, export = _chemistry_export(held, scale={'B_x': 2.0})
+            roots.append(root)
+            case, params = _chemistry_case('pv_chem_test', claims, export)
+            cases = [case]
+            tables = load(params, case, quiet=True)
+            mass[name] = float(tables['inputs']['Value'].iloc[0])
+            composition = tables['composition']
+            assert set(composition['Layer 2']) == set(GROUPS), composition['Layer 2'].unique()
+            drawn[name] = (tables['draws'], tables['draws'].inflow(
+                PRODUCT, YEARS[0], list(GROUPS), 0, DRAWS))
+            shutil.rmtree(case, ignore_errors=True)
+
+        a, ab, b = mass['only A'], mass['A and B'], mass['only B']
+        assert abs(b / a - 2.0) < 1e-6, f'B should be twice A: {b} against {a}'
+        assert abs(ab / a - 3.0) < 1e-6, f'A + B should be three times A: {ab} against {a}'
+
+        # and the DRAWS are added, not only their mean
+        assert np.allclose(drawn['A and B'][1], 3.0 * drawn['only A'][1], rtol=1e-5), \
+            'the per-draw inflow of A + B is not three times the per-draw inflow of A'
+        assert len(drawn['A and B'][0].sources) == 2 and len(drawn['only A'][0].sources) == 1
+    finally:
+        for root in roots:
+            shutil.rmtree(root, ignore_errors=True)
+        for case in cases:
+            shutil.rmtree(case, ignore_errors=True)
+
+
+def test_a_chemistry_no_case_treats_stops_the_run_and_is_named() -> None:
+    """
+    THE CHECK ASKED FOR ON 2026-10-08: if a grade nobody has written a treatment
+    for appears in the export, the user is told and the run does not go on.
+
+    Without it the new chemistry's mass enters no total, every figure still
+    balances, and the battery is short by exactly that much without a word.
+    The cases are siblings in data/, so a run that names ONE of them still sees
+    what the others treat.
+    """
+    from src.upstream import UpstreamError, load
+
+    root, export = _chemistry_export(['A_x', 'B_x', 'NMC_low'])
+    cases = []
+    try:
+        first, params = _chemistry_case('pv_chem_a_test', 'A_x', export)
+        second, _ = _chemistry_case('pv_chem_b_test', 'B_x', export)
+        cases = [first, second]
+
+        try:
+            load(params, first, quiet=True)
+        except UpstreamError as error:
+            message = str(error)
+            assert 'NMC_low' in message, message
+            assert 'no case' in message and 'chemistries = NMC_low' in message, message
+            assert 'A_x' not in message.split('Cases looked at')[0], \
+                'a chemistry that IS treated was reported as missing'
+        else:
+            raise AssertionError('an export holding a chemistry no case treats was read')
+
+        # writing the treatment is what makes it run
+        third, _ = _chemistry_case('pv_chem_c_test', 'NMC_low', export)
+        cases.append(third)
+        assert load(params, first, quiet=True) is not None
+
+        # a chemistry named by two cases would be counted twice
+        fourth, _ = _chemistry_case('pv_chem_d_test', 'A_x', export)
+        cases.append(fourth)
+        try:
+            load(params, first, quiet=True)
+        except UpstreamError as error:
+            assert 'counted 2 times' in str(error), str(error)
+        else:
+            raise AssertionError('a chemistry named by two cases was accepted')
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        for case in cases:
+            shutil.rmtree(case, ignore_errors=True)
+
+
+def test_scenarios_and_missing_chemistries_are_told_apart() -> None:
+    """
+    A chemistry that lacks a SCENARIO is simply not there in it -- sodium is
+    exported for S2 and S3, not S1 -- while a chemistry the export does not have
+    AT ALL is a stale name, said out loud but not fatal.
+    """
+    from src.upstream import UpstreamError, load, scenarios_available, source_dirs
+
+    root, export = _chemistry_export(['A_x', 'B_x'])
+    cases = []
+    try:
+        shutil.move(os.path.join(export, 'B_x', 'HIGH'), os.path.join(export, 'B_x', 'LOW'))
+        both, params = _chemistry_case('pv_chem_ab_test', 'A_x; B_x', export)
+        cases.append(both)
+
+        assert scenarios_available(params, both) == ['HIGH', 'LOW'], \
+            scenarios_available(params, both)
+        params.run.scenario = 'HIGH'
+        assert len(source_dirs(params, both)) == 1, 'B_x has no HIGH and must be skipped'
+        params.run.scenario = 'LOW'
+        assert len(source_dirs(params, both)) == 1
+        params.run.scenario = 'NOWHERE'
+        try:
+            source_dirs(params, both)
+        except UpstreamError as error:
+            assert 'None of the chemistries' in str(error), str(error)
+        else:
+            raise AssertionError('a scenario no chemistry has was accepted')
+
+        # An export that is not there AT ALL is another fault, and says so. Before the
+        # upstream stage has been run for the first time that is what anybody meets, and
+        # "no chemistry has the scenario" would send them to the wrong setting.
+        absent, params = _chemistry_case('pv_chem_ab_test', 'A_x; B_x',
+                                         os.path.join(root, 'not_written_yet'))
+        params.run.scenario = 'HIGH'
+        try:
+            source_dirs(params, absent)
+        except UpstreamError as error:
+            assert 'does not exist' in str(error) and 'not_written_yet' in str(error), str(error)
+            assert 'None of the chemistries' not in str(error), str(error)
+        else:
+            raise AssertionError('a missing export was reported as a missing scenario')
+
+        import contextlib
+        import io
+        stale, params = _chemistry_case('pv_chem_ab_test', 'A_x; B_x; C_gone', export)
+        params.run.scenario = 'HIGH'
+        captured = io.StringIO()
+        with contextlib.redirect_stdout(captured):
+            assert load(params, stale, quiet=False) is not None
+        assert 'C_gone' in captured.getvalue() and 'WARNING' in captured.getvalue(), \
+            captured.getvalue()
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        for case in cases:
+            shutil.rmtree(case, ignore_errors=True)
+
+
+# ----------------------------------------------------------------------
+#  The five battery cases, run on a synthetic export (2026-10-08)
+# ----------------------------------------------------------------------
+
+def _battery_builder():
+    """tools/build_battery_cases.py, loaded by path (it is a script)."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        'build_battery_cases', os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), 'tools', 'build_battery_cases.py'))
+    module = importlib.util.module_from_spec(spec)
+    sys.modules['build_battery_cases'] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _battery_export(root: str, build, draws: int) -> str:
+    """
+    An upstream export written per chemistry, in the shape 04_04 writes it:
+
+        <export>/<chemistry>/<scenario>/collected/<element>__<component>.npy
+                                                  __component____<component>.npy
+                                                  years.npy                (draws, 11) kt
+
+    Made from the builder's own list of what each chemistry contains, with
+    invented masses: the point is the SHAPE -- which components have elements, which
+    have none, which are zero -- not the numbers. Sodium exists in S2 and S3 only,
+    solid-state in S3 only, as upstream has it.
+    """
+    rng = np.random.default_rng(3)
+    years = np.arange(2020, 2075, 5)
+    where = {'LFP': ('S1', 'S2', 'S3'), 'LMFP': ('S1', 'S2', 'S3'), 'NMC_high': ('S1', 'S2', 'S3'),
+             'Na_ion_layered': ('S2', 'S3'), 'Na_ion_prussian_white': ('S2', 'S3'),
+             'solid_state': ('S3',)}
+    base = os.path.join(root, 'data', 'processed', 'battery_recovery_draws_by_chemistry')
+    for chemistry, spec in build.CHEMISTRY.items():
+        fleet = rng.lognormal(0.0, 0.2, size=(draws, len(years))) * np.linspace(0.2, 1.0, len(years))
+        share = {c: rng.uniform(0.02, 0.2) for c in spec['components']}
+        for scenario in where[chemistry]:
+            folder = os.path.join(base, chemistry, scenario, 'collected')
+            os.makedirs(folder, exist_ok=True)
+            np.save(os.path.join(folder, 'years.npy'), years)
+            for component in spec['components']:
+                zero = chemistry == 'solid_state' and component in ('anodeActiveMaterial',
+                                                                   'cathodeActiveMaterial')
+                mass = np.zeros_like(fleet) if zero else 100.0 * share[component] * fleet
+                np.save(os.path.join(folder, f'__component____{component}.npy'),
+                        mass.astype(np.float32))
+                inside = [element for element, c in spec['pairs'] if c == component]
+                for element in inside:
+                    part = 0.999 / len(inside) if len(inside) == 1 else 0.9 / len(inside)
+                    np.save(os.path.join(folder, f'{element}__{component}.npy'),
+                            (mass * part).astype(np.float32))
+    return base
+
+
+def test_the_battery_cases_conserve_mass_in_every_version() -> None:
+    """
+    Every mass that is collected is accounted for at the end, in all five cases and
+    every version each offers -- on an export made to have the shapes upstream has.
+
+    THE ASSERTION THAT WOULD HAVE CAUGHT `data/battery` LOSING ITS CASING AND
+    SEPARATOR, 3.5 % of the cell stream and 2 % of everything collected, with every
+    check green: the collected mass equals the sum of the terminal flows. Totalled at each flow's own shallowest
+    depth, because rows are nested and a flow is written at one layer.
+    """
+    from src import case_tables, params_schema
+    from src.monte_carlo import solve_draws
+    from src.params_schema import current
+    from src.plot_monte_carlo import handed_flows, terminal_flows
+    from src.upstream import load
+    from src.validate_inputs import validate, validate_every_choice
+
+    build = _battery_builder()
+    draws = 40
+    root = tempfile.mkdtemp()
+    saved = os.environ.get(params_schema.STUDY_VARIABLE)
+    try:
+        _battery_export(root, build, draws)
+        built = build.build_all()
+        scenarios = {'battery_lfp': 'S1', 'battery_lmfp': 'S1', 'battery_nmc_high': 'S1',
+                     'battery_sodium': 'S2', 'battery_solid_state': 'S3'}
+        for case in build.CASES:
+            build.write_case(case, built[case.folder], root=root)
+            folder = os.path.join(root, 'data', case.folder)
+            source = case_tables.read(folder, 'source').astype(str)
+            source.loc[source['key'] == 'draws', 'value'] = str(draws)
+            case_tables.write_sheet(folder, 'source', source)
+
+        for case in build.CASES:
+            folder = os.path.join(root, 'data', case.folder)
+            offered = case_tables.offers(folder)
+            names = list(offered)
+            from itertools import product
+            combos = [dict(zip(names, choice))
+                      for choice in product(*(sorted(offered[n]) for n in names))] or [{}]
+            for combo in combos:
+                params_schema.STUDIES['_test'] = {
+                    'run.variants': '; '.join(f'{k}={v}' for k, v in combo.items())}
+                os.environ[params_schema.STUDY_VARIABLE] = '_test'
+                params = current()
+                params.data.upstream_root = root
+                params.run.scenario = scenarios[case.folder]
+                params.run.data_folder = folder
+                label = f'{case.folder} {combo}'
+                # The checks and the sampler say what they hold -- improvements held at a
+                # bound, rows that never fire -- on every run. It is not what is tested.
+                with contextlib.redirect_stdout(io.StringIO()):
+                    tables = load(params, folder, quiet=True)
+                    validate(folder, tables)
+                    validate_every_choice(folder, tables)
+                    run = solve_draws(folder, NAMES, draws=draws, seed=0, tables=tables,
+                                      scenario=params.run.scenario, rule='condition',
+                                      quiet=True)
+                keys, values = run.keys, run.values
+                last = (keys['Year'].astype(str) == str(keys['Year'].astype(str).max())).to_numpy()
+                frame = keys[last].assign(mean=values[last].mean(axis=1))
+                frame['depth'] = (frame[['Layer 1', 'Layer 2', 'Layer 3', 'Layer 4']] != '').sum(axis=1)
+
+                def at(flow):
+                    rows = frame[frame['Stock/Flow ID'] == flow]
+                    return float(rows[rows['depth'] == rows['depth'].min()]['mean'].sum()) \
+                        if len(rows) else 0.0
+
+                collected = at('F_collected')
+                ended = sum(at(flow) for flow in terminal_flows(run))
+                assert collected > 0, label
+                assert abs(ended - collected) < 1e-6 * collected, (
+                    f'{label}: {collected:,.1f} collected but {ended:,.1f} reaches a terminal flow '
+                    f'-- {100 * (collected - ended) / collected:.2f} % has stopped somewhere')
+                handed = sum(at(flow) for flow in handed_flows(run, folder))
+                if case.folder == 'battery_sodium' and combo.get('sodium_route') == 'mechanical':
+                    assert handed > 0, f'{label}: the black mass of a mechanical-only road is handed on'
+                if case.folder in ('battery_lfp', 'battery_lmfp', 'battery_nmc_high'):
+                    assert handed == 0, f'{label}: nothing is handed on in a hydro/direct/pyro case'
+                run.close()
+    finally:
+        if saved is None:
+            os.environ.pop(params_schema.STUDY_VARIABLE, None)
+        else:
+            os.environ[params_schema.STUDY_VARIABLE] = saved
+        params_schema.STUDIES.pop('_test', None)
+        shutil.rmtree(root, ignore_errors=True)
 
 
 def main() -> int:

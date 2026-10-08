@@ -114,7 +114,7 @@ def report(folder: str, tables: dict | None = None) -> bool:
     given = tables or {}
     tcs = given.get('tcs')
     if tcs is None:
-        tcs = case_tables.read(folder, 'TCs')
+        tcs = case_tables.active(folder, 'TCs')
     # Coerce the three bound columns once, here, rather than at each use. A row
     # derived as its group's residual carries no range of its own, so its bounds
     # are blank -- and a blank read as a string turns every later comparison and
@@ -320,7 +320,7 @@ def report_uncertainty_over_time(folder: str, given: dict) -> bool:
                f"{row['Output_FlowID']} {row['TC_target_key']}")
         print(f"    {who}   first bad year {row.get('Year', '?')}")
         for sheet in (case_tables.TABLES[2], case_tables.IMPROVED):
-            table = numeric_bounds(case_tables.read(folder, sheet))
+            table = numeric_bounds(case_tables.active(folder, sheet))
             match = table
             for column in identity:
                 match = match[match[column] == row[column]]
@@ -364,7 +364,7 @@ def _closure_faults(folder: str, ramped: pd.DataFrame, case_tables) -> list[str]
              f", so mass is created or destroyed."]
     per_sheet = {}
     for sheet in (case_tables.TABLES[2], case_tables.IMPROVED):
-        table = case_tables.read(folder, sheet)
+        table = case_tables.active(folder, sheet)
         table = table.assign(**{'value': pd.to_numeric(table['value'],
                                                        errors='coerce')})
         sheet_totals = check_transfer_coefficients(table)

@@ -371,6 +371,19 @@ def figure_combined(whole: dict, roads: dict, years, theme: str, unit: str,
         panel.plot(years, mean(whole[key]) * scale, color=colour, linewidth=2.2,
                    linestyle=(0, (5, 3)), zorder=3, label=name)
 
+    # HANDED ON, only where some of it is: neither recovered here nor lost, so
+    # it is solid like the recovered mass and not dashed like the losses. A set
+    # of cases with no `handoff` flow has an all-zero array and this draws
+    # nothing -- the figure is the one it always was.
+    handed = whole.get('handed')
+    if handed is not None and np.nanmax(mean(handed)) > 0:
+        panel.fill_between(years,
+                           np.nanpercentile(handed, 2.5, axis=0) * scale,
+                           np.nanpercentile(handed, 97.5, axis=0) * scale,
+                           color=STREAM_COLOURS[4], alpha=0.10, linewidth=0, zorder=1)
+        panel.plot(years, mean(handed) * scale, color=STREAM_COLOURS[4],
+                   linewidth=2.2, zorder=3, label='handed on, not counted here')
+
     with np.errstate(invalid='ignore', divide='ignore'):
         rate = np.where(whole['collected'] > 0,
                         100 * whole['recovered'] / whole['collected'], np.nan)
@@ -789,6 +802,14 @@ def combine_one(params, wanted, label: str) -> int:
     # `copper_combined.png` to one folder is the same collision.
     combined_dir = (os.path.join(params.combine.out_dir, params.run.scenario)
                     if params.run.scenario else params.combine.out_dir)
+    # AND A FOLDER PER CHOICE (run.variants, src/case_tables.py) when any case
+    # added here offers one -- the combined figures answer differently for each,
+    # and the frozen copper figures above are exactly what must not be replaced
+    # by a different answer written to the same name. No such case, no folder.
+    from src import case_tables
+    choice = case_tables.label_for(params.combine.cases, params)
+    if choice:
+        combined_dir = os.path.join(combined_dir, choice)
 
     figure = figure_combined(added(parts), roads, years, params.figures.theme,
                              params.run.working_unit, label,

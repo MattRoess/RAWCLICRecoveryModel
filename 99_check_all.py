@@ -125,7 +125,7 @@ def mass_balance(params, folder: str) -> tuple[bool, str]:
     summary['depth'] = (summary[layers] != '').sum(axis=1)
 
     from src import case_tables
-    tcs = case_tables.read(folder, 'TCs')
+    tcs = case_tables.active(folder, 'TCs')
     sources = set(tcs['Input_FlowID'])
     terminals = set(tcs['Output_FlowID']) - sources
     starts = sources - set(tcs['Output_FlowID'])

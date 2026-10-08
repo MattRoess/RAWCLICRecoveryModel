@@ -257,6 +257,15 @@ lives in a chat message is a decision that will be broken.
 21. **Never re-run an upstream stage to test.** Read what is on disk. Never
     200,000 draws for a test.
 
+    **Large runs are the user's.** Said 2026-10-08, with two exclamation marks,
+    after a whole study had been started on a stand-in export: *"Large runs have
+    to be done by me!!"* Whole studies, runs of several cases, full-draw runs and
+    every upstream stage -- test or sandbox versions of 04_04 included -- are
+    pressed by the user. What may be done in the meantime is a quick check of one
+    case, a few hundred draws and seconds long, and the unit suites. A change to
+    a stage that takes an hour is prepared, compared against the old behaviour on
+    small synthetic inputs, and handed over with what to run.
+
 22. **Never conda.** venv and a pinned `requirements.txt`.
 
 23. **No command line.** Everything runs by pressing Run in Positron, with the
@@ -384,3 +393,129 @@ lives in a chat message is a decision that will be broken.
 35. **A panel title says what the panel is; the figure header says what it
     found.** The losses summary written as a panel title was wider than its
     panel and ran through the title of the one beside it.
+
+## The battery cases (2026-10-08)
+
+All of this is in `BATTERY_ROUTES.md`, with the numbers; what follows is what was
+decided and in whose words.
+
+42. **The battery is one case per chemistry family, each with its own roads.**
+    `data/battery_lfp` and `_lmfp`: hydrometallurgy and direct recycling;
+    `_nmc_high`: hydrometallurgy and pyrometallurgy; `_sodium`: mechanical
+    treatment, as in the paper; `_solid_state`: frame, enclosure and cables only.
+    The single blended `data/battery` could carry one set of rates for all of them,
+    and a recycler does not treat them alike. It is not touched.
+
+    NMC is `NMC_high` because that is all the stock-and-flow model produces:
+    *"there are no medium or low present. Adjust for this"* (2026-10-08). Solid-state
+    is a case because *"nothing is known about the chemistry of solid state
+    batteries. Therefore we only can assume how the packaging of the cells and the
+    cables will look like. But having them in S3 does allow us to prepare for such a
+    case"*: its cell is handed on (49).
+
+43. **The pretreatment stays `dismantling`, and every road is one step with its
+    overall rate.** The mechanical loss of a road stays inside that road's
+    coefficients: the report's Table 2 rates are net of pretreatment, and a
+    separate mechanical multiplier ahead of them would count the same loss twice.
+    The paper's routes are chains of four or five steps; what this model needs of a
+    chain is the overall recovery per element, which the paper states. *"I follow
+    your recommendation, as it reflects the content of the paper"* (2026-10-08).
+
+44. **A chemistry that no case treats stops the run, and is named.** *"If one of the
+    two shows up in future inputs, the user is warned and the respective treatment
+    has to be there."* `chemistries` in a case's source table says which export
+    folders it reads and adds; `src/upstream.check_chemistries` refuses an export
+    folder that no case claims, and one that two cases claim (counted twice). A case
+    naming a folder the export lacks is a warning. A missing treatment is not a
+    default of zero: it would leave the mass out of every total without a word.
+
+45. **A case holds several complete sets of coefficients, and one setting picks.**
+    `TCs` and `TCs_improved` have a `variant` column; `run.variants` says
+    `tc_set=own; sodium_route=mechanical`. `own` is the user's numbers and borrows
+    the paper's REC where the user has none; `BAU` and `REC` are the paper's. The
+    user's proposal, which was built as said: *"We have currently my case table.
+    Then with BAU and REC two more tables would be there. To have separate streams
+    makes it very complicated. Again I would solve it like to have the three
+    different cases tables and then add a parameter, which allows select one of the
+    three"* -- *"Yes it is like I wanted it."*
+
+    The choice is part of the output path, so one set never replaces another. A
+    version nobody selected is checked all the same: every choice a case offers is
+    closed and stranding-checked in stage 01. A case that offers a choice the
+    setting does not make is refused, and nothing is defaulted silently. Rows that
+    are the same in every set are written once, because two copies drift.
+
+46. **The paper's numbers become the two tables by the straight line through its
+    2032 and 2050 values, and its ESTIMATES are used, not its targets.** The model
+    has two tables, 2030 and 2060; the paper has anchors at 2025, 2032 and 2050 and
+    ends there. A line through the last two anchors, read at 2030 and 2060,
+    reproduces the paper from 2032 to 2050 and differs in 2030 by 2.1 points on
+    average (13.9 at most). The paper's 2050 value put straight into the 2060 table
+    would be off at 2050 by 2.6 on average and 11.7 at most. Route shares are
+    renormalised without Route 3, which is not one of the three main processes; a
+    share carries a placeholder range of +-50 %, because the paper gives none.
+    Route 4's share is added to Route 1's and Route 1's rates are used for both.
+
+    **The first account of this was wrong in three places and was corrected the same
+    day:** the dip of REC lithium to 0.50 in 2028 is the regulation's TARGET, not a
+    copy error -- the estimate is 0.874; BAU does recover manganese (0.837 in 2032,
+    0.8835 in 2050), only iron, phosphorus and the cathode aluminium are zero; and
+    the deviations of the mapping were first computed on the target series. On the
+    estimates, which are what is used, the metals of the hydrometallurgical road are
+    off at 2030 by at most 2.7 points (nickel, cobalt); graphite and the minor
+    pyrometallurgical lithium by up to 13.9.
+
+47. **Every row of a group has its own range, is drawn independently, and nothing
+    is computed as 1 minus the other.** *"If there are two paths, then one could
+    assume that the second TC has to add up to 100% and is 100% correlated. I do not
+    want this. In all the cases, as it is already implemented for the recovery
+    model, it is independent."* The route split's two rows are two coefficients with
+    their own min, mode and max, drawn on their own streams and then conditioned on
+    adding up to 1 by the existing rule (`sum_to_one = 'condition'`), like every
+    recovered/lost pair in the model. Afterwards a two-row group is a mirror image;
+    that is what adding up to 1 means.
+
+    **Known, left in:** a coefficient's stream is chosen by its identity, not by its
+    case, so the same coefficient in two cases draws the same random number
+    (correlation 1.000, measured). The chemistry cases share names, so they are
+    fully correlated where they do, and their sum in 05 is wider than independent
+    cases would give. A `stream` key in the source table would switch independence
+    on; the user called that *"very complicated"* and it was not built.
+
+48. **Sodium follows the paper; direct recycling is prepared, behind one parameter.**
+    *"Sodium should follow the paper. I just wanted to prepare for the direct
+    recycling."* `sodium_route=mechanical` is the default and hands the black mass
+    on; `mechanical_direct` sends a share to direct recycling. Nothing has been
+    published for direct recycling of sodium-ion cells, so every number on that road
+    and the share are `PLACEHOLDER (Claude, not data)` (3). Both roads are in the
+    process schema; the setting picks which has mass.
+
+49. **Mass handed on is its own category: neither recovered nor lost.** A flow with
+    role `handoff` is terminal and is not counted as recovered. `account()` reports
+    `lost = collected - recovered - handed on`, the losses figure has a reason
+    "handed on (not counted here)", and 05 draws it as its own line. For every case
+    without a handoff flow the figures are byte-identical to what they were, which
+    keeps the frozen copper figures frozen.
+
+50. **A component that upstream gives no elements leaves at the split, to a loss
+    flow of its own.** The cell casing, the separator and the sodium cells'
+    unitemised remainder are leaves of the composition: no `rest` is derived under
+    them, a row keyed at `rest` never fires, and their mass stops without a word.
+    In `data/battery` that is 3.5 % of the cell stream, 2.1 % of everything
+    collected. In the new cases they go once, at the split, to `F_loss_unresolved`,
+    made by a process called `unresolved_material` so that the loss figure does not
+    charge a road with mass that never reached it. `data/battery` is reported, not
+    changed (it is the user's data).
+
+51. **The upstream recovery export is written per chemistry, and replaces the summed
+    one.** *"Is the current output used for anything? If not then I do not want that
+    dead code is kept."* Only `data/battery` read it. The summed writer is gone; the
+    old 2.8 GB folder stays on disk and `data/battery` keeps running from it. The
+    run of 04_04 is the user's (21).
+
+52. **The two-table time structure is kept.** *"In my opinion TCs have to improve
+    over time. It is not logic, that they stay the same over such a long time"* --
+    they do: flat until 2030, a straight line to 2060, the same slope to 2070
+    (27, 28). *"I also would like to keep it"*, and the paper ends in 2050. A third
+    anchor table would touch `ramp`, the validators, the tools and the workbook
+    layout for a difference of 1.7 points at most on the user's own Table 2.

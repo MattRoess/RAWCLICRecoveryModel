@@ -50,6 +50,10 @@ keeps working exactly as before.
     draws             50000                          how many draws this case has
     scenario_alias    *=BAU                          what this case calls the
                                                      run's scenario; see below
+    chemistries       Na_ion_layered;Na_ion_prussian_white
+                                                     which sub-folders of
+                                                     upstream_dir this case
+                                                     reads and adds; see below
 
 SEVERAL PRODUCTS IN ONE CASE
 ----------------------------
@@ -66,6 +70,29 @@ component's share is a share of its own drivetrain, never of all five together.
 
 With one product and no `{product}` in `flow`, this is the old single-folder
 behaviour, which is what 04_02 uses.
+
+SEVERAL CHEMISTRIES IN ONE CASE
+-------------------------------
+Added 2026-10-08. An upstream export may be written once per CHEMISTRY, as
+
+    <upstream_dir>/<chemistry>/<scenario>/<flow>/<array>.npy
+
+and a case says which of those folders it treats:
+
+    chemistries   LFP                              one folder
+    chemistries   Na_ion_layered;Na_ion_prussian_white   two, ADDED per draw
+
+Several are added array by array, because they are one study -- the same
+processes and the same coefficients -- and a recycler receives the mix. A file
+one chemistry has and the other lacks counts as zero in the other.
+
+THE CASE CLAIMS THE CHEMISTRIES, THE EXPORT DOES NOT ASSIGN THEM. A new
+chemistry appearing in the export (an NMC grade, say) is therefore in no case
+until somebody writes the case, and every run that reads the export refuses to
+go on until that is done: its mass would otherwise be left out of every total
+without a word. See `src/upstream.check_chemistries`.
+
+A case with no `chemistries` reads `<upstream_dir>/<scenario>` as before.
 
 CHILD LAYER — THE ONE THAT MATTERS
 ----------------------------------
@@ -119,6 +146,7 @@ FALLBACK = {
     'improvement_end': None,
     'improvement_after_end': None,
     'scenario_alias': None,
+    'chemistries': None,
 }
 
 # What a key means when the case does not say and there is no setting behind it.
@@ -137,6 +165,7 @@ DEFAULTS = {
     # 2026-09-29, so no existing result moves by adding this key.
     'improvement_after_end': 'hold',
     'scenario_alias': '',         # blank: this case's folders are named as the run is
+    'chemistries': '',            # blank: <upstream_dir>/<scenario>, no chemistry level
 }
 
 AFTER_END = ('hold', 'continue')
@@ -228,6 +257,15 @@ def read(case: str, params) -> dict:
             name, folder = entry.split('=', 1)
             pairs[name.strip()] = folder.strip()
         out['scenario_alias'] = pairs
+
+    # Which chemistry folders this case reads, as a tuple. Semicolon-separated
+    # like `groups`; blank is none, and then there is no chemistry level at all.
+    out['chemistries'] = tuple(c.strip() for c in str(out['chemistries']).split(';')
+                               if c.strip())
+    if len(set(out['chemistries'])) != len(out['chemistries']):
+        raise SourceError(
+            f"{path_for(case)}: chemistries names the same folder twice "
+            f"({'; '.join(out['chemistries'])}), which would add it twice.")
 
     # `groups` is a list either way: 'Wiring;Motors' from a file, a tuple from
     # settings. Semicolon-separated because a comma would need quoting in CSV.

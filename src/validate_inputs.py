@@ -68,9 +68,14 @@ class Problem:
         return f'  {self.severity:<7} [{self.defect}] {self.message}'
 
 
-def _load(folder: str, tables: dict | None = None
+def _load(folder: str, tables: dict | None = None, selection: dict | None = None
           ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Read the three tables, or take the ones already in memory."""
+    """
+    Read the three tables, or take the ones already in memory.
+
+    `selection` names the version of the coefficients to read when a case offers
+    several (src/case_tables.py); None means the one the settings choose.
+    """
     if tables is not None:
         # The inflow and composition come straight from the upstream draws and
         # are never written to disk; only TCs.csv is a file anyone keeps.
@@ -81,13 +86,14 @@ def _load(folder: str, tables: dict | None = None
                 raise InputDataError(
                     f"{folder} has no transfer coefficients.\nThey are the one "
                     f"table you write; run tools/make_skeleton.py to generate it.")
-            tcs = case_tables.read(folder, 'TCs')
+            tcs = case_tables.active(folder, 'TCs', selection=selection)
         return tables['inputs'], tables['composition'], tcs
 
-    return _load_from_disk(folder)
+    return _load_from_disk(folder, selection)
 
 
-def _load_from_disk(folder: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def _load_from_disk(folder: str, selection: dict | None = None
+                    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     from src import case_tables
 
     path = os.path.join(folder, 'input_data')
@@ -104,7 +110,7 @@ def _load_from_disk(folder: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFra
             f"coefficients as either TCs.csv or a TCs sheet in case.xlsx.")
     return (pd.read_csv(os.path.join(path, 'inputs.csv'), **READ),
             pd.read_csv(os.path.join(path, 'composition.csv'), **READ),
-            case_tables.read(folder, 'TCs'))
+            case_tables.active(folder, 'TCs', selection=selection))
 
 
 def _known_keys(composition: pd.DataFrame) -> dict[str, set[str]]:
@@ -488,9 +494,10 @@ def _check_residual_headroom(tcs: pd.DataFrame) -> list[Problem]:
     return problems
 
 
-def check(folder: str, tables: dict | None = None) -> list[Problem]:
+def check(folder: str, tables: dict | None = None,
+          selection: dict | None = None) -> list[Problem]:
     """Every problem with a case's three tables. Empty means clean."""
-    inputs, composition, tcs = _load(folder, tables)
+    inputs, composition, tcs = _load(folder, tables, selection)
 
     # The engine derives a `rest` child for every parent whose known children
     # fall short (src/rest.py), so `rest` is a legitimate key in TCs.csv -- and
@@ -751,3 +758,150 @@ def report(folder: str, problems: list[Problem]) -> None:
 def validate(folder: str, tables: dict | None = None) -> None:
     """Check a case, printing warnings and raising on errors."""
     report(folder, check(folder, tables))
+
+
+def _version_blocks(folder: str, tables: dict | None, selection: dict):
+    """
+    The coefficient table(s) one version is solved with, as (year, block) pairs.
+
+    Ramped, one block per year, when the case improves; the sheet itself when it
+    does not. Raises whatever the ramp raises -- the caller says it plainly.
+    """
+    from src import case_tables
+    from src.mass_balance import _years_of
+    from src.sampling import numeric_bounds
+
+    if case_tables.exists(folder, case_tables.IMPROVED):
+        ramped = numeric_bounds(case_tables.coefficients(
+            folder, _years_of(tables or {}, folder), selection=selection))
+        if 'Year' in ramped.columns:
+            return ramped, list(ramped.groupby('Year'))
+        return ramped, [(None, ramped)]
+    static = numeric_bounds(case_tables.active(folder, 'TCs', selection=selection))
+    return static, [(None, static)]
+
+
+def _closure(blocks) -> tuple[int, int, str]:
+    """
+    How many resources total above 1, how many below, and the first that is off.
+
+    Per year when the table is ramped, because each year closes on its own.
+    """
+    from src.mass_balance import TOLERANCE, check_transfer_coefficients
+
+    above = below = 0
+    example = ''
+    for year, block in blocks:
+        numeric = block.assign(value=pd.to_numeric(block['value'], errors='coerce'))
+        totals = check_transfer_coefficients(numeric)
+        over = totals[totals['total'] > 1 + TOLERANCE]
+        under = totals[totals['total'] < 1 - TOLERANCE]
+        if len(over) + len(under) > above + below:
+            first = (over if len(over) else under).iloc[0]
+            example = (f"{first['Input_FlowID']} {first['Input_layer_key']} -> "
+                       f"{first['TC_target_key']} totals {first['total']:.6g}"
+                       f"{f' in {year}' if year else ''}")
+        above, below = max(above, len(over)), max(below, len(under))
+    return above, below, example
+
+
+def _check_version(folder: str, tables: dict | None, selection: dict,
+                   described: str, closed: bool) -> list[Problem]:
+    """
+    Does one version close, and are its ranges ordered, in every year it is solved?
+
+    `closed` is whether the SELECTED version closes everywhere. A case written
+    with explicit loss flows closes in every group and every version of it must;
+    a case written without them (the reference fixtures) leaves mass unrecorded
+    by design, and demanding more of an alternative than of the version in use
+    would only teach people to ignore the message. A total ABOVE 1 creates mass
+    and is refused in any case.
+    """
+    from src.mass_balance import check_uncertainty
+
+    try:
+        table, blocks = _version_blocks(folder, tables, selection)
+    except Exception as error:               # said plainly, not raised here
+        return [Problem('ERROR', '-', f'[{described}] {error}')]
+
+    problems = []
+    bad = check_uncertainty(table) if {'value_min', 'value_max'} <= set(table.columns) \
+        else None
+    if bad is not None and len(bad):
+        first = bad.iloc[0]
+        problems.append(Problem(
+            'ERROR', '3.3',
+            f"[{described}] {len(bad)} row(s) break min <= mode <= max <= 1; the "
+            f"first is {first['Input_FlowID']} {first['Input_layer_key']} -> "
+            f"{first['Output_FlowID']} {first['TC_target_key']}"
+            f"{f', year {first['Year']}' if 'Year' in first.index else ''}."))
+
+    above, below, example = _closure(blocks)
+    if above:
+        problems.append(Problem(
+            'ERROR', '-',
+            f"[{described}] {above} resource(s) total ABOVE 1, which creates "
+            f"mass; the first is {example}."))
+    elif below and closed:
+        problems.append(Problem(
+            'ERROR', '-',
+            f"[{described}] {below} resource(s) do not total 1, so mass is "
+            f"destroyed; the first is {example}. Every group of the selected "
+            f"version closes, and this one has to as well."))
+    return problems
+
+
+def check_every_choice(folder: str, tables: dict | None = None) -> list[Problem]:
+    """
+    The checks on every version a case offers and the settings do NOT select.
+
+    ⚠️ THE SELECTED VERSION IS NOT THE ONLY ONE THAT HAS TO BE RIGHT. The others
+    are read only when somebody changes `run.variants`, and a closure fault in
+    one of them would then surface as a refused run, or -- worse -- as a wrong
+    answer, at the moment a person switches to it. Checking them here, with the
+    others, means a version that does not close is found when it is written.
+
+    One name at a time with the other choices left as they are
+    (`case_tables.alternatives`): the questions asked -- does it close, does
+    anything strand -- are about one version of one thing.
+    """
+    from src import case_tables
+
+    given = ({key: value for key, value in tables.items() if key != 'tcs'}
+             if tables is not None else None)
+    alternatives = case_tables.alternatives(folder)
+    if not alternatives:
+        return []
+
+    try:
+        _, selected = _version_blocks(folder, given, case_tables.chosen(folder))
+        closed = not any(_closure(selected)[:2])
+    except Exception:
+        closed = True            # the selected version's own error is reported elsewhere
+
+    found: list[Problem] = []
+    for described, selection in alternatives:
+        for problem in check(folder, given, selection=selection):
+            found.append(Problem(problem.severity, problem.defect,
+                                 f'[{described}] {problem.message}'))
+        found += _check_version(folder, given, selection, described, closed)
+    return found
+
+
+def validate_every_choice(folder: str, tables: dict | None = None) -> None:
+    """Check the versions that are not selected; say what was done; raise on errors."""
+    from src import case_tables
+
+    alternatives = case_tables.alternatives(folder)
+    if not alternatives:
+        return
+    chosen = case_tables.chosen(folder)
+    print('\nVERSIONS -- every choice the case offers, not only the one selected')
+    print('  selected : ' + ', '.join(f'{name}={choice}'
+                                      for name, choice in chosen.items()))
+    problems = check_every_choice(folder, tables)
+    errors = [p for p in problems if p.severity == 'ERROR']
+    for described, _ in alternatives:
+        mine = [p for p in errors if p.message.startswith(f'[{described}]')]
+        print(f'  {described:<28} {"OK" if not mine else f"{len(mine)} PROBLEM(S)"}')
+    report(folder, problems)

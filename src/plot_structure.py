@@ -356,7 +356,7 @@ def draw(target: str | None = None, params: Params | None = None) -> None:
           + ('' if target else '   (from run.data_folder in src/params_schema.py)'))
     tcs_path, case = resolve(folder)
     from src import case_tables
-    tcs = (case_tables.read(folder, 'TCs') if case_tables.exists(folder, 'TCs')
+    tcs = (case_tables.active(folder, 'TCs') if case_tables.exists(folder, 'TCs')
            else pd.read_csv(tcs_path, keep_default_na=False, na_values=[]))
     # A row derived as its group's residual has blank bounds, and a blank read as
     # a string breaks the ':g' formatting in tc_blocks. Read blank as "no range",
@@ -365,7 +365,8 @@ def draw(target: str | None = None, params: Params | None = None) -> None:
         from src.sampling import numeric_bounds
         tcs = numeric_bounds(tcs)
     from src.rest import flow_roles
-    root = folder_for(params.figures.out_dir, case, params.run.scenario)
+    # The FOLDER, not its name -- see plot_flows.draw.
+    root = folder_for(params.figures.out_dir, folder, params.run.scenario)
     import matplotlib.pyplot as plt
 
     written = []

@@ -229,6 +229,26 @@ be right, but only by luck: as `src/source.py` puts it, how wide a case's
 arrays are is a fact about the case, not about the machine, and one shared
 setting can only ever be right for one of two cases.
 
+### `chemistries` — one case reading several upstream folders
+
+Added 2026-10-08. An export written per chemistry has one more level,
+`<upstream_dir>/<chemistry>/<scenario>/<flow>/…`, and a case names the chemistries
+it treats:
+
+| key | allowed | refused on load? |
+|---|---|---|
+| `chemistries` | folder names separated by `;`; blank or absent for an export with no chemistry level | **yes** — the same name twice in one case |
+
+The case reads every named folder that has the run's scenario and **adds the
+arrays, name by name, per draw**: a name one chemistry lacks counts as zero, and two
+chemistries with different years or a different number of draws are refused. A
+chemistry that has not the scenario is simply not there in it (sodium has no S1).
+
+What a case does not name it does not treat, and the export is checked against every
+case folder beside it: **a chemistry folder that no case names stops the run**, and
+one that two cases name is refused (it would be counted twice). `BATTERY_ROUTES.md`
+§8 shows the message and how to add a chemistry.
+
 ## The `processes` table
 
 One row per arrow in the flow network: this input flow becomes that output
@@ -618,6 +638,11 @@ No code change, unless the new stage's children sit at a layer neither
 third value and `src/upstream.py` a third branch, and the test above gains a
 third case before either of them is written.
 
+04_04, the battery, is **five cases**, one per chemistry family — LFP, LMFP, NMC_high,
+sodium and solid-state — each with its own roads and three sets of coefficients.
+They are described, with where every number comes from, in `BATTERY_ROUTES.md`; the
+single case that preceded them, `data/battery`, is still here and untouched.
+
 ## What is deliberately NOT per case
 
 `data.upstream_root`, `data.draws`, `run.years`, `run.scenario`,
@@ -684,3 +709,46 @@ Nothing downstream changed. Both engines already select their coefficient rows
 by year (`select_df_by_year_scenario_location`), and the Monte Carlo already
 samples once per year, so a table with a `Year` column simply works. The whole
 feature is producing that table — `src/case_tables.ramp`.
+
+---
+
+## A case with several versions of its coefficients
+
+Added 2026-10-08. A question with more than one answer — which recovery scenario,
+which route for a chemistry — is asked by changing a **setting**, not by editing a
+table or keeping a copy of the case.
+
+`TCs` and `TCs_improved` may carry an optional column `variant`:
+
+| `variant` cell | the row is used |
+|---|---|
+| *blank* | always — a number that is the same in every version is written **once**, because two copies drift apart |
+| `tc_set=BAU` | when `tc_set` is `BAU` |
+| `tc_set=own\|REC` | when `tc_set` is `own` or `REC` |
+| `tc_set=REC; sodium_route=mechanical_direct` | only when **both** hold |
+
+and `run.variants` in `src/params_schema.py` makes the choices:
+`variants = 'tc_set=own; sodium_route=mechanical'`. The names and what they mean are the
+case's; nothing in `src/` knows them. A case with no `variant` column reads exactly as it
+always did.
+
+**What is refused, and never defaulted:** a case that offers a choice the setting does
+not make (the message names what it offers), a choice the case does not offer, and a
+malformed setting. A case that offers none of the names ignores them, so one setting
+serves a study of several cases. **Every version a case offers is closed and
+stranding-checked** in stage 01 (a `VERSIONS` section), not only the selected one.
+
+**Results go to a folder per choice**, after the scenario, in the order the setting is
+written — `figures/battery_sodium/S2/own_mechanical/`, `data/battery_sodium/output_data/
+S2/own_mechanical/` — so one choice never replaces another. A case that offers nothing
+has no such folder.
+
+**How it is read.** `case_tables.read` returns every row, so that a tool which reads a
+table, changes it and writes it back cannot lose the versions that are not selected.
+The model reads through `case_tables.active` and `coefficients`, which select **before**
+the improvement ramp, so `TCs` and `TCs_improved` are lined up by identity within one
+version. `tools/make_skeleton.py` refuses a sheet with a `variant` column, because it
+matches rows by identity and two versions of one coefficient share one.
+
+The battery cases use it for `tc_set` (`own`, `BAU`, `REC`) and, for sodium,
+`sodium_route`: see `BATTERY_ROUTES.md` §3.

@@ -10,8 +10,12 @@ supplementary workbook `…-mmc1.xlsx`, sheet `TC_data_Python`.
 the study. Re-run it after any change to the workbook.
 
 **2,746 coefficients.** Every one carries a value, an uncertainty, a
-data-quality score, a year, a scenario and a reference. Nothing in this
-document is typed by hand; it is all read from the sheet.
+data-quality score, a year, a scenario and a reference. The tables of §2 to §4
+were read from the sheet and can be checked against
+`battery_transfer_coefficients.csv` and `battery_family_summary.csv`. The
+route-mixture table in §1 and the notes between the tables are typed from the
+workbook and the paper — and the **REC 2050 column of the route mixture was wrong
+until 2026-10-08**: it had the 2032 values of Routes 2, 3 and 5 in it.
 
 ---
 
@@ -23,6 +27,13 @@ document is typed by hand; it is all read from the sheet.
 | hydro | 630 | 17 | leaching & solvent extraction, calcination, re-lithiation, Zn-electrowinning |
 | thermal | 496 | 27 | pyrolysis, Waelz kiln, rotary furnace, vacuum distillation, pyrometallurgy |
 | preparation | 404 | 4 | inspection, pack/module/cell disassembly — upstream of all three |
+
+⚠️ **The 630 "hydro" coefficients are not all hydrometallurgy.** 562 are
+(`hydrometallurgy batteries`); **60 are the direct route's regeneration** —
+re-lithiation of the cathode material (48) and calcination of the anode material
+(12), inputs `BATT_CAMToRegeneration` and `BATT_AAMToRegeneration`, Route 5; and 8
+are zinc electrowinning, for alkaline batteries. Counted as hydrometallurgy they
+would put the direct route's numbers into it. (Added 2026-10-08.)
 
 The paper's five **routes** are chains of these families:
 
@@ -47,13 +58,17 @@ From `Structural_Decomposition` in the workbook:
 | route | OBS 2024 | BAU 2050 | REC 2050 |
 |---|---:|---:|---:|
 | 1 | 0.041 | 0.006 | 0.006 |
-| 2 | 0.100 | **0.696** | **0.851** |
-| 3 | **0.799** | 0.286 | 0.118 |
+| 2 | 0.100 | **0.696** | **0.904** |
+| 3 | **0.799** | 0.286 | 0.000 |
 | 4 | 0.059 | 0.008 | 0.008 |
-| 5 | 0.001 | 0.004 | 0.012 |
+| 5 | 0.001 | 0.004 | **0.082** |
+
+(The REC column read 0.851, 0.118 and 0.012 for Routes 2, 3 and 5 until
+2026-10-08: those are REC's 2032 values.)
 
 Mechanical-only collapses; hydrometallurgy takes over. Direct recycling stays
-near zero — it is at **TRL 4** against pyrometallurgy's **TRL 9**. The authors
+near zero in BAU (0.4 %) and reaches 8.2 % in REC, from 0.1 % in 2024 — it is at
+**TRL 4** against pyrometallurgy's **TRL 9**. The authors
 warn the shares are built from announced capacity and therefore *"inherently
 favour mature technologies"*, so direct recycling *"may be underestimated"* and
 the distribution is *"plausible but uncertain"*.

@@ -38,6 +38,7 @@ import sys
 from src.model_run import solve_and_draw
 from src.monte_carlo import MemoryBudgetExceeded
 from src.params_schema import ParameterError, current
+from src.case_tables import VariantError
 from src.sampling import SamplingError
 from src.upstream import UpstreamError, cases_to_run, scenarios_to_run
 from src.validate_inputs import InputDataError
@@ -45,7 +46,8 @@ from src.validate_inputs import InputDataError
 # These four already say what is wrong and which file or setting to change.
 # This is run by pressing Run in an editor, so a traceback on top of that text
 # is noise in front of the answer, not a detail.
-CLEAR = (InputDataError, UpstreamError, MemoryBudgetExceeded, SamplingError)
+CLEAR = (InputDataError, UpstreamError, MemoryBudgetExceeded, SamplingError,
+         VariantError)
 
 
 def main(argv=None) -> int:

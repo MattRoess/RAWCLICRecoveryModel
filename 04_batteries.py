@@ -5,8 +5,16 @@
 
     Press Run. No arguments, nothing to edit.
 
-One case and three chemistry scenarios, S1, S2 and S3, so three passes.
-No single one of them is the answer, which is why all three run.
+Five cases, one per chemistry family -- LFP, LMFP, NMC_high, sodium and
+solid-state -- each in the scenarios its chemistry exists in: S1, S2 and S3, sodium
+S2 and S3, solid-state S3. Twelve passes. No single scenario is the answer, which is
+why all of them run.
+
+WHICH COEFFICIENTS: each case holds three sets, `own`, `BAU` and `REC`, and sodium two
+routes. `run.variants` in `src/params_schema.py` picks one, and every choice has its own
+output folder. documentation/BATTERY_ROUTES.md says what each case does and where every
+number comes from. The cases need the per-chemistry export that `04_04` upstream writes;
+until it has been run, stage 01 says the export does not exist.
 
 It runs every stage in order and stops at the first that fails. The stages
 themselves live in `stages/`; they are not what you press any more.

@@ -87,7 +87,7 @@ class UpstreamError(FileNotFoundError):
 PARTS_TOLERANCE = 1e-3
 
 
-def source_dir(params, folder: str = '') -> str:
+def source_dir(params, folder: str = '', chemistry: str = '') -> str:
     """
     Where the draws for this case's scenario live.
 
@@ -95,6 +95,9 @@ def source_dir(params, folder: str = '') -> str:
     wrote -- `scenario_alias` in its source.csv, see src/source.py. Without one
     the run's name is the folder's name, which is how every case worked before
     2026-09-17 and how they all work again once upstream agrees on the names.
+
+    `chemistry` adds the level an export written per chemistry has between the
+    export and the scenario: `<upstream_dir>/<chemistry>/<scenario>`.
     """
     from src import source as source_module
     described = source_module.read(folder, params) if folder else {}
@@ -107,7 +110,50 @@ def source_dir(params, folder: str = '') -> str:
         scenario = alias.get(params.run.scenario, alias.get('*', scenario))
 
     return os.path.normpath(os.path.join(
-        params.data.upstream_root, upstream_dir, scenario))
+        params.data.upstream_root, upstream_dir, *([chemistry] if chemistry else []),
+        scenario))
+
+
+def source_dirs(params, folder: str) -> list[str]:
+    """
+    Every folder this case's draws for the run's scenario are read from.
+
+    One for an ordinary case. For a case that names `chemistries` (src/source.py)
+    one per chemistry that HAS the scenario: sodium is exported for S2 and S3 and
+    not for S1, and a chemistry absent from a scenario is simply not there, which
+    is different from a chemistry whose folder is missing altogether -- that is
+    reported by `check_chemistries`.
+    """
+    from src import source as source_module
+    described = source_module.read(folder, params)
+    if not described['chemistries']:
+        return [source_dir(params, folder)]
+
+    # THE EXPORT ITSELF IS NOT THERE: a different fault from a scenario it lacks, and the
+    # first one anybody meets -- a case that reads an export written per chemistry cannot
+    # run until the upstream stage has written it, and "none of the chemistries has the
+    # scenario" would send the reader looking at the wrong setting.
+    root = os.path.normpath(os.path.join(params.data.upstream_root, described['upstream_dir']))
+    if not os.path.isdir(root):
+        raise UpstreamError(
+            f'The export {root} does not exist.\n'
+            f'It is `upstream_dir` ({described["upstream_dir"]}) in the source table of '
+            f'{folder}, below the upstream root. The upstream stage that writes it has not been '
+            f'run since the export became one folder per chemistry, or `upstream_dir` is wrong.')
+
+    found = [path for path in (source_dir(params, folder, chemistry)
+                               for chemistry in described['chemistries'])
+             if os.path.isdir(path)]
+    if not found:
+        wanted = ', '.join(source_dir(params, folder, chemistry)
+                           for chemistry in described['chemistries'])
+        raise UpstreamError(
+            f'No upstream draws at {wanted}.\n'
+            f'None of the chemistries {", ".join(described["chemistries"])} that '
+            f'{folder} names has the scenario {params.run.scenario or "BAU"!r}. '
+            f'`chemistries` in its source table says which folders it reads; '
+            f'`run.scenario` says which scenario.')
+    return found
 
 
 def scenarios_available(params, folder: str) -> list[str]:
@@ -131,9 +177,14 @@ def scenarios_available(params, folder: str) -> list[str]:
                                          described['upstream_dir']))
     if not os.path.isdir(root):
         return []
-    return sorted(name for name in os.listdir(root)
-                  if not name.startswith('.')
-                  and os.path.isdir(os.path.join(root, name)))
+    # An export written per chemistry has the scenarios one level down, inside
+    # each chemistry the case names; the case runs every scenario ANY of them has.
+    roots = ([os.path.join(root, chemistry) for chemistry in described['chemistries']]
+             if described['chemistries'] else [root])
+    return sorted({name for base in roots if os.path.isdir(base)
+                   for name in os.listdir(base)
+                   if not name.startswith('.')
+                   and os.path.isdir(os.path.join(base, name))})
 
 
 def cases_to_run(params) -> list[str]:
@@ -307,6 +358,142 @@ def one_run(flow_dir: str, widths: dict[int, list[str]]) -> None:
         f'one run\'s element is divided by another run\'s total and the shares are\n'
         f'meaningless -- while still summing, balancing and plotting.\n'
         f'Empty the folder and re-run the upstream stage that writes it.')
+
+
+def sum_draws(parts: list[tuple], labels: list[str]):
+    """
+    Several chemistries' draws added array by array: the mix a recycler receives.
+
+    `parts` are the `(years, domain_mass, element_mass)` that `read_draws` gave
+    for each chemistry. A file one chemistry has and another lacks counts as
+    zero in the other -- LFP has no nickel, sodium has no cobalt -- so the sum
+    holds every name any of them has. One chemistry is returned as it came, still
+    memory-mapped: only a real sum is read into memory, and only the arrays that
+    need adding.
+
+    Refused if they disagree about the YEARS or the NUMBER OF DRAWS. Draw i has
+    to be the same world in every chemistry or the sum is not a fleet; the
+    check is the one `one_run` makes inside a folder, one level up.
+    """
+    if len(parts) == 1:
+        return parts[0]
+
+    years = parts[0][0]
+    for (other, _, _), label in zip(parts[1:], labels[1:]):
+        if not np.array_equal(years, other):
+            raise UpstreamError(
+                f'{labels[0]} exports the years {years.tolist()} and {label} '
+                f'exports {np.asarray(other).tolist()}.\nThey cannot be added '
+                f'year by year. Re-run the upstream stage so that both agree.')
+
+    widths: dict[int, list[str]] = {}
+    for (_, domains, _), label in zip(parts, labels):
+        widths.setdefault(next(iter(domains.values())).shape[0], []).append(label)
+    one_run(labels[0], widths)
+
+    domain_mass: dict = {}
+    element_mass: dict = {}
+    for (_, domains, elements), label in zip(parts, labels):
+        for total, found in ((domain_mass, domains), (element_mass, elements)):
+            for key, array in found.items():
+                total[key] = total[key] + array if key in total else array
+    return years, domain_mass, element_mass
+
+
+def _claims(params, folder: str, upstream_dir: str) -> dict[str, list[str]]:
+    """
+    {chemistry: [cases that name it]} among the case folders beside this one.
+
+    ALL the cases in the project that read this export, not only the ones in
+    the current run: a run may name a single case, and the others still treat
+    their chemistries. Read from each case's source table directly -- one
+    unreadable folder must not stop the check of the rest.
+    """
+    from src import case_tables
+
+    parent = os.path.dirname(os.path.normpath(folder)) or '.'
+    wanted = os.path.normpath(upstream_dir)
+    claims: dict[str, list[str]] = {}
+    for name in sorted(os.listdir(parent)):
+        candidate = os.path.join(parent, name)
+        if not os.path.isdir(candidate):
+            continue
+        try:
+            if not case_tables.exists(candidate, 'source'):
+                continue
+            frame = case_tables.read(candidate, 'source')
+        except Exception:
+            continue
+        stated = {str(k).strip(): str(v).strip()
+                  for k, v in zip(frame.get('key', []), frame.get('value', []))}
+        here = os.path.normpath(stated.get('upstream_dir', params.data.inflow_draws_dir))
+        if here != wanted:
+            continue
+        for chemistry in (c.strip() for c in stated.get('chemistries', '').split(';')):
+            if chemistry:
+                claims.setdefault(chemistry, []).append(candidate)
+    return claims
+
+
+def check_chemistries(params, folder: str, described: dict, quiet: bool = False) -> None:
+    """
+    Refuse an export that holds a chemistry no case treats, or treats twice.
+
+    ⚠️ THE EXPORT DOES NOT SAY WHAT TO DO WITH A CHEMISTRY; A CASE DOES. If a new
+    grade turns up upstream (an NMC with less nickel, say), nothing in the
+    recovery model has a road for it: its mass would enter no total, and every
+    figure would balance, plot and be short by exactly that much. So a chemistry
+    folder that no case claims STOPS the run and is named, together with what
+    to do. The treatment has to be written -- by whoever knows how that
+    chemistry is recycled -- before a number is reported.
+
+    Added 2026-10-08, asked for in so many words: *"if one of the two shows up in
+    future inputs, the user is warned and the respective treatment has to be
+    there."*
+
+    Also refused: a chemistry claimed by two cases, which would be counted twice.
+    Only a warning: a case naming a chemistry the export does not have, which is
+    what a stale name or an export not yet re-run looks like.
+    """
+    root = os.path.normpath(os.path.join(params.data.upstream_root,
+                                         described['upstream_dir']))
+    present = sorted(name for name in os.listdir(root)
+                     if not name.startswith('.')
+                     and os.path.isdir(os.path.join(root, name))) \
+        if os.path.isdir(root) else []
+    claims = _claims(params, folder, described['upstream_dir'])
+
+    unclaimed = [name for name in present if name not in claims]
+    twice = {name: cases for name, cases in claims.items() if len(cases) > 1}
+    if unclaimed or twice:
+        lines = []
+        if unclaimed:
+            lines.append(
+                f'{root} holds {len(unclaimed)} chemistry folder(s) that no case '
+                f'treats: {", ".join(unclaimed)}.\n'
+                f'Their mass would be left out of every total without a word. '
+                f'Each needs a treatment:\n'
+                f'  1. copy the case of the nearest chemistry and give it that '
+                f'chemistry\'s coefficients,\n'
+                f'  2. name the folder in its source table:  chemistries = '
+                f'{unclaimed[0]}\n'
+                f'  3. list the case in the study (`run.data_folder`, and '
+                f'`combine.cases` for the combined figures).')
+        for name, cases in sorted(twice.items()):
+            lines.append(
+                f'chemistry {name} is named by {len(cases)} cases '
+                f'({", ".join(cases)}), so its mass would be counted '
+                f'{len(cases)} times. Name it in one.')
+        lines.append('Cases looked at: ' + (
+            '; '.join(f'{", ".join(cases)} ({name})' for name, cases in sorted(claims.items()))
+            or 'none'))
+        raise UpstreamError('\n'.join(lines))
+
+    if not quiet:
+        absent = [name for name in described['chemistries'] if name not in present]
+        for name in absent:
+            print(f'WARNING   : {folder} names the chemistry {name}, but {root} '
+                  f'has no such folder -- stale name, or an export not yet re-run.')
 
 
 def wanted_years(available: np.ndarray, setting: str) -> list[int]:
@@ -608,16 +795,26 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
     from src import source as source_module
     described = source_module.read(folder, params)
 
-    source = source_dir(params, folder)
+    # A case that treats chemistries is checked against the whole export FIRST:
+    # a chemistry no case claims has to stop the run before anything is read.
+    if described['chemistries']:
+        check_chemistries(params, folder, described, quiet)
+
+    sources = source_dirs(params, folder)
+    source = sources[0]
 
     # One folder per product. The arrays are memory-mapped, so holding all five
     # drivetrains open at once costs file handles, not memory -- what grows is
     # the number of ROWS, and through them the Monte Carlo's array.
+    #
+    # A case that names several chemistries reads each one's folder and ADDS
+    # them (`sum_draws`); one chemistry, or none, is returned as it was read.
     per_product, years = {}, None
     for product in described['products']:
-        years, domain_mass, element_mass = read_draws(
-            source, source_module.flow_for(described, product),
-            described['group_marker'])
+        flow = source_module.flow_for(described, product)
+        years, domain_mass, element_mass = sum_draws(
+            [read_draws(path, flow, described['group_marker']) for path in sources],
+            [os.path.relpath(path) for path in sources])
         per_product[product] = (domain_mass, element_mass)
 
     keep_years = wanted_years(years, params.run.years)
@@ -660,7 +857,12 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
     if not quiet:
         span = (f'{keep_years[0]}' if len(keep_years) == 1
                 else f'{keep_years[0]}-{keep_years[-1]} ({len(keep_years)} years)')
-        print(f'Upstream  : {os.path.relpath(source)}')
+        if len(sources) > 1:
+            print(f'Upstream  : {os.path.relpath(os.path.dirname(os.path.dirname(source)))}'
+                  f'/{{{", ".join(os.path.basename(os.path.dirname(s)) for s in sources)}}}'
+                  f'/{os.path.basename(source)}   (added per draw)')
+        else:
+            print(f'Upstream  : {os.path.relpath(source)}')
         print(f'            {source_module.describe(described)}')
         print(f'            {span}, {draws:,} draws')
         # SAY WHAT WAS ASKED FOR AND NOT DELIVERED. `run.years` selects from the
@@ -688,7 +890,8 @@ def load(params, folder: str, quiet: bool = False) -> dict | None:
     return {'inputs': inflow, 'composition': composition,
             'draws': Draws(per_product, years, described['child_layer'],
                            described['inflow_flow_id'], draws, source=source,
-                           group_marker=described['group_marker'])}
+                           group_marker=described['group_marker'],
+                           sources=tuple(sources))}
 
 
 class Draws:
@@ -717,8 +920,12 @@ class Draws:
     """
 
     def __init__(self, per_product, years, child_layer, flow_id, draws,
-                 source: str = '', group_marker: str = '__domain__'):
+                 source: str = '', group_marker: str = '__domain__',
+                 sources: tuple[str, ...] = ()):
         self.source = source
+        # Every folder the arrays came from. One, unless the case adds several
+        # chemistries; `other_flow` reads another flow from each of them.
+        self.sources = tuple(sources) or ((source,) if source else ())
         self.per_product = per_product
         self.years = years
         self.child_layer = child_layer
@@ -819,18 +1026,20 @@ class Draws:
         In the arrays' own unit. The caller scales, the same way it does for the
         inflow, because only the caller knows what the table was written in.
         """
-        if not self.source:
+        if not self.sources:
             return None
         total = None
         for domain in domains:
-            path = self._other_path(flow, resource, domain)
-            if path is None:
-                continue
-            piece = self._at(np.load(path, mmap_mode='r'), year, start, stop)
-            total = piece if total is None else total + piece
+            for base in self.sources:
+                path = self._other_path(flow, resource, domain, base)
+                if path is None:
+                    continue
+                piece = self._at(np.load(path, mmap_mode='r'), year, start, stop)
+                total = piece if total is None else total + piece
         return total
 
-    def _other_path(self, flow: str, resource: str, domain: str) -> str | None:
+    def _other_path(self, flow: str, resource: str, domain: str,
+                    base: str | None = None) -> str | None:
         """
         The file holding one resource's mass in `flow`, or None.
 
@@ -850,12 +1059,13 @@ class Draws:
         one layer up (`if not layer3: domain_mass.get(layer2)`): when the thing
         asked for IS the group, the group's array is the answer.
         """
-        named = os.path.join(self.source, flow, f'{resource}__{domain}.npy')
+        base = self.source if base is None else base
+        named = os.path.join(base, flow, f'{resource}__{domain}.npy')
         if os.path.exists(named):
             return named
         if resource != domain:
             return None
-        whole = os.path.join(self.source, flow,
+        whole = os.path.join(base, flow,
                              f'{self.group_marker}__{domain}.npy')
         return whole if os.path.exists(whole) else None
 

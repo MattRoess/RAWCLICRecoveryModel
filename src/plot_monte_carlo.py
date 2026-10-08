@@ -246,6 +246,23 @@ def recovered_flows(run, case: str) -> list[str]:
     return roles_for(case, run.tcs)
 
 
+def handed_flows(run, case: str) -> list[str]:
+    """
+    Which terminal flows hold mass HANDED ON: sent to a separate model, so
+    neither recovered here nor lost here (src/rest.py, ROLES).
+
+    The black mass of a mechanical-only road is the plain example. It is not
+    metal recovered by this recycler and it is not destroyed either; it goes on
+    to be processed elsewhere, and a number that called it "lost inside
+    recycling" would be wrong about what happens to it. Every case before
+    2026-10-08 had no mass in such a flow, so for them this is empty in effect
+    and nothing they draw changes.
+    """
+    from src.rest import flow_roles
+    roles = flow_roles(case)
+    return sorted(f for f in terminal_flows(run) if roles.get(f) == 'handoff')
+
+
 def element_rows(run, flow: str, element: str) -> np.ndarray:
     """
     Positions of the rows holding `element` inside `flow`.
@@ -809,6 +826,7 @@ def figure_fate(run, theme: str, unit: str, resources=()):
     starts, keys = start_flows(run.tcs), run.keys
     layer = resource_key(keys)
     recovered = recovered_flows(run, run.case)
+    handed = handed_flows(run, run.case)
     if not recovered:
         return None
 
@@ -816,7 +834,7 @@ def figure_fate(run, theme: str, unit: str, resources=()):
     series: dict[str, dict[str, np.ndarray]] = {}
     for resource in panels_for:
         domains = sorted({d for d in keys.loc[keys[layer] == resource, 'Layer 2'].unique() if d})
-        got = {name: [] for name in ('recovered', 'lost', 'uncollected',
+        got = {name: [] for name in ('recovered', 'handed', 'lost', 'uncollected',
                                      'outflow_low', 'outflow_high', 'inflow')}
         usable = True
         for year in years:
@@ -828,6 +846,7 @@ def figure_fate(run, theme: str, unit: str, resources=()):
 
             collected = run.values[rows_of(starts)].sum(axis=0)
             back = run.values[rows_of(recovered)].sum(axis=0)
+            gave = run.values[rows_of(handed)].sum(axis=0)       # zeros when there are none
             if collected.mean() <= 0:
                 usable = False
                 break
@@ -842,7 +861,8 @@ def figure_fate(run, theme: str, unit: str, resources=()):
             scale = collected.mean() / raw.mean()
             out = out * scale
             got['recovered'].append(back.mean())
-            got['lost'].append((collected - back).mean())
+            got['handed'].append(gave.mean())
+            got['lost'].append((collected - back - gave).mean())
             got['uncollected'].append(max((out - collected).mean(), 0.0))
             got['outflow_low'].append(np.percentile(out, 2.5))
             got['outflow_high'].append(np.percentile(out, 97.5))
@@ -870,6 +890,10 @@ def figure_fate(run, theme: str, unit: str, resources=()):
         parts = [('recovered', s['recovered'], PALETTE[1]),
                  ('lost in recycling', s['lost'], PALETTE[3]),
                  ('never collected', s['uncollected'], PALETTE[0])]
+        # Handed on is a part of the outflow only where something is. A case
+        # without it keeps its three parts, so the figure is the one it was.
+        if s['handed'].max() > 0:
+            parts.insert(1, ('handed on, not counted here', s['handed'], PALETTE[5]))
         panel.stackplot(years, *[part * scale_to for _, part, _ in parts],
                         labels=[name for name, _, _ in parts],
                         colors=[colour for _, _, colour in parts], alpha=0.85)
@@ -885,7 +909,8 @@ def figure_fate(run, theme: str, unit: str, resources=()):
             panel.plot(years, s['inflow'] * scale_to, color=colours['meta'],
                        linewidth=1.4, linestyle='--', label='entering the fleet')
 
-        total = s['recovered'][-1] + s['lost'][-1] + s['uncollected'][-1]
+        total = (s['recovered'][-1] + s['handed'][-1] + s['lost'][-1]
+                 + s['uncollected'][-1])
         share = 100 * s['uncollected'][-1] / total if total else 0
         panel.set_title(f'{resource}   {share:.0f}% never collected in {years[-1]}',
                         color=colours['title'], fontsize=10, fontweight='bold')
@@ -915,10 +940,13 @@ def account(run, resource: str, domain: str | None = None) -> dict[str, np.ndarr
         collected     reaching a recycler         (the model's own start flow)
         uncollected   outflow - collected         (never reaches one)
         recovered     coming back as material     (the model's recovered flows)
-        lost          collected - recovered       (lost inside recycling)
+        handed        handed on to a separate model (the `handoff` flows)
+        lost          collected - recovered - handed   (lost inside recycling)
 
-    They close by construction: recovered + lost + uncollected = outflow, in
-    every draw and not only on average, which is what lets them be stacked.
+    They close by construction: recovered + handed + lost + uncollected =
+    outflow, in every draw and not only on average, which is what lets them be
+    stacked. `handed` is zero for every case without a `handoff` flow, and then
+    `lost` is what it always was.
 
     UPSTREAM ARRAYS ARE IN kt AND THE MODEL IS IN kg, so the three upstream
     quantities are scaled by the model's own collected mass over the upstream
@@ -952,6 +980,7 @@ def account(run, resource: str, domain: str | None = None) -> dict[str, np.ndarr
     starts, keys = start_flows(run.tcs), run.keys
     layer = resource_key(keys)
     recovered_ids = recovered_flows(run, run.case)
+    handed_ids = handed_flows(run, run.case)
     years = sorted(int(y) for y in keys['Year'].unique())
     domains = sorted({d for d in keys.loc[keys[layer] == resource,
                                           'Layer 2'].unique() if d})
@@ -961,7 +990,7 @@ def account(run, resource: str, domain: str | None = None) -> dict[str, np.ndarr
         return None
 
     got = {name: [] for name in ('inflow', 'outflow', 'collected',
-                                 'uncollected', 'recovered', 'lost')}
+                                 'uncollected', 'recovered', 'handed', 'lost')}
     for year in years:
         def rows_of(flows):
             wanted = (keys['Stock/Flow ID'].isin(flows).to_numpy()
@@ -973,6 +1002,7 @@ def account(run, resource: str, domain: str | None = None) -> dict[str, np.ndarr
 
         collected = run.values[rows_of(starts)].sum(axis=0)
         back = run.values[rows_of(recovered_ids)].sum(axis=0)
+        gave = run.values[rows_of(handed_ids)].sum(axis=0)     # zeros when there are none
         raw = source.other_flow('collected', resource, domains, year, 0, run.draws)
         out = source.other_flow('outflow', resource, domains, year, 0, run.draws)
         into = source.other_flow('inflow', resource, domains, year, 0, run.draws)
@@ -988,7 +1018,8 @@ def account(run, resource: str, domain: str | None = None) -> dict[str, np.ndarr
         got['collected'].append(collected)
         got['uncollected'].append(np.clip(out - collected, 0, None))
         got['recovered'].append(back)
-        got['lost'].append(collected - back)
+        got['handed'].append(gave)
+        got['lost'].append(collected - back - gave)
     built = {name: np.column_stack(columns)     # draws x years
              for name, columns in got.items()} | {'years': np.array(years)}
     if store is not None:
@@ -1110,6 +1141,10 @@ def draw_account(panel, title: str, a: dict, roads: dict, years,
     draw('recovered', 'recovered', PALETTE[1], '-', 2.4)
     draw('uncollected', 'never collected', PALETTE[0], (0, (4, 1, 1, 1)), 1.8)
     draw('lost', 'lost inside recycling', PALETTE[3], (0, (4, 1, 1, 1)), 1.8)
+    # Only where some mass is handed on. A case without a `handoff` flow has an
+    # all-zero array here and draws exactly the lines it always did.
+    if 'handed' in mean_of and np.nanmax(mean_of['handed']) > 0:
+        draw('handed', 'handed on, not counted here', PALETTE[5], (0, (1, 1.5)), 2.0)
     for place, (road, draws_of) in enumerate(roads.items()):
         draw(road, f'recovered, {road}', PALETTE[(place + 4) % len(PALETTE)],
              (0, (2, 1.5)), 1.5, values=np.nanmean(draws_of, axis=0))
@@ -1867,6 +1902,12 @@ def losses(run, resource: str) -> dict[str, np.ndarray] | None:
         block = np.column_stack(columns)
         if block.mean(axis=0).max() > 0:
             found[f'lost in {name}'] = found.get(f'lost in {name}', 0) + block
+
+    # HANDED ON IS A REASON TOO: what is neither recovered here nor destroyed.
+    # Without it the reasons would not sum to the outflow with what was
+    # recovered, which is what the figure built on this claims they do.
+    if np.nanmean(a['handed'], axis=0).max() > 0:
+        found['handed on (not counted here)'] = a['handed']
 
     found['never collected'] = a['uncollected']
     return {'years': np.array(years), 'reasons': found,

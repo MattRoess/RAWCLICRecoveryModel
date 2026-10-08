@@ -35,11 +35,39 @@ A CSV read with `keep_default_na=False` gives `''` for a blank. Excel gives
 `NaN`. The model reads `''` as "this layer is not populated" -- the whole
 nesting rule depends on it -- so blanks are normalised here rather than in
 every caller.
+
+VARIANTS
+--------
+Added 2026-10-08. A case can hold several versions of some of its rows and let
+the settings pick one -- so a question with more than one answer is asked by
+changing a setting, not by editing a table or keeping a copy of the case.
+
+`TCs` and `TCs_improved` may carry an optional column `variant`. Blank means the
+row is always used. Otherwise it names the version(s) the row belongs to:
+
+    tc_set=BAU                         used when tc_set is BAU
+    tc_set=own|REC                     used when tc_set is own or REC
+    tc_set=REC; sodium_route=mixed     used only when BOTH hold
+
+and `run.variants` in `src/params_schema.py` makes the choices, e.g.
+`tc_set=own; sodium_route=mechanical`. Rows that are the same in every version
+are written ONCE, with the cell blank: two copies of one number is how a table
+drifts apart.
+
+Nothing here knows what a variant is called or what it means. A case that has no
+`variant` column reads exactly as it always did.
+
+Reading the raw sheet (`read`) still returns every row, so that a tool which
+reads a table, changes it and writes it back cannot lose the versions that are
+not selected. The model reads through `active` / `coefficients`, which apply the
+choice.
 """
 from __future__ import annotations
 
 import contextlib
+import functools
 import os
+import re
 import warnings
 
 import numpy as np
@@ -485,20 +513,284 @@ def _hold_at_the_bounds(block, group, numbers, roles=None):
     return block, names
 
 
-def coefficients(case: str, years, params=None) -> "pd.DataFrame":
+# ----------------------------------------------------------------------
+# Variants: one table holding several versions of some of its rows
+# ----------------------------------------------------------------------
+
+VARIANT = 'variant'
+_NAME = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+
+
+class VariantError(ValueError):
+    """Raised when what a case offers and what the settings choose do not fit."""
+
+
+def parse_selection(text) -> dict[str, str]:
     """
-    The coefficient table this run should use: ramped if the case improves.
+    `run.variants` as a dict: 'tc_set=own; sodium_route=mechanical' ->
+    {'tc_set': 'own', 'sodium_route': 'mechanical'}. Blank is no choices.
+
+    Semicolon-separated, like `data_folder` and a case's `groups`.
+    """
+    selection: dict[str, str] = {}
+    for part in str(text or '').split(';'):
+        part = part.strip()
+        if not part:
+            continue
+        name, equals, choice = part.partition('=')
+        name, choice = name.strip(), choice.strip()
+        if (not equals or not _NAME.match(name) or not choice
+                or any(mark in choice for mark in '|;=')):
+            raise VariantError(
+                f"run.variants contains {part!r}, which does not read "
+                f"<name>=<choice>, for example 'tc_set=own'. Several are "
+                f"separated by semicolons.")
+        if name in selection:
+            raise VariantError(
+                f"run.variants chooses {name!r} twice "
+                f"({selection[name]!r} and {choice!r}). Only one can apply.")
+        selection[name] = choice
+    return selection
+
+
+def parse_tag(cell) -> dict[str, frozenset]:
+    """
+    One `variant` cell as {name: the choices it is used for}. Blank is {}.
+
+    'tc_set=own|REC; sodium_route=mixed' ->
+    {'tc_set': {'own', 'REC'}, 'sodium_route': {'mixed'}}
+    """
+    text = '' if cell is None or (isinstance(cell, float) and pd.isna(cell)) \
+        else str(cell).strip()
+    tag: dict[str, frozenset] = {}
+    for clause in text.split(';'):
+        clause = clause.strip()
+        if not clause:
+            continue
+        name, equals, options = clause.partition('=')
+        name = name.strip()
+        choices = frozenset(c.strip() for c in options.split('|') if c.strip())
+        if not equals or not _NAME.match(name) or not choices:
+            raise VariantError(
+                f"{clause!r} does not read <name>=<choice>[|<choice>], for "
+                f"example 'tc_set=REC' or 'tc_set=own|REC'.")
+        if name in tag:
+            raise VariantError(f"{name!r} appears twice in {text!r}.")
+        tag[name] = choices
+    return tag
+
+
+def _tags(frame: pd.DataFrame, sheet: str):
+    """The parsed tag of every row, or None when the sheet has no such column."""
+    if VARIANT not in frame.columns:
+        return None
+    parsed: dict[str, dict] = {}
+    out = []
+    for position, cell in enumerate(frame[VARIANT]):
+        key = '' if cell is None else str(cell)
+        if key not in parsed:
+            try:
+                parsed[key] = parse_tag(cell)
+            except VariantError as error:
+                raise VariantError(
+                    f"{sheet}, row {position + 2}, column '{VARIANT}': "
+                    f"{error}") from None
+        out.append(parsed[key])
+    return out
+
+
+def offered(frame: pd.DataFrame, sheet: str = 'TCs') -> dict[str, set[str]]:
+    """What one sheet lets be chosen: {name: every choice any row mentions}."""
+    found: dict[str, set[str]] = {}
+    for tag in _tags(frame, sheet) or ():
+        for name, choices in tag.items():
+            found.setdefault(name, set()).update(choices)
+    return found
+
+
+def select(frame: pd.DataFrame, selection: dict[str, str],
+           sheet: str = 'TCs') -> pd.DataFrame:
+    """
+    The rows that apply under `selection`, with the `variant` column removed.
+
+    A row applies when it carries no tag, or when, for every name in its tag,
+    the selection chose one of the choices the tag lists. The column is dropped
+    so that nothing downstream -- which has never heard of it -- sees it.
+    """
+    tags = _tags(frame, sheet)
+    if tags is None:
+        return frame
+    keep = []
+    for tag in tags:
+        for name in tag:
+            if name not in selection:
+                raise VariantError(
+                    f"{sheet} has rows for a choice called {name!r} and the "
+                    f"selection {selection or '{}'} does not make it.")
+        keep.append(all(selection[name] in choices for name, choices in tag.items()))
+    return frame.loc[keep].drop(columns=[VARIANT]).reset_index(drop=True)
+
+
+def _stamp(case: str) -> tuple:
+    """When the files holding a case's coefficient tables last changed."""
+    stamp = []
+    for table in ('TCs', IMPROVED):
+        found = where(case, table)
+        stamp.append((found[1], os.path.getmtime(found[1])) if found else None)
+    return tuple(stamp)
+
+
+@functools.lru_cache(maxsize=64)
+def _offers(case: str, stamp: tuple) -> dict:
+    del stamp                      # only here so a changed file is a new key
+    found: dict[str, set[str]] = {}
+    for table in ('TCs', IMPROVED):
+        if not exists(case, table):
+            continue
+        for name, choices in offered(read(case, table), table).items():
+            found.setdefault(name, set()).update(choices)
+    return found
+
+
+def offers(case: str) -> dict[str, set[str]]:
+    """
+    Everything a case lets be chosen, from both coefficient sheets:
+    {name: choices}, names in the order they first appear in `TCs`.
+    """
+    return {name: set(choices) for name, choices in
+            _offers(case, _stamp(case)).items()}
+
+
+def chosen(case: str, params=None) -> dict[str, str]:
+    """
+    The choices that apply to THIS case: one for each variant it offers.
+
+    ⚠️ A MISSING OR UNKNOWN CHOICE IS REFUSED, NEVER DEFAULTED. If a case offers
+    `tc_set` and the settings say nothing about it, quietly using the first
+    version would give an answer that looks like any other and means something
+    nobody asked for. The message names what the case offers.
+
+    A choice for a variant this case does not offer is ignored here: one setting
+    serves a whole study, and a study holds cases that offer different things.
+    """
+    if params is None:
+        from src.params_schema import current as settings
+        params = settings()
+    selection = parse_selection(params.run.variants)
+
+    problems = []
+    result: dict[str, str] = {}
+    for name, choices in offers(case).items():
+        listed = ' | '.join(sorted(choices))
+        if name not in selection:
+            problems.append(
+                f"{case} offers a choice called {name!r} ({listed}) and "
+                f"run.variants does not make it. Add '{name}=<one of them>'.")
+        elif selection[name] not in choices:
+            problems.append(
+                f"run.variants chooses {name}={selection[name]!r}, but {case} "
+                f"offers {listed}.")
+        else:
+            result[name] = selection[name]
+    if problems:
+        raise VariantError('\n'.join(problems)
+                           + '\nrun.variants is in src/params_schema.py.')
+    return result
+
+
+def active(case: str, table: str, params=None,
+           selection: dict[str, str] | None = None) -> pd.DataFrame:
+    """
+    One of a case's tables as the model should use it: the rows that apply.
+
+    For a table with no `variant` column this IS `read`. `selection` overrides
+    the settings, which is how every choice can be checked and not only the one
+    that is made.
+    """
+    frame = read(case, table)
+    if VARIANT not in frame.columns:
+        return frame
+    return select(frame, chosen(case, params) if selection is None else selection,
+                  table)
+
+
+def label(case: str, params=None) -> str:
+    """
+    A folder name for the choices made on this case: 'REC', 'own_mechanical'.
+    Blank for a case that offers none, so every existing case keeps its paths.
+
+    ⚠️ RESULTS OF DIFFERENT CHOICES MUST NOT LAND IN THE SAME FOLDER. A REC run
+    written over an `own` run is the failure `figure_style.folder_for` describes
+    for scenarios, word for word. The order is the one `run.variants` is written
+    in, so the folder reads the way the setting does.
+    """
+    if not offers(case):
+        return ''
+    if params is None:
+        from src.params_schema import current as settings
+        params = settings()
+    made = chosen(case, params)
+    return '_'.join(made[name] for name in parse_selection(params.run.variants) if name in made)
+
+
+def label_for(cases, params=None) -> str:
+    """
+    One folder name for the choices made across SEVERAL cases, each choice once.
+
+    For the combined figures, which belong to no one case but still answer
+    differently for each choice. The setting is shared, so a name that two cases
+    offer has one choice and appears once.
+    """
+    if params is None:
+        from src.params_schema import current as settings
+        params = settings()
+    made: dict[str, str] = {}
+    for case in cases:
+        if offers(case):
+            for name, choice in chosen(case, params).items():
+                made.setdefault(name, choice)
+    return '_'.join(made[name] for name in parse_selection(params.run.variants) if name in made)
+
+
+def alternatives(case: str, params=None) -> list[tuple[str, dict[str, str]]]:
+    """
+    Every OTHER choice, one name at a time: [('tc_set=BAU', {...}), ...].
+
+    The rest of the choices stay as they are. Checking every combination would
+    multiply, and the questions a check asks -- does it close, does anything
+    strand -- are about one version of one thing at a time.
+    """
+    base = chosen(case, params)
+    found = []
+    for name, choices in offers(case).items():
+        for choice in sorted(choices - {base[name]}):
+            other = dict(base)
+            other[name] = choice
+            found.append((f'{name}={choice}', other))
+    return found
+
+
+def coefficients(case: str, years, params=None,
+                 selection: dict[str, str] | None = None) -> "pd.DataFrame":
+    """
+    The coefficient table this run should use: the rows the variants select,
+    ramped if the case improves.
 
     A case with no TCs_improved sheet and no window gets exactly what it always
     got, unchanged and with no Year column.
     """
     from src import source as source_module
 
-    current = read(case, 'TCs')
-    has_improved = exists(case, IMPROVED)
     if params is None:
         from src.params_schema import current as settings
         params = settings()
+    # The choice is applied FIRST, to both sheets, so the ramp sees two tables
+    # that name the same coefficients -- it matches them by identity and would
+    # find the same coefficient twice, once per version.
+    if selection is None:
+        selection = chosen(case, params)
+    current = select(read(case, 'TCs'), selection, 'TCs')
+    has_improved = exists(case, IMPROVED)
     described = source_module.read(case, params)
     start, end = described.get('improvement_start'), described.get('improvement_end')
 
@@ -515,7 +807,8 @@ def coefficients(case: str, years, params=None) -> "pd.DataFrame":
             f'but has no {IMPROVED} table, so nothing says WHAT improves.')
 
     from src.rest import flow_roles          # imported here: rest imports this
-    return ramp(current, read(case, IMPROVED), start, end, years,
+    return ramp(current, select(read(case, IMPROVED), selection, IMPROVED),
+                start, end, years,
                 described.get('improvement_after_end') or 'hold',
                 roles=flow_roles(case))
 

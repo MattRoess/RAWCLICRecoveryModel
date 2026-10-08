@@ -446,6 +446,18 @@ def main(case: str) -> int:
               'inert': 0}
     if where is not None:
         existing = case_tables.read(case, 'TCs', dtype=str)
+        # ⚠️ A TABLE THAT HOLDS VERSIONS OF ITS ROWS IS NOT THIS TOOL'S. It
+        # matches rows by identity, and two versions of one coefficient share
+        # an identity: they would be merged into one row and the other version
+        # lost -- silently, from a sheet somebody typed. Refused, not guessed.
+        if case_tables.VARIANT in existing.columns:
+            print(f"{path} has a '{case_tables.VARIANT}' column: it holds more than one "
+                  f"version of some of its coefficients (run.variants).\n"
+                  f"This tool cannot add rows to such a table without merging the "
+                  f"versions, so it does nothing.\nAdd the missing rows by hand, "
+                  f"with the version they belong to in the '{case_tables.VARIANT}' "
+                  f"column.", file=sys.stderr)
+            return 1
         skeleton, change = merge(existing, skeleton)
 
     if where is not None and where[0] == 'xlsx':

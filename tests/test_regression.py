@@ -1325,6 +1325,359 @@ def test_two_scenarios_cannot_share_a_figure_folder() -> None:
         != folders['S1']
 
 
+# ----------------------------------------------------------------------
+#  Variants: one workbook, several versions of some of its rows (2026-10-08)
+# ----------------------------------------------------------------------
+
+def _case_with_versions(improved: bool = False) -> str:
+    """
+    A throwaway case whose coefficient tables hold two versions of one group.
+
+    The group is `_two_tables()`: a recovered row and a loss row for Wiring.
+    Version `own` is that table as it stands; version `BAU` recovers less. Both
+    close to 1. Rows of a third group are written once, with the cell blank.
+    """
+    import tempfile
+
+    folder = tempfile.mkdtemp()
+    os.makedirs(f'{folder}/input_data')
+    current, better = _two_tables(improved_by=0.2)
+    common = current.iloc[:1].copy()
+    common['Input_FlowID'] = 'F0'
+    common['Output_FlowID'] = 'F1'
+    common['TC_target_key'] = 'Frame'
+    common[['value_min', 'value', 'value_max']] = [1.0, 1.0, 1.0]
+
+    def stacked(own, bau):
+        own = own.assign(variant='tc_set=own')
+        bau = bau.assign(variant='tc_set=BAU')
+        return pd.concat([common.assign(variant=''), own, bau], ignore_index=True)
+
+    worse, worse_better = _two_tables(improved_by=0.1)
+    worse[['value_min', 'value', 'value_max']] = [[0.30, 0.40, 0.50],
+                                                  [0.50, 0.60, 0.70]]
+    worse_better[['value_min', 'value', 'value_max']] = [[0.40, 0.50, 0.60],
+                                                         [0.40, 0.50, 0.60]]
+    stacked(current, worse).to_csv(f'{folder}/input_data/TCs.csv', index=False)
+    if improved:
+        stacked(better, worse_better).to_csv(
+            f'{folder}/input_data/TCs_improved.csv', index=False)
+        pd.DataFrame([dict(key='improvement_start', value='2030'),
+                      dict(key='improvement_end', value='2060')]).to_csv(
+            f'{folder}/input_data/source.csv', index=False)
+    return folder
+
+
+def _params_choosing(text: str):
+    from src.params_schema import Params
+    params = Params()
+    params.run.variants = text
+    return params
+
+
+def test_a_case_that_offers_no_versions_reads_exactly_as_before() -> None:
+    """
+    Nothing about an existing case may move because versions exist.
+
+    No `variant` column means no tags, no choices to make, no folder to add to
+    the path, and `active` is `read` -- so the electronics, the traction motor
+    and the battery produce the same numbers in the same places as yesterday.
+    """
+    from src import case_tables
+    from src.figure_style import folder_for
+
+    for case in ('data/battery', 'data/tractionmotor', CASE):
+        raw = case_tables.read(case, 'TCs')
+        assert 'variant' not in raw.columns, f'{case} already has a variant column'
+        assert case_tables.active(case, 'TCs').equals(raw), case
+        assert case_tables.offers(case) == {}, case
+        assert case_tables.label(case) == '', case
+        assert case_tables.alternatives(case) == [], case
+        assert case_tables.chosen(case) == {}, case
+    assert folder_for('figures', 'data/battery', 'S1') \
+        == os.path.join('figures', 'battery', 'S1')
+
+
+def test_the_choice_decides_which_rows_apply() -> None:
+    """
+    A row with a blank tag is always used; a tagged row only under its choice.
+
+    And the RAW sheet keeps every row. A tool that reads a table, edits it and
+    writes it back must not be able to lose the versions that happen not to be
+    selected -- so only the model reads through `active`.
+    """
+    from src import case_tables
+
+    case = _case_with_versions()
+    raw = case_tables.read(case, 'TCs')
+    assert len(raw) == 5 and 'variant' in raw.columns, raw
+
+    for choice, recovered in (('own', 0.60), ('BAU', 0.40)):
+        rows = case_tables.active(case, 'TCs', _params_choosing(f'tc_set={choice}'))
+        assert 'variant' not in rows.columns, 'the tag column reached the model'
+        assert len(rows) == 3, f'{choice}: {len(rows)} rows, expected the common one and two of its own'
+        got = float(rows[rows['Output_FlowID'] == 'F_recovered']['value'].iloc[0])
+        assert abs(got - recovered) < 1e-12, f'{choice}: recovered {got}, expected {recovered}'
+        assert 'Frame' in set(rows['TC_target_key']), 'the common row was dropped'
+
+    several = case_tables.parse_tag('tc_set=own|REC; sodium_route=mixed')
+    assert several == {'tc_set': frozenset({'own', 'REC'}),
+                       'sodium_route': frozenset({'mixed'})}, several
+    both = pd.DataFrame({'variant': ['tc_set=REC; sodium_route=mixed', 'tc_set=REC'],
+                         'x': [1, 2]})
+    assert list(case_tables.select(both, {'tc_set': 'REC', 'sodium_route': 'mixed'})['x']) == [1, 2]
+    assert list(case_tables.select(both, {'tc_set': 'REC', 'sodium_route': 'other'})['x']) == [2], \
+        'a row naming two variants must need BOTH to hold'
+
+
+def test_a_missing_or_unknown_choice_is_refused_never_defaulted() -> None:
+    """
+    A silent default would give an answer that looks like any other.
+
+    If the case offers `tc_set` and the settings say nothing, quietly using the
+    first version would be a run whose meaning nobody chose. The message names
+    what the case offers. A choice for a variant this case does not offer is NOT
+    an error: one setting serves a whole study, and its cases differ.
+    """
+    from src import case_tables
+
+    case = _case_with_versions()
+    for text, expected in (('', "does not make it"),
+                           ('sodium_route=mechanical', "does not make it"),
+                           ('tc_set=REC', "offers BAU | own")):
+        try:
+            case_tables.chosen(case, _params_choosing(text))
+        except case_tables.VariantError as error:
+            assert expected in str(error), f'{text!r}: {error}'
+        else:
+            raise AssertionError(f'{text!r} was accepted for a case that offers tc_set')
+
+    ok = case_tables.chosen(case, _params_choosing('tc_set=BAU; something_else=x'))
+    assert ok == {'tc_set': 'BAU'}, ok
+
+    for bad in ('tc_set', 'tc_set=', '=own', 'tc_set=own; tc_set=BAU', 'a=b|c'):
+        try:
+            case_tables.parse_selection(bad)
+        except case_tables.VariantError:
+            continue
+        raise AssertionError(f'{bad!r} was accepted as a selection')
+    assert not [i for i in _params_choosing('tc_set=own').validate() if 'variants' in i]
+    assert [i for i in _params_choosing('tc_set').validate()], \
+        'the settings did not refuse a selection that reads <name> alone'
+
+
+def test_the_choice_reaches_the_ramp_and_every_year_closes() -> None:
+    """
+    The choice is made BEFORE the ramp, on both sheets.
+
+    `ramp` lines the two tables up by identity and finds a coefficient twice if
+    both versions are still in them. After the choice each table holds one
+    version, the ramp runs on those, and each year of each version closes to 1.
+    """
+    from src import case_tables
+
+    case = _case_with_versions(improved=True)
+    years = list(range(2020, 2075, 5))
+    seen = {}
+    for choice in ('own', 'BAU'):
+        out = case_tables.coefficients(case, years, _params_choosing(f'tc_set={choice}'))
+        assert 'variant' not in out.columns
+        totals = out[out['Input_FlowID'] == 'F1'].groupby('Year')['value'].sum()
+        assert float((totals - 1.0).abs().max()) < 1e-12, f'{choice} does not close'
+        seen[choice] = out[(out['Output_FlowID'] == 'F_recovered')
+                           & (out['Year'] == '2060')]['value'].astype(float).iloc[0]
+    assert abs(seen['own'] - 0.80) < 1e-12 and abs(seen['BAU'] - 0.50) < 1e-12, seen
+
+
+def test_every_version_is_checked_not_only_the_selected_one() -> None:
+    """
+    A version nobody has selected yet must not be a surprise when someone does.
+
+    The `BAU` version here totals ABOVE 1, which creates mass. The selected
+    version is clean, so the ordinary check passes -- and the every-version
+    check names the one that is not, by its choice.
+    """
+    from src.validate_inputs import check, check_every_choice
+
+    folder = _case_with(TCs_csv=lambda f: f.assign(variant=''))
+    tcs = pd.read_csv(f'{folder}/input_data/TCs.csv', keep_default_na=False, na_values=[])
+    # One resource -- component C2 of P1 in F1 -- reaching two output flows, at
+    # 0.04 each. In the BAU version the first of them is 1.0, so the resource
+    # totals 1.04: more of it leaves than entered.
+    target = tcs[(tcs['Input_FlowID'] == 'F1') & (tcs['Input_layer_key'] == 'P1')
+                 & (tcs['TC_target_key'] == 'C2')]
+    assert len(target) == 2, target
+    own = target.assign(variant='tc_set=own')
+    worse = target.assign(variant='tc_set=BAU')
+    worse.loc[worse.index[0], 'value'] = 1.0
+    rest = tcs.drop(target.index)
+    pd.concat([rest, own, worse], ignore_index=True).to_csv(
+        f'{folder}/input_data/TCs.csv', index=False)
+
+    assert not [p for p in check(folder) if p.severity == 'ERROR'], \
+        'the selected version was meant to be clean'
+    found = [p for p in check_every_choice(folder) if p.severity == 'ERROR']
+    assert found, 'a version that creates mass was not reported'
+    assert all(p.message.startswith('[tc_set=BAU]') for p in found), found
+    assert any('ABOVE 1' in p.message for p in found), found
+
+
+def test_results_of_different_choices_cannot_share_a_folder() -> None:
+    """
+    The collision `folder_for` exists to prevent, a third time.
+
+    A REC run written over an `own` run is the last run's figures under every
+    name. The choice follows the scenario in the path, for figures and for the
+    solution files, and a case that offers nothing keeps its old paths.
+    """
+    from src import case_tables
+    from src.figure_style import folder_for
+    from src.recovery_model_optimized import RecoveryModelOptimized
+
+    case = _case_with_versions()
+    own = case_tables.label(case, _params_choosing('tc_set=own'))
+    bau = case_tables.label(case, _params_choosing('tc_set=BAU'))
+    assert (own, bau) == ('own', 'BAU'), (own, bau)
+
+    # the default settings choose tc_set=own, so folder_for names that one
+    assert folder_for('figures', case, 'S1').endswith(os.path.join('S1', 'own'))
+    assert folder_for('figures', case).endswith(os.path.join(os.path.basename(case), 'own'))
+    assert folder_for('figures', 'data/battery', 'S1') \
+        == os.path.join('figures', 'battery', 'S1')
+
+    engine = RecoveryModelOptimized.__new__(RecoveryModelOptimized)
+    engine.data_folder, engine.scenario = case, 'S1'
+    assert os.path.dirname(engine.output_path('solution.csv')).endswith(
+        os.path.join('output_data', 'S1', 'own'))
+    assert case_tables.label_for([case, 'data/battery'], _params_choosing('tc_set=BAU')) == 'BAU'
+    assert case_tables.label_for(['data/battery', 'data/tractionmotor']) == ''
+
+
+# ----------------------------------------------------------------------
+#  The battery cases and the builder that writes them (2026-10-08)
+# ----------------------------------------------------------------------
+
+def _builder():
+    """tools/build_battery_cases.py, which is a script and so is loaded by path."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        'build_battery_cases', os.path.join(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))), 'tools', 'build_battery_cases.py'))
+    module = importlib.util.module_from_spec(spec)
+    # Registered before it runs: its dataclasses look their own module up by name.
+    sys.modules['build_battery_cases'] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_the_route_mix_is_read_from_the_first_block_only() -> None:
+    """
+    THE FAULT THAT GAVE A DIRECT SHARE OF 82 % FOR A ROUTE THE PAPER GIVES 0.1 %.
+
+    The supplement's Structural_Decomposition sheet repeats `Route 1` ... `Route 5`
+    under every table below the route mix -- the efficiency of each route for cobalt,
+    copper, lithium, nickel, aluminium and graphite -- with the same column headings.
+    A reader that kept going overwrote the shares with the last table's efficiencies.
+    What is checked is what the paper states: every scenario and year sums to 1, and
+    the direct route is a tenth of a per cent of the mix in 2024 and 2032.
+    """
+    mix = _builder().read_route_mix()
+    for scenario, years in mix.items():
+        for year, shares in years.items():
+            assert abs(sum(shares.values()) - 1.0) < 2e-3, (scenario, year, shares)
+    assert mix['OBS'][2024][5] == 0.001 and mix['BAU'][2032][5] == 0.001, mix['BAU'][2032]
+    assert abs(mix['REC'][2050][5] - 0.082) < 1e-9, mix['REC'][2050]
+
+
+def test_a_line_through_the_papers_two_anchors_is_exact_between_them() -> None:
+    """
+    The paper runs straight between its anchor years, so the model reproduces it
+    exactly from 2032 to 2050 when the 2030 and 2060 tables are the line through
+    those two values read at 2030 and 2060. Checked at every year of the window.
+    """
+    from src.case_tables import _weight
+
+    build = _builder()
+    for at_2032, at_2050 in ((0.50, 0.80), (0.2037, 0.5044), (0.9, 0.9), (0.0, 0.0)):
+        now, later = build.through(at_2032, at_2050)
+        for year in range(2032, 2051):
+            paper = at_2032 + (at_2050 - at_2032) * (year - 2032) / 18.0
+            model = now + (later - now) * _weight(year, 2030, 2060)
+            assert abs(model - paper) < 1e-12, (year, model, paper)
+
+    low, mode, high = (0.6, 0.8, 1.0), (0.5, 0.9, 1.0), None
+    now, later = build.fitted(low, mode)
+    for triple in (now, later):
+        assert 0.0 <= triple[0] <= triple[1] <= triple[2] <= 1.0, triple
+    assert build.mirror((0.7, 0.85, 0.97)) == (0.03, 0.15, 0.3), build.mirror((0.7, 0.85, 0.97))
+
+
+def test_every_battery_case_closes_in_every_version() -> None:
+    """
+    The five cases, built from the sources, close in all of their versions.
+
+    For every combination of tc_set and sodium_route a case offers: the two sheets
+    name the same coefficients once each, every range is inside [0, 1] and in order,
+    and every resource's rows add up to 1 at the mode. A version nobody has selected
+    is read the day somebody does, so it is checked now -- and the numbers are not
+    asserted: they come from the paper and the report, and change when those do.
+
+    This reads `data/battery` for the rows it copies (dismantling, the shredder, the
+    collectors), so it fails loudly if those rows go missing.
+    """
+    build = _builder()
+    built = build.build_all()
+    assert set(built) == {case.folder for case in build.CASES}, set(built)
+    for name, tables in built.items():
+        problems = build.check_case(name, tables)
+        assert not problems, f'{name}:\n  ' + '\n  '.join(problems)
+
+    from src import case_tables
+    offers = {name: {k: sorted(v) for k, v in case_tables.offered(tables['TCs']).items()}
+              for name, tables in built.items()}
+    assert offers['battery_solid_state'] == {}, 'the solid-state case offers no choice'
+    assert offers['battery_sodium']['sodium_route'] == ['mechanical', 'mechanical_direct'], offers
+    for name in ('battery_lfp', 'battery_lmfp', 'battery_nmc_high', 'battery_sodium'):
+        assert offers[name]['tc_set'] == ['BAU', 'REC', 'own'], (name, offers[name])
+
+
+def test_a_component_with_no_elements_leaves_at_the_split_not_in_a_road() -> None:
+    """
+    THE FAULT THAT LOST 3.5 % OF THE CELL STREAM (2 % OF EVERYTHING COLLECTED)
+    WITHOUT A WORD.
+
+    The cell casing, the separator and the sodium cells' unitemised remainder have
+    no element upstream. In the composition each is a LEAF: its placeholder
+    material has no children, so no `rest` is derived under it. A row keyed at
+    `rest` never fires, and the component's whole mass arrived at a road and stopped
+    there -- no error, nothing in any total. `data/battery` does exactly this.
+
+    So in the new cases such a component is sent to a loss flow at the split, once,
+    and appears in no road at all.
+    """
+    build = _builder()
+    built = build.build_all()
+    for case in build.CASES:
+        if not case.roads:
+            continue
+        tcs = built[case.folder]['TCs']
+        leaves = [c for c in case.cell if not build.has_elements(case, c)]
+        assert leaves, f'{case.folder} was expected to have components without elements'
+        for component in leaves:
+            mine = tcs[(tcs['Input_layer_key'] == component) | (tcs['TC_target_key'] == component)]
+            roads = mine[mine['Input_FlowID'].isin([build.ROADS[r]['entry'] for r in case.roads])]
+            assert not len(roads), f'{case.folder}: {component} reaches a road'
+            leaving = mine[(mine['Input_FlowID'] == 'F_cells')]
+            assert list(leaving['Output_FlowID']) == [build.UNRESOLVED], \
+                f'{case.folder}: {component} leaves F_cells as {list(leaving["Output_FlowID"])}'
+            # Labelled as what it is. The loss figure names each wedge by the process that
+            # makes the loss flow, so a road's name here would charge that road with mass
+            # that never reached it.
+            assert set(leaving['process']) == {build.UNRESOLVED_PROCESS}, \
+                f'{case.folder}: {component} is labelled {set(leaving["process"])}, not as unresolved material'
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

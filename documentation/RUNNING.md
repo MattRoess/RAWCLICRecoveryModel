@@ -10,7 +10,7 @@ covers — nothing to edit, no arguments.
 |---|---|---|
 | `02_electronics.py` | wiring + motors, boards + sensors | 2 |
 | `03_tractionmotors.py` | four routes × four magnet grades | 16 |
-| `04_batteries.py` | the pack, chemistries S1, S2, S3 | 3 |
+| `04_batteries.py` | five cases, one per chemistry family — LFP, LMFP, NMC_high, sodium, solid-state — each in the scenarios its chemistry has (S1–S3, sodium S2–S3, solid-state S3), for the choice in `run.variants` | 12 |
 
 ⚠️ **The number is the UPSTREAM stage that feeds it, not a step in a sequence
 here.** `04_02` in RAWCLICStockAndFlow exports the electronics, `04_03` the
@@ -55,6 +55,33 @@ data_folder: str = 'data/bev_electronics_wiring; data/bev_electronics_boards'
 networks, different coefficients, different layers — and a result is reported
 for one of them, never for both added together. Naming several runs each of
 them in turn; it does not solve them as one.
+
+## 1c. Which set of coefficients: `run.variants`
+
+Added 2026-10-08. A case can hold several versions of some of its coefficients, and
+**one setting picks them**, in `src/params_schema.py`:
+
+```python
+variants: str = 'tc_set=own; sodium_route=mechanical'
+```
+
+| name | choices | where it applies |
+|---|---|---|
+| `tc_set` | `own` (your numbers; the paper's REC where you have none), `BAU`, `REC` | the five battery cases |
+| `sodium_route` | `mechanical` (the paper's), `mechanical_direct` (a placeholder share goes direct) | the sodium case |
+
+To run another set, change the setting and press Run again. **Each choice has its own
+output folder** after the scenario — `figures/battery_lfp/S1/own/`,
+`figures/battery_sodium/S2/own_mechanical/`, and the same under `output_data/` — so a REC
+run does not replace an `own` run. Cases that offer no choice (the electronics, the
+traction motor) ignore the setting and have no such folder. A choice a case does not
+offer, or a case that offers one the setting leaves out, is refused with a message.
+
+**The battery cases need the upstream export written per chemistry**
+(`data/processed/battery_recovery_draws_by_chemistry/`, one folder per chemistry). Until
+RAWCLICStockAndFlow's `04_04_batteries.py` has been run since it changed, stage 01 stops
+and says the export does not exist. What it does, the three sets and every number's
+source: `BATTERY_ROUTES.md`.
 
 ## 2. Open each file in Positron and press Run, in order
 

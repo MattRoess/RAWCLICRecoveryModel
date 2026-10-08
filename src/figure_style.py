@@ -104,9 +104,20 @@ def folder_for(out_dir: str, case: str, scenario: str = '') -> str:
     it such as `structure.png`. One rule and no exceptions beats a rule nobody
     can remember the exceptions to; the cost is an identical drawing written
     three times.
+
+    AND A FOLDER PER CHOICE, 2026-10-08, for the same reason a third time. A
+    case that offers versions of its coefficients (`run.variants`, see
+    src/case_tables.py) answers differently for each, so `own`, `BAU` and `REC`
+    written to one place would be the last run's figures under every name. The
+    choice comes after the scenario: `<out_dir>/<case>/<scenario>/<choice>/`.
+    A case that offers none has no such folder, so every existing path stays
+    exactly where it was.
     """
     path = os.path.join(out_dir, os.path.basename(os.path.normpath(case)))
-    return os.path.join(path, scenario) if scenario else path
+    path = os.path.join(path, scenario) if scenario else path
+    from src import case_tables
+    choice = case_tables.label(case) if case else ''
+    return os.path.join(path, choice) if choice else path
 
 
 # ⚠️ THE FEW WORTH OPENING FIRST. A traction motor run wrote 512 figures --

@@ -1,5 +1,73 @@
 # Handover
 
+## 2026-10-08 — the battery is five cases, one per chemistry, and each has its own roads
+
+**Built and tested; not run on real draws, because the draws do not exist yet.** All of it is in
+`documentation/BATTERY_ROUTES.md`; the decisions are DECISIONS.md 42–52. The user asked on the day
+whether the three main processes beside the pretreatment (hydrometallurgy, pyrometallurgy, direct
+recycling) were in the model. Only hydrometallurgy was.
+
+**What exists now**
+
+- **Five cases**, `data/battery_lfp`, `_lmfp`, `_nmc_high`, `_sodium`, `_solid_state` — LFP and LMFP with
+  hydrometallurgy and direct recycling, NMC_high with hydrometallurgy and pyrometallurgy, sodium with the
+  paper's mechanical treatment (direct recycling prepared), solid-state with its cell handed on.
+  `tools/build_battery_cases.py` wrote them from the paper, the report's Table 2 and `data/battery`, and
+  refuses to overwrite one. `data/battery` is untouched and is no longer in `STUDIES['batteries']`.
+- **Three sets of coefficients in each workbook**, `own` / `BAU` / `REC`, chosen by **`run.variants`**
+  (`tc_set=own; sodium_route=mechanical`); a `variant` column in `TCs` and `TCs_improved`. Every choice has
+  its own output folder, and stage 01 checks every version, not only the selected one.
+- **`chemistries` in the source table**: a case reads and adds several upstream folders; an export folder
+  no case names stops the run.
+- **Handed-on mass** is neither recovered nor lost, and has its own line in the figures. The existing
+  figures are byte-identical.
+- **Upstream**, `RAWCLICStockAndFlow/code/04_04_batteries.py` now writes the recovery export per chemistry
+  (`battery_recovery_draws_by_chemistry/`) and no longer sums it. Prepared and compared with the old code on
+  synthetic inputs; **not run**. See its handover of the same date.
+- Tests: all seven suites, 158 tests, pass. Documented: `BATTERY_ROUTES.md`, `DECISIONS.md`, `CASES.md`,
+  `RUNNING.md`, `BATTERY_COEFFICIENTS.md` (two errors corrected), `BatteryStudy/README.md`.
+
+**What to run, in order — the large runs are yours**
+
+1. In RAWCLICStockAndFlow: `00_parameters.py`, then `04_04_batteries.py` (an hour or more, about 48 GB).
+   Check that `data/processed/battery_recovery_draws_by_chemistry/` holds 14 chemistry × scenario folders.
+2. Here: press Run on `04_batteries.py`. Twelve passes. Stage 01 comes first and says what is wrong.
+3. To see BAU or REC, change `run.variants` and press Run again; nothing is overwritten.
+
+Until step 1 the electronics and the traction motor run as before, and `04_batteries.py` stops in stage
+01 with "The export … does not exist".
+
+**What I got wrong on the way, and corrected** (the second and third in the same day they were said):
+the REC lithium "dip to 0.50 in 2028" is the regulation's target, not a copy error; BAU does recover
+manganese; and the deviations of the straight-line mapping were first computed on the target series
+(`BATTERY_ROUTES.md` §4 has the right ones). Also a label: the casing, separator and unitemised mass was
+first charged to the first road's process in the loss figure; it is `unresolved_material` now.
+
+**Found in the user's own data, reported and not changed** (`BATTERY_ROUTES.md` §11): `data/battery` loses
+its casing and separator silently (3.5 % of the cell stream, 2.1 % of what is collected, in S1); its S2 and
+S3 are refused by its own input check; and its cathode rates are a blend of three chemistries, two of
+them matching none.
+
+**Decisions that are his, not taken**
+
+- Put the five cases into `combine.cases` in place of `data/battery`? A case without the scenario stops
+  05 (`BATTERY_ROUTES.md` §13).
+- Add Fe, P, Mn, Na, C and Al to `figures.resources` of the batteries study (it has Cu, Ni, Co, Li).
+- Retire `data/battery`, which nothing now needs but which still runs from the old export?
+- The chemistry cases draw the same random numbers where a coefficient has the same name (correlation
+  1.000); a `stream` key per case would make them independent. Left out as complicated.
+- `own` borrows the paper's REC for the split between roads, pyrometallurgy, direct recycling and sodium;
+  the 90 PLACEHOLDER rows of the 2030 table (20, 22, 20 and 28; `BATTERY_ROUTES.md` §4) and the dismantling
+  of `batteryCellUnitemised` are his to confirm.
+
+**Git.** This Mac's git had not been fetched since 2026-09-16 and holds a stray ref from August,
+`refs/heads/main 2` (and `refs/remotes/origin/main 2`), that makes `git fetch` fail with "bad object". The
+reorganisation that `git status` showed as pending here is already on GitHub (`9ea56fe`, 2026-10-07). The
+battery work was therefore committed and pushed from a clean clone of GitHub's `main`, and not from this
+git directory. **The command in "The other Mini, whenever it is next opened" below,
+`git fetch origin && git reset --hard origin/main`, is safe again once the stray refs are moved out of
+`refs/` and this work is on GitHub; before that it would throw this work away.**
+
 ## 2026-10-07 — the copyright notice and the licence
 
 **52 of the 54 Python files carry `**Copyright notice:** Copyright © 2026 Empa, Matthias

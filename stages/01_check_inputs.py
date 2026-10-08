@@ -41,15 +41,17 @@ import sys
 from src.mass_balance import report
 from src.monte_carlo import MemoryBudgetExceeded
 from src.params_schema import ParameterError, current
+from src.case_tables import VariantError
 from src.sampling import SamplingError
 from src.upstream import (UpstreamError, cases_to_run, load as refresh,
                           scenarios_to_run)
-from src.validate_inputs import InputDataError, validate
+from src.validate_inputs import InputDataError, validate, validate_every_choice
 
 # These four already say what is wrong and which file or setting to change.
 # This is run by pressing Run in an editor, so a traceback on top of that text
 # is noise in front of the answer, not a detail.
-CLEAR = (InputDataError, UpstreamError, MemoryBudgetExceeded, SamplingError)
+CLEAR = (InputDataError, UpstreamError, MemoryBudgetExceeded, SamplingError,
+         VariantError)
 
 
 def main(argv=None) -> int:
@@ -110,6 +112,11 @@ def main(argv=None) -> int:
                 validate(folder, tables)
                 if not report(folder, tables):
                     worst = 1
+                # A case that offers versions of its coefficients
+                # (run.variants) has to be right in ALL of them, not only the
+                # one selected -- the others are read the day somebody
+                # switches. Nothing is printed for a case that offers none.
+                validate_every_choice(folder, tables)
             except CLEAR as error:
                 print(error, file=sys.stderr)
                 worst = 1
