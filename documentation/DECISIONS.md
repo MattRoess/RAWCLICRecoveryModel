@@ -519,3 +519,13 @@ decided and in whose words.
     (27, 28). *"I also would like to keep it"*, and the paper ends in 2050. A third
     anchor table would touch `ramp`, the validators, the tools and the workbook
     layout for a difference of 1.7 points at most on the user's own Table 2.
+
+53. **05 combines the five battery cases, and a case leaves a pass it has no scenario
+    for.** The first run of 05 after the study stopped at S2: `data/battery` is refused
+    by its own input check once the export carries the sodium cells. *"Yes, do 1 and
+    2"* (2026-10-09): `combine.cases` lists the five cases in place of it, and
+    `upstream.offers_scenario` leaves sodium out of S1 and solid-state out of S1 and
+    S2, with a printed line, as a case that cannot carry the metal already was. Not
+    done, and said: the cases are fully correlated where a coefficient has the same
+    name (a `stream` key per case would end that), and the first case listed with
+    scenarios decides the passes.

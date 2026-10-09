@@ -74,7 +74,7 @@ from src.params_schema import Params
 from src.plot_monte_carlo import account, header, losses, routes
 from src.rest import REST
 from src.units import factor, readable
-from src.upstream import (cases_to_run, load as refresh,
+from src.upstream import (cases_to_run, load as refresh, offers_scenario,
                           scenarios_available, scenarios_to_run)
 
 LAYER_NAMES = ['product', 'component', 'material', 'element']
@@ -718,6 +718,12 @@ def combine_one(params, wanted, label: str) -> int:
             raise CombineError(
                 f'{folder} is not a folder. `combine.cases` in '
                 f'src/params_schema.py names the case folders to add.')
+        # A CASE LEAVES A PASS IT HAS NO SCENARIO FOR. Sodium has no S1 and
+        # solid-state has neither S1 nor S2, so without this the S1 pass reached
+        # sodium, was refused, and stopped the run (2026-10-09).
+        if not offers_scenario(params, folder):
+            print(f'  {folder}: has no {params.run.scenario} -- not solved')
+            continue
         if not could_carry(folder, wanted, params):
             print(f'  {folder}: no {" / ".join(wanted)} in its coefficients '
                   f'-- not solved')

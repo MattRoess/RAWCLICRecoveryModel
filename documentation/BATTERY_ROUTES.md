@@ -597,20 +597,29 @@ A chemistry folder that appears in the export and that no case names stops the r
 
 ## 13. Combining the cases, and what the figures draw
 
-**`combine.cases` and the frozen copper figures are unchanged.** `05_combine_cases.py`
-still combines the wiring, the boards, `data/battery` and the traction motor, and
-`figures/combined/copper_combined.png` and `copper_streams.png` are as they were. To
-put the five chemistry cases in instead of `data/battery`, list them in `combine.cases`;
-05 adds them per draw, and the combined figures then go to a folder named after the
-choice in `run.variants`, so they cannot replace the frozen ones. Two things to know
-first:
+**`combine.cases` holds the five chemistry cases since 2026-10-09, not `data/battery`.**
+`05_combine_cases.py` adds the wiring, the boards, LFP, LMFP, NMC_high, sodium,
+solid-state and the traction motor per draw. It was `data/battery` until the first run of
+05 after the study: S1 ran, and S2 was refused by that case's own input check, which
+meets the sodium cells' Na, P, C and `batteryCellUnitemised` and has no coefficient for
+them (§11). The old case is untouched and no longer combined.
 
-* **A case that has no draws for the scenario stops 05.** Each scenario has its own
-  set: S1 has LFP, LMFP and NMC_high; S2 those and sodium; S3 all five. Listing the
-  sodium or the solid-state case for a scenario that lacks it raises "No upstream draws
-  at …", naming the case. So list the cases the scenario has. A silent skip would also
-  hide a mistyped scenario, so it was not built; say if you want it with a printed note.
-* **The chemistry cases are fully correlated where they share a coefficient name** (§5).
+* **A case that has no scenario is left out of that pass, with a line saying so.** S1
+  has LFP, LMFP and NMC_high; S2 those and sodium; S3 all five. Sodium in S1 prints
+  `data/battery_sodium: has no S1 -- not solved`, as a case that cannot carry the metal
+  already did. The rule is `upstream.offers_scenario`; a case with no scenario dimension
+  at all (the electronics) answers every scenario. **The first case listed that has
+  scenarios decides which passes are made**, so LFP, which has all three, comes first of
+  the battery cases: put sodium first and S1 is not run.
+* **The combined figures go to a folder named after the choices in `run.variants`**:
+  `figures/combined/S1/own_mechanical/` for `tc_set=own; sodium_route=mechanical`. The
+  figures of the old battery case, in `figures/combined/S1` to `S3`, are not replaced and
+  not removed -- the frozen `copper_combined.png` and `copper_streams.png` among them.
+* **The chemistry cases are fully correlated where they share a coefficient name** (§5),
+  so the band of the sum is the band of coefficients that move together.
+* **The inflow, outflow and collected arrays of the export come from two runs** until
+  04_04 has been rerun with the fixed code (HANDOVER 2026-10-09): the figures that set
+  inflow against outflow draw by draw have right means and wrong bands.
 
 **What the figures draw.** `figures.resources` for the batteries study is
 `('Cu', 'Ni', 'Co', 'Li')`, so a case is drawn for those of them it has: LFP and LMFP

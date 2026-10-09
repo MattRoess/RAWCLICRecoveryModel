@@ -141,6 +141,29 @@ def test_no_module_reads_a_name_that_does_not_exist() -> None:
         'that reaches them dies:\n  ' + '\n  '.join(faults))
 
 
+def test_the_combine_leaves_out_a_case_that_lacks_the_scenario() -> None:
+    """
+    `combine_one` asks `offers_scenario` BEFORE it solves a case. Without that the
+    S1 pass reaches `battery_sodium`, which has no S1, and the whole run stops
+    there (2026-10-09). Static, like the rest of this file; the rule itself is
+    `test_generality.py`'s.
+    """
+    path = os.path.join(ROOT, '05_combine_cases.py')
+    tree = ast.parse(open(path, encoding='utf-8').read(), filename=path)
+    combine_one = next(node for node in ast.walk(tree)
+                       if isinstance(node, ast.FunctionDef) and node.name == 'combine_one')
+
+    def first_call(name: str) -> int:
+        lines = [node.lineno for node in ast.walk(combine_one)
+                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                 and node.func.id == name]
+        assert lines, f'combine_one no longer calls {name}'
+        return min(lines)
+
+    assert first_call('offers_scenario') < first_call('solve_draws'), \
+        'combine_one solves a case before it has asked whether the case has the scenario'
+
+
 def test_the_combine_still_has_every_figure_it_draws() -> None:
     """
     Named outright, because this is the one that was lost.

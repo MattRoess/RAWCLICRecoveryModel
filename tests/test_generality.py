@@ -1985,6 +1985,49 @@ def test_scenarios_and_missing_chemistries_are_told_apart() -> None:
             shutil.rmtree(case, ignore_errors=True)
 
 
+def test_a_case_that_lacks_the_scenario_is_told_apart_from_one_that_has_none() -> None:
+    """
+    THE COMBINE STOPPED AT THE FIRST CASE WITHOUT THE SCENARIO, 2026-10-09.
+
+    05 adds several cases and makes one pass per scenario. The battery is five
+    cases, and sodium has no S1 while solid-state has neither S1 nor S2, so the
+    S1 pass reached sodium, was refused, and took the whole run with it. A case
+    with no scenario dimension at all -- the electronics, whose draws are one set
+    however they are asked for -- is a different thing, and answers every
+    scenario.
+    """
+    from src.upstream import offers_scenario
+
+    root, export = _chemistry_export(['A_x', 'B_x'])
+    plain = tempfile.mkdtemp(prefix='no-source-')
+    try:
+        shutil.move(os.path.join(export, 'B_x', 'HIGH'), os.path.join(export, 'B_x', 'LOW'))
+        only_a, params = _chemistry_case('pv_chem_a_test', 'A_x', export)
+        only_b, _ = _chemistry_case('pv_chem_b_test', 'B_x', export)
+        both, _ = _chemistry_case('pv_chem_ab_test', 'A_x; B_x', export)
+
+        params.run.scenario = 'HIGH'
+        assert offers_scenario(params, only_a)
+        assert not offers_scenario(params, only_b), 'B_x has no HIGH'
+        assert offers_scenario(params, both), 'one chemistry having it is enough'
+        params.run.scenario = 'LOW'
+        assert offers_scenario(params, only_b)
+        assert not offers_scenario(params, only_a), 'A_x has no LOW'
+        params.run.scenario = 'NOWHERE'
+        assert not offers_scenario(params, both)
+
+        # a case with no scenario dimension answers whatever is asked
+        for scenario in ('HIGH', 'LOW', 'NOWHERE'):
+            params.run.scenario = scenario
+            assert offers_scenario(params, plain), f'a case without scenarios was refused {scenario}'
+        # and nothing asked is nothing refused
+        params.run.scenario = ''
+        assert offers_scenario(params, only_a) and offers_scenario(params, only_b)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(plain, ignore_errors=True)
+
+
 # ----------------------------------------------------------------------
 #  The five battery cases, run on a synthetic export (2026-10-08)
 # ----------------------------------------------------------------------

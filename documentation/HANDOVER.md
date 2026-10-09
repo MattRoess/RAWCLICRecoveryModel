@@ -49,8 +49,8 @@ them matching none.
 
 **Decisions that are his, not taken**
 
-- Put the five cases into `combine.cases` in place of `data/battery`? A case without the scenario stops
-  05 (`BATTERY_ROUTES.md` §13).
+- ~~Put the five cases into `combine.cases` in place of `data/battery`?~~ Decided 2026-10-09: yes, and a
+  case without the scenario is left out of that pass (the entry at the foot, `BATTERY_ROUTES.md` §13).
 - Add Fe, P, Mn, Na, C and Al to `figures.resources` of the batteries study (it has Cu, Ni, Co, Li).
 - Retire `data/battery`, which nothing now needs but which still runs from the old export?
 - The chemistry cases draw the same random numbers where a coefficient has the same name (correlation
@@ -2674,3 +2674,38 @@ mixture:** the inflow arrays of the 09:04 run (fixed seeds), the outflow and col
 by draw (the net fleet, the share of inflow recovered) mix two runs, with right means and wrong bands. Whatever
 is run on it now is provisional. **The full rerun of 04_04 with the fixed code is still open** (about six
 hours), and `04_batteries.py` has to be pressed again after it.
+
+## 2026-10-09 (midday) — 05 combines the five battery cases
+
+**What happened.** The study, `04_batteries.py`, ran through: all twelve passes wrote output (10:41 to 11:19). He
+then pressed Run on `05_combine_cases.py`. S1 ran for all eight metals; the first S2 pass stopped in the input
+check of `data/battery`: *5 resources reach `F_cells` and no coefficient moves them on* (`batteryCellElectrolyte/Na`,
+`/P`, `cathodeActiveMaterial/C`, `/Cu`, `/Na`) and *`BEV/batteryCellUnitemised` reaches `F_collected`*. The export
+carries the sodium cells since 10-05 and the old case, built before, has no coefficient for any of it (the finding
+in `BATTERY_ROUTES.md` §11). Reproduced without solving anything: `data/battery` is ok in S1 and refused in S2 and
+S3; LFP, LMFP and NMC_high are ok in all three; sodium has no S1; solid-state has only S3.
+
+**What was done, on his word "Yes, do 1 and 2"** (DECISIONS 53):
+
+1. `combine.cases` (`src/params_schema.py`) lists the wiring, the boards, LFP, LMFP, NMC_high, sodium, solid-state and
+   the traction motor. `data/battery` is no longer combined and is untouched.
+2. `upstream.offers_scenario` and one line in `combine_one`: a case that has scenarios but not the one of the pass is
+   left out of it, with `<case>: has no S1 -- not solved`. **The first case listed that has scenarios decides which
+   passes are made**, so LFP comes first of the battery cases; sodium first would drop S1.
+3. Tests, red then green: `test_a_case_that_lacks_the_scenario_is_told_apart_from_one_that_has_none`
+   (`test_generality.py`, on the synthetic export, including a case with no scenario dimension) and
+   `test_the_combine_leaves_out_a_case_that_lacks_the_scenario` (`test_stages.py`, static: it asks before it solves).
+   All seven suites pass, **165**.
+4. A single-case check, not a run: S1, copper, 200 draws, LFP solved and sodium left out with that line, exit 0, four
+   figures drawn into a scratch folder and the combined one opened. The real 05 is his.
+
+**What he will see.** The combined figures go to `figures/combined/<scenario>/own_mechanical/` (the choices of
+`run.variants`), so the figures of the old battery case in `figures/combined/S1` to `S3` are not replaced; four of the
+eight `*_combined.png` in `S1` are still 09-30's and I do not know why only those four were not rewritten by the run
+that stopped. Not removed: those old figures (the frozen copper ones are among them) wait for his word. 05 solves eight
+cases per metal instead of four, so it takes longer than before.
+
+**Still true, said again.** The chemistry cases are fully correlated where a coefficient has the same name, so the band
+of the sum is the band of coefficients that move together; and the export still holds the inflow of the stopped 04_04
+with the outflow and collected arrays of the 10-08 run, so the figures that set inflow against outflow have right means
+and wrong bands until the fixed rerun.

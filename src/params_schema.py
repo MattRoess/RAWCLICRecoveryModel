@@ -554,9 +554,23 @@ class CombineParams:
     # WHICH CASES ARE ADDED. Any number; battery packs and drivetrains join by
     # being listed here once they have a case folder of their own.
     # SAFE TO CHANGE: yes. A folder that does not exist is named and refused.
+    #
+    # THE BATTERY IS FIVE CASES, one per chemistry (2026-10-09; `data/battery`, the
+    # one blended case, is no longer here: its input check refuses S2 and S3, which
+    # carry the sodium cells). A case that does not have the scenario of a pass --
+    # sodium has no S1, solid-state has neither S1 nor S2 -- is left out of that
+    # pass with a line saying so, so the three scenarios add three, four and five
+    # battery cases in turn.
+    # THE FIRST CASE LISTED THAT HAS SCENARIOS DECIDES WHICH PASSES ARE MADE, so
+    # the one that has all of them (LFP) comes first of the battery cases. Put
+    # sodium first and S1 is not run.
     cases: tuple[str, ...] = ('data/bev_electronics_wiring',
                               'data/bev_electronics_boards',
-                              'data/battery',
+                              'data/battery_lfp',
+                              'data/battery_lmfp',
+                              'data/battery_nmc_high',
+                              'data/battery_sodium',
+                              'data/battery_solid_state',
                               'data/tractionmotor')
 
     # ******************************************************************

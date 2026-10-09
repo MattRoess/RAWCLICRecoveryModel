@@ -187,6 +187,28 @@ def scenarios_available(params, folder: str) -> list[str]:
                    and os.path.isdir(os.path.join(base, name))})
 
 
+def offers_scenario(params, folder: str) -> bool:
+    """
+    Whether this case can be solved for `params.run.scenario`.
+
+    A case with no scenario dimension -- the electronics, whose draws are one set
+    however they are asked for, or a case that is not fed from upstream -- answers
+    every scenario. A case that HAS scenarios answers only the ones it has, and
+    asking for none answers any.
+
+    Added 2026-10-09 for `05_combine_cases.py`. The battery is five cases, and
+    sodium has no S1 while solid-state has neither S1 nor S2, so an S1 pass that
+    reached sodium was refused and took the whole run with it. Now the case is
+    left out of that pass, with a line saying so, as a case that cannot carry the
+    metal already was.
+    """
+    scenario = (params.run.scenario or '').strip()
+    if not scenario:
+        return True
+    available = scenarios_available(params, folder)
+    return not available or scenario in available
+
+
 def cases_to_run(params) -> list[str]:
     """
     Which cases a stage covers. Every numbered stage asks this.
