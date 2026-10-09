@@ -2551,7 +2551,7 @@ to him in chat (FAILURES 31). The pushed document has none of them.
 
 ### OPEN — HIS
 
-- **Re-running 04_04**, which he will do later: the `hash(segment)` fix of 2026-10-09 takes effect then. Decide the pack size / voltage coupling first (the entry of 2026-10-09 below), so that one six-hour run serves both.
+- **Re-running 04_04**, which he will do later: the `hash(segment)` fix and the stream tags of 2026-10-09 (the entry below) take effect together then.
 - Put the five cases into `combine.cases` in place of `data/battery`? A case without the scenario stops 05:
   S1 has three of them, S2 four, S3 five (`BATTERY_ROUTES.md` §13).
 - Add Fe, P, Mn, Na, C and Al to `figures.resources` of the batteries study; it draws Cu, Ni, Co and Li.
@@ -2572,30 +2572,38 @@ to him in chat (FAILURES 31). The pushed document has none of them.
 - Scratch from today is outside the repositories: about 100 MB of stand-in data in the system temp folder,
   and the check scripts in the session's scratchpad. None of it is needed.
 
-## 2026-10-09 — the hash seeds are fixed, and what else the same two lines showed
+## 2026-10-09 — the hash seeds are fixed, and every stream has its own tag
 
-**Both repositories pushed, trees clean.** On his word, "fix the hash, but I will rerun later":
+**Both repositories pushed, trees clean.** On his word, "fix the hash, but I will rerun later", and then "yes,
+give each stream its own tag":
 
-**1. Fixed, upstream:** `src/battery_capacity.py` and `src/battery_voltage.py` seed each segment with
-`zlib.crc32(segment.encode())` and not `abs(hash(segment))` (DEFECTS 3.27, the evening entry above). Checked
-as a failing test and then a passing one: the pack size, the voltage, every chemistry share of every scenario
-and group and one composition call, computed in four separate processes, differ in 25 of 34 digests before
-and in none after. **Not re-run.** The export on disk is from the unfixed code, one coherent world that
-cannot be reproduced; the fix shows with the next run of 04_04, and after that run `04_batteries.py` has to
-be pressed again, because its draws will have moved. Nothing in this repository changed for it.
+**1. The hash seeds, fixed, upstream:** `src/battery_capacity.py` and `src/battery_voltage.py` seed each
+segment with `zlib.crc32(segment.encode())` and not `abs(hash(segment))` (DEFECTS 3.27, the evening entry
+above). Checked as a failing test and then a passing one: the pack size, the voltage, every chemistry share of
+every scenario and group and one composition call, in four separate processes, differ in 25 of 34 digests
+before and in none after.
 
-**2. Found in the same lines, NOT changed (DEFECTS 3.28):** the pack size and the voltage of a segment are
-the same stream, so a small pack is almost always 800 V and a large one almost never (segment A, 2050: 100 %,
-63 %, 0.6 % for 25, 30 and 35 kWh; rank correlation -0.56). Three more streams are seeded with the bare 404,
-and the capacity growth rate and the voltage band position have rank correlation +1.0000. Measured effect of
-the first only: up to +0.5 % on the mean cable copper and +1.0 % on the terminal copper per pack (LFP,
-segment A, 2050); the effect on the spread and the other couplings were not measured. **His decision, and
-the moment to take it is the next run of 04_04:** give every stream its own tag in the seed list, which
-changes the draws and costs nothing extra if it goes into the same run as the hash fix.
+**2. Found in the same lines, and fixed (DEFECTS 3.28): streams seeded alike are one stream.** The pack size and
+the voltage of a segment were the same stream, so a small pack was almost always 800 V and a large one almost
+never (segment A, 2050: 100 %, 63 %, 0.6 % for 25, 30 and 35 kWh; rank correlation -0.56), which put up to
++0.5 % on the mean cable copper and +1.0 % on the terminal copper per pack (LFP, segment A, 2050). And the
+capacity growth rate, the voltage band and the composition's extrapolation factor were all the bare seed 404,
+the growth rate and the band at rank correlation +1.0000. Every stream in the battery modules is now seeded
+`[seed, crc32(<its name>), ...]`; six tags, tabulated in the upstream handover and in
+`DESIGN_bev_capacity_for_04_04.md` §9. What is shared on purpose is still shared. Checked red then green on
+the seeds numpy is asked for and on the replayed streams: the worst correlation between any two streams is now
+0.0024 (independent streams scatter by about 0.002), pack size against 800 V +0.001, the copper difference
++0.00 % everywhere.
 
-**3. Not added, to ask:** a test that stays. The check above is a scratch script, outside the repository. A
-permanent one would be a new file in RAWCLICStockAndFlow (`code/test_battery_seeds.py`: the same draws in two
-processes with different `PYTHONHASHSEED`), as the repository has one per stage. Say if he wants it.
+**3. Not re-run.** The draws change once more and the two fixes take effect together with the next run of 04_04,
+which is six hours and his, later. The export on disk is from the old code, one coherent world that cannot be
+reproduced. After that run, `04_batteries.py` has to be pressed again, because its draws will have moved.
+Nothing in this repository changed for it.
 
-**4. The machine had restarted** before this work began, which wipes the session's scratch folder. Nothing
+**4. Not added, to ask:** a test that stays. The checks above are scratch scripts, outside the repository. A
+permanent one would be a new file in RAWCLICStockAndFlow, `code/test_battery_seeds.py` (the same draws in two
+processes with different `PYTHONHASHSEED`, every stream tagged, no two sharing one), as the repository has one
+per stage. Say if he wants it.
+
+**5. The machine had restarted** before this work began, which wipes the session's scratch folder. Nothing
 in either repository was affected.

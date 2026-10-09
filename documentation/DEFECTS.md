@@ -1377,7 +1377,7 @@ differ in 25 of 34 digests before and in none after. It changes the draws once a
 for good, so it takes effect with the next run of 04_04 (six hours, his to run); the
 export on disk is from the unfixed code.
 
-### 3.28 Pack size and voltage are coupled, and so are other draws — **OPEN, upstream**
+### 3.28 Pack size and voltage are coupled, and so are other draws — **FIXED UPSTREAM 2026-10-09**, re-run pending
 
 Found 2026-10-09 while fixing 3.27. `capacity_draws` and `voltage_draws` are called
 with the same `seed=404` and both seed their stream with `[seed, segment]`, so they
@@ -1398,8 +1398,16 @@ against the same voltages shuffled across draws: mean cable copper up to +0.5 % 
 terminal copper up to +1.0 % higher as drawn (segment A, 2050), within 0.5 % in C and
 JC. The effect on the spread, and of the other couplings, was not measured.
 
-**Not fixed, his decision:** give every stream its own tag in the seed list. It
-changes the draws, so the time to do it is the same run of 04_04 as the 3.27 fix.
+**FIXED 2026-10-09, on his word "give each stream its own tag":** every stream in the
+battery modules is seeded `[seed, crc32(<its name>), ...]` and never with the bare seed
+(six tags; upstream HANDOVER 2026-10-09 and `DESIGN_bev_capacity_for_04_04.md` §9 have
+the table). Checked red then green on the seeds numpy is asked for and on the replayed
+streams: before, three streams on the bare 404, two on `[404, segment]`, rank
+correlation +1.0000 between four pairs, -0.563 between pack size and 800 V; after,
+every stream tagged, none shared, the worst correlation between any two streams'
+200,000 uniforms 0.0024, pack size against 800 V +0.001, and the copper difference
+above +0.00 % in every segment and year. What is shared on purpose is still shared.
+Like 3.27 it takes effect with the next run of 04_04.
 
 ---
 

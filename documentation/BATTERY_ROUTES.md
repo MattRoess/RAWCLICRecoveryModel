@@ -571,8 +571,9 @@ synthetic inputs and compared (90 arrays, worst relative error 2e-7). The upstre
 voltage; DEFECTS 3.27), so the new export agrees with the old summed one of 10-07 in its means
 (to four decimals) and not draw by draw. **Fixed in the code on 2026-10-09** (`zlib.crc32`); the
 export on disk is from the unfixed code, and the fix shows with the next run of 04_04, which he
-will do later. Pack size and voltage are also coupled draw by draw, and so are the capacity
-growth and the voltage band (DEFECTS 3.28): not fixed, his decision, best made before that run.
+will do later. Pack size and voltage were also coupled draw by draw, and so were the capacity
+growth and the voltage band; every stream has its own tag now (DEFECTS 3.28, fixed 2026-10-09,
+effective with the same run).
 
 If the export is not there, stage 01 says so:
 
