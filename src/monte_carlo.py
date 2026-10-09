@@ -120,8 +120,13 @@ def _result_array(total_rows: int, draws: int, budget_gb: float,
     more. Nothing above this function changes, and no figure knows.
 
     The file is deleted as soon as the run is finished with (`MonteCarloRun.
-    close`), and it lives beside the case's own output so a crash leaves it
-    somewhere a person would look rather than in a system temp folder.
+    close`) AND WHEN THE RUN STOPS: `solve_draws` removes it if the solve fails
+    or is interrupted, and the stage closes the run in a `finally`. Two of them,
+    16.6 GB each, sat in the boards case's output folder from the 4th and the 7th
+    of September to 2026-10-09 because a run that was stopped left its file
+    behind. Only a process killed outright (power off, SIGKILL) can still leave
+    one, and it lives beside the case's own output so that one is somewhere a
+    person would look rather than in a system temp folder.
 
     Returns (array, backing) where `backing` is the path to delete, or None
     when the result fitted in memory and there is nothing to clean up.
@@ -141,8 +146,21 @@ def _result_array(total_rows: int, draws: int, budget_gb: float,
         print(f'Memory    : {result_gb:.2f} GB result is above the '
               f'{budget_gb:.1f} GB budget, so it is memory-mapped to disk')
         print(f'            {path}')
-    return np.memmap(path, dtype=np.float64, mode='w+',
-                     shape=(total_rows, draws)), path
+    try:
+        result = np.memmap(path, dtype=np.float64, mode='w+',
+                           shape=(total_rows, draws))
+    except BaseException:
+        _remove(path)
+        raise
+    return result, path
+
+
+def _remove(path: str) -> None:
+    """Delete a scratch file. A file that is already gone is not an error."""
+    try:
+        os.remove(path)
+    except OSError:
+        pass
 
 
 def plan(total_rows: int, draws: int, budget_gb: float,
@@ -449,10 +467,7 @@ class MonteCarloRun:
         if flush is not None:
             flush()
         self.values = np.empty((0, 0))
-        try:
-            os.remove(path)
-        except OSError:
-            pass
+        _remove(path)
 
 
 
@@ -655,49 +670,57 @@ def solve_draws(data_folder: str, layer_names: list[str], draws: int,
     values, backing = _result_array(total_rows, draws, budget_gb, data_folder,
                                     quiet)
 
-    block, how = plan(total_rows, draws, budget_gb, chunk or 0)
-    n_coefficients = len(structures[0][0]['tcs_df']) if structures else 0
-    all_tc_values = np.zeros((n_coefficients, draws), dtype=np.float64)
-    written = 0
-    for entry, structure in structures:
-        rows = len(structure.result_keys)
-        tc_values, report = sample(entry['tcs_df'], draws=draws,
-                                   start=start, seed=seed, rule=rule)
-        inflow = entry['inflows_df']['Value'].to_numpy(dtype=float)[:, None]
+    # FROM HERE THE RESULT HAS A FILE AND NOTHING OWNS IT: `MonteCarloRun.close`
+    # deletes it, and that object does not exist until the very end. A solve that
+    # fails or is stopped (Ctrl-C, the stop button) must not leave the result
+    # behind -- two stopped runs of the boards case left 16.6 GB each.
+    try:
+        n_coefficients = len(structures[0][0]['tcs_df']) if structures else 0
+        all_tc_values = np.zeros((n_coefficients, draws), dtype=np.float64)
+        written = 0
+        for entry, structure in structures:
+            rows = len(structure.result_keys)
+            tc_values, report = sample(entry['tcs_df'], draws=draws,
+                                       start=start, seed=seed, rule=rule)
+            inflow = entry['inflows_df']['Value'].to_numpy(dtype=float)[:, None]
 
-        for offset in range(0, draws, block):
-            width = min(block, draws - offset)
-            target = values[written:written + rows, offset:offset + width]
-            # The upstream draws, cut for this block. Falls back to the mean
-            # broadcast where the case cannot supply them (src/upstream.Draws).
-            per_draw_inflow, per_draw_shares = upstream_values(
-                upstream_draws, entry, structure, start + offset,
-                start + offset + width)
-            if per_draw_inflow is None:
-                per_draw_inflow = np.broadcast_to(
-                    inflow, (len(entry['inflows_df']), width))
-            structure.evaluate(per_draw_inflow,
-                               tc_values[:, offset:offset + width],
-                               composition_values=per_draw_shares, out=target)
+            for offset in range(0, draws, block):
+                width = min(block, draws - offset)
+                target = values[written:written + rows, offset:offset + width]
+                # The upstream draws, cut for this block. Falls back to the mean
+                # broadcast where the case cannot supply them (src/upstream.Draws).
+                per_draw_inflow, per_draw_shares = upstream_values(
+                    upstream_draws, entry, structure, start + offset,
+                    start + offset + width)
+                if per_draw_inflow is None:
+                    per_draw_inflow = np.broadcast_to(
+                        inflow, (len(entry['inflows_df']), width))
+                structure.evaluate(per_draw_inflow,
+                                   tc_values[:, offset:offset + width],
+                                   composition_values=per_draw_shares, out=target)
 
-        written += rows
-        # The coefficients are kept at full width: the sensitivity figure
-        # correlates them against the results, so they have to line up draw
-        # for draw with what is stored above.
-        all_tc_values[:] = tc_values
-        sampled_tcs = entry['tcs_df']
+            written += rows
+            # The coefficients are kept at full width: the sensitivity figure
+            # correlates them against the results, so they have to line up draw
+            # for draw with what is stored above.
+            all_tc_values[:] = tc_values
+            sampled_tcs = entry['tcs_df']
 
-    for entry, structure in structures:
-        keys = structure.result_keys.copy()
-        keys.insert(0, 'Year', entry['Year'])
-        key_frames.append(keys)
-    sampled_values = all_tc_values
+        for entry, structure in structures:
+            keys = structure.result_keys.copy()
+            keys.insert(0, 'Year', entry['Year'])
+            key_frames.append(keys)
+        sampled_values = all_tc_values
 
-    if not key_frames:
-        raise ValueError(f'{data_folder} produced no years to solve.')
+        if not key_frames:
+            raise ValueError(f'{data_folder} produced no years to solve.')
 
-    return MonteCarloRun(keys=pd.concat(key_frames, ignore_index=True),
-                         values=values, report=report,
-                         tcs=sampled_tcs, tc_values=sampled_values,
-                         case=data_folder, upstream=upstream_draws,
-                         backing=backing)
+        return MonteCarloRun(keys=pd.concat(key_frames, ignore_index=True),
+                             values=values, report=report,
+                             tcs=sampled_tcs, tc_values=sampled_values,
+                             case=data_folder, upstream=upstream_draws,
+                             backing=backing)
+    except BaseException:
+        if backing is not None:
+            _remove(backing)
+        raise

@@ -102,9 +102,8 @@ from __future__ import annotations
 import os
 import re
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-import numpy as np
 import openpyxl
 import pandas as pd
 
@@ -480,12 +479,6 @@ class Row:
                 'process': self.process, 'technology': self.technology,
                 'source': self.source_now if which == 'now' else self.source_later,
                 'variant': self.variant}
-
-
-def element_row(flow_in, component, element, flow_out, now, later, road, source, variant='',
-                source_later=None):
-    return Row(flow_in, 'component', component, flow_out, 'element', element, now, later,
-               road['process'], road['technology'], source, source_later or source, variant)
 
 
 class Sources:

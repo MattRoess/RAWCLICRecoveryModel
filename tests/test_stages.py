@@ -121,6 +121,39 @@ def test_the_combine_still_has_every_figure_it_draws() -> None:
         assert name in defined, f'05_combine_cases has lost {name}'
 
 
+def test_the_monte_carlo_stage_closes_its_run_even_when_it_stops() -> None:
+    """
+    A memory-mapped result is a file as large as the run -- 16.6 GB for the boards
+    case -- and only `MonteCarloRun.close()` deletes it. A stage that calls it
+    on the way out of a run that finished, and not otherwise, leaves the whole
+    result behind whenever the run fails or is stopped. Two of them sat in the
+    boards case's output folder from September to October 2026.
+
+    STATIC, like the rest of this file, because the stage cannot be run here.
+    The behaviour itself is `test_monte_carlo.py`'s, in
+    `test_a_run_that_stops_midway_leaves_no_file_behind`.
+    """
+    path = os.path.join(ROOT, 'stages', '03_run_monte_carlo.py')
+    tree = ast.parse(open(path, encoding='utf-8').read(), filename=path)
+    run_case = next(node for node in ast.walk(tree)
+                    if isinstance(node, ast.FunctionDef) and node.name == 'run_case')
+
+    solves = [node for node in ast.walk(run_case)
+              if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+              and node.func.id == 'solve_draws']
+    assert solves, 'run_case no longer calls solve_draws, so this test is out of date'
+
+    closed_in_finally = any(
+        isinstance(node, ast.Try)
+        and any(isinstance(inner, ast.Call) and isinstance(inner.func, ast.Attribute)
+                and inner.func.attr == 'close'
+                for statement in node.finalbody for inner in ast.walk(statement))
+        for node in ast.walk(run_case))
+    assert closed_in_finally, (
+        'run_case does not close the run in a `finally`: a run that fails or is '
+        'stopped leaves its memory-mapped result in the case\'s output folder')
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

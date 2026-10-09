@@ -572,9 +572,38 @@ needed him.
 from the day it was found.*
 
 
+## 32. I moved the figures, left the old folder, and wrote that I had — 10-09
+
+When the upstream figures went from `data/processed/figures` to `figures/`, I copied them
+and left the old folder where it was, and said so in the README and the handover: *"left as
+it was, and not written to any more."* The same day he wrote: *"There are old data and also
+old figures left after the last modification of the code. All this has to be cleaned up. I
+do NOT want dead code, dead data and dead figures!!"*
+
+He was right about more than the folder. Looking for what the changes of the last weeks had
+left turned up, in this repository, 33 GB of data (two 16.6 GB scratch files of stopped
+Monte Carlo runs, an empty test folder) and 189 figures no code draws any more (four
+traction-motor grades, the old top-level figures of two cases) with a picture of four
+traction cases that no longer exist; upstream, 8.8 GB of a retired sodium chemistry, a whole
+copy of the figure folder, three archived copies of the parameter file, 42 functions nothing
+calls and 8 settings nothing reads (two of them look like seeds and do nothing). Pattern 5
+names it. It was in both repositories, in many places, for weeks.
+
+The measurement before the removal nearly repeated it from the other side. The old
+single-sodium files were first counted with `Na_ion*`, a pattern that also matches the two live
+sodium cells, and 25 GB came out where 8.8 GB was right. Nothing was deleted on that number:
+what was shown to him and then removed was a list by exact name, each count checked first.
+
+*When a change leaves something behind, it is not finished. Say what it leaves, with the
+proof that nothing reads it, and remove it in the same piece of work. A leftover is never
+"kept".* Fixed 2026-10-09: removed (HANDOVER 2026-10-09 later), and the cause of two of the
+leftovers too, the scratch file of a stopped run and the tests that built cases in `data/`
+(DEFECTS 3.29 and 3.30).
+
+
 ## Patterns
 
-Thirty-one failures, eight shapes. The shapes repeat; the instances do not matter
+Thirty-two failures, eight shapes. The shapes repeat; the instances do not matter
 much.
 
 **1. Verified against itself.** #7, #8, #14, #27. A Sankey that balances, an account
@@ -600,7 +629,7 @@ workbook, with a range and four references. I made one up. *When a number is
 needed, look for it in the study before deriving it, and say which cell it came
 from.*
 
-**5. Renamed without clearing.** #16, and the reason `tractionmotor_fleet` was
+**5. Renamed without clearing.** #16, #32, and the reason `tractionmotor_fleet` was
 confusing at all. An old name that still resolves — a file, a folder, a case —
 is worse than a missing one, because it looks current. *A rename is not done
 until the old thing is gone or marked.*

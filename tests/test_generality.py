@@ -178,10 +178,10 @@ def write_case(case: str, child_layer: str = 'element',
     ]).to_csv(os.path.join(case, 'input_data', 'processes.csv'), index=False)
 
 
-def settings(root: str, case_name: str) -> Params:
+def settings(root: str, case: str) -> Params:
     """A parameter set pointed at the synthetic item, not at the vehicle one."""
     params = Params()
-    params.run.data_folder = os.path.join('data', case_name)
+    params.run.data_folder = case
     params.run.scenario = 'HIGH'
     params.run.years = ''
     params.run.working_unit = 't'
@@ -205,12 +205,14 @@ def build_everything(child_layer: str = 'element', products=None,
 
     case_name = (f'pv_panels_test_{child_layer}{"_multi" if products else ""}'
                  f'{"_materials" if materials else ""}')
-    case = os.path.join('data', case_name)
-    if os.path.isdir(case):
-        shutil.rmtree(case)
+    # IN THE TEMPORARY ROOT, NOT IN data/. These cases used to be built in the
+    # real data folder and removed afterwards; one of them was still there,
+    # empty, a day later (`data/pv_chem_test`), and a fixture that writes into
+    # the folder holding the user's cases is one wrong name from overwriting one.
+    case = os.path.join(root, case_name)
     write_case(case, child_layer, products)
 
-    params = settings(upstream, case_name)
+    params = settings(upstream, case)
     return params, case, root
 
 
@@ -1809,8 +1811,12 @@ def _chemistry_export(names, scale=None):
 
 
 def _chemistry_case(name: str, claims: str, export: str):
-    """A case folder under data/ that names the chemistries it treats."""
-    case = os.path.join('data', name)
+    """
+    A case folder that names the chemistries it treats, BESIDE THE EXPORT in the
+    temporary folder that holds it, so the cases of one test are siblings of each
+    other and of nothing else -- not of the real cases in data/.
+    """
+    case = os.path.join(os.path.dirname(export), name)
     if os.path.isdir(case):
         shutil.rmtree(case)
     write_case(case)
@@ -1818,7 +1824,7 @@ def _chemistry_case(name: str, claims: str, export: str):
     table = pd.read_csv(path)
     table.loc[len(table)] = ['chemistries', claims]
     table.to_csv(path, index=False)
-    params = settings(export, name)
+    params = settings(export, case)
     params.data.inflow_draws_dir = '.'
     return case, params
 
@@ -1878,8 +1884,8 @@ def test_a_chemistry_no_case_treats_stops_the_run_and_is_named() -> None:
 
     Without it the new chemistry's mass enters no total, every figure still
     balances, and the battery is short by exactly that much without a word.
-    The cases are siblings in data/, so a run that names ONE of them still sees
-    what the others treat.
+    The cases are siblings in one folder, so a run that names ONE of them still
+    sees what the others treat.
     """
     from src.upstream import UpstreamError, load
 

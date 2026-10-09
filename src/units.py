@@ -87,12 +87,6 @@ def factor(from_unit: str, to_unit: str) -> float:
     return MASS_UNITS[from_unit] / MASS_UNITS[to_unit]
 
 
-def convert(values, from_unit: str, to_unit: str):
-    """Values expressed in `from_unit`, re-expressed in `to_unit`."""
-    scale = factor(from_unit, to_unit)
-    return values if scale == 1.0 else values * scale
-
-
 def scale_for(values, unit: str, by: str = 'median') -> tuple[float, str]:
     """
     A readable unit for a set of numbers, and what to multiply them by.

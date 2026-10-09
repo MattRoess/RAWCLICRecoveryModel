@@ -184,6 +184,19 @@ def run_case(folder, params, draws: int) -> int:
                       scenario=params.run.scenario,
                       quiet=False)
 
+    # THE RESULT CAN BE A FILE AS LARGE AS THE RUN -- 16.6 GB for the boards case --
+    # and only `run.close()` deletes it. It is called in a `finally`, so a run that
+    # fails or is stopped part way (in the summary, the workbook, a figure) leaves
+    # nothing behind. Two of them sat in the boards case's output folder from
+    # September to October 2026, each one a stopped run's whole result.
+    try:
+        return _write_results(folder, params, draws, tables, run)
+    finally:
+        run.close()
+
+
+def _write_results(folder, params, draws: int, tables, run) -> int:
+    """Everything after the solve: check it, summarise it, write the workbook, draw."""
     report = run.report
     if not report.get('uncertain'):
         print('\nThis case has no value_min / value_max columns, so there is nothing')
@@ -280,9 +293,6 @@ def run_case(folder, params, draws: int) -> int:
         print(f'  median gap {np.median(np.abs(gap)):.1f}%, largest {gap.abs().max():.1f}% '
               f'on {worst["Stock/Flow ID"]} {named} in {worst["Year"]}')
         print(f'  Running every coefficient at its mode is not the same as the mean.')
-    # A memory-mapped result leaves a file behind; it is one run's draws and
-    # worthless once the summary and the figures are written.
-    run.close()
     return 0
 
 

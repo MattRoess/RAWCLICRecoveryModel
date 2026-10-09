@@ -172,6 +172,52 @@ def test_a_result_on_disk_is_the_same_result() -> None:
     on_disk.close()          # twice must be harmless
 
 
+def test_a_run_that_stops_midway_leaves_no_file_behind() -> None:
+    """
+    THE LEAK THAT FILLED A DISK, FOUND 2026-10-09.
+
+    The memory-mapped result is a file in the case's output folder, and only
+    `MonteCarloRun.close()` deleted it -- an object that exists only when the
+    solve FINISHES. A run that was stopped with Ctrl-C, or that failed part way,
+    left its whole result behind: two of them, 16.6 GB each, sat in the boards
+    case's output folder from September to October, found by asking what was
+    taking the space and not by any message.
+
+    So: force the result onto disk, stop the solve after it has started, and
+    look at the folder.
+    """
+    import glob
+
+    import src.monte_carlo as engine
+
+    folder = 'data/reference/template/output_data'
+    pattern = os.path.join(folder, 'monte_carlo_*.f8')
+    before = set(glob.glob(pattern))
+    original = engine.upstream_values
+    calls = []
+
+    def stop_at_the_first_block(*args, **kwargs):
+        calls.append(1)
+        raise KeyboardInterrupt           # what the stop button sends
+
+    engine.upstream_values = stop_at_the_first_block
+    try:
+        try:
+            engine.solve_draws('data/reference/template', NAMES, draws=200,
+                               seed=0, budget_gb=1e-9)
+        except KeyboardInterrupt:
+            pass
+        else:
+            raise AssertionError('the solve was not interrupted, so this '
+                                 'tested nothing')
+    finally:
+        engine.upstream_values = original
+
+    assert calls, 'the solve never reached its first block'
+    left = set(glob.glob(pattern)) - before
+    assert not left, f'a stopped run left its result behind: {sorted(left)}'
+
+
 def test_a_run_repeats_exactly_at_the_same_width_and_seed() -> None:
     """
     What the stable draw index is actually for: two runs at the same width and

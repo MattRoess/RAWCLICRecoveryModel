@@ -1411,6 +1411,38 @@ Like 3.27 it takes effect with the next run of 04_04. **`code/test_battery_seeds
 RAWCLICStockAndFlow keeps 3.27 and 3.28 fixed: nine checks, seconds, only the code; it fails 5 of 9
 on the code before the hash fix and 4 of 9 before the tags.
 
+### 3.29 A stopped or failed run left its whole result on disk — **FIXED 2026-10-09**
+
+The result of a large case is memory-mapped to a file in the case's `output_data/`
+(`monte_carlo_<random>.f8`, as large as the run: 16.6 GB for the boards case at 200,000 draws).
+Only `MonteCarloRun.close()` deleted it, that object exists only when the solve has finished,
+and the stage called it only on the way out of a run that had finished. A run stopped with Ctrl-C
+or the stop button, or one that failed in the summary, the workbook or a figure, left the file.
+Two of them, 16.6 GB each, written on 09-04 and 09-07, were in the boards case's output folder on
+2026-10-09. Nothing read them and nothing said they were there; they were found by asking what
+was taking the space.
+
+Fixed: `solve_draws` removes the file if the solve fails or is stopped, `_result_array` removes it
+if the map cannot be created (a disk that cannot hold it), and `stages/03_run_monte_carlo.py` closes
+the run in a `finally` (`run_case` stops at the solve and `_write_results` is everything after it).
+Red then green: `test_a_run_that_stops_midway_leaves_no_file_behind` (`tests/test_monte_carlo.py`:
+the solve is interrupted at its first block and the folder is looked at) and
+`test_the_monte_carlo_stage_closes_its_run_even_when_it_stops` (`tests/test_stages.py`, static).
+**A process killed outright still leaves the file** (power off, SIGKILL): nothing in Python can
+catch that, and the file sits beside the case's output, where a person looks. The two found were
+removed on his word the same day.
+
+### 3.30 The tests built their cases in the folder that holds the user's — **FIXED 2026-10-09**
+
+`tests/test_generality.py` built its synthetic cases (`pv_panels_test_*`, `pv_chem_*_test`) in the
+real `data/` folder and removed them afterwards. One was still there the morning after, empty
+(`data/pv_chem_test/input_data`). A fixture that writes into the folder holding the cases is one
+wrong name from replacing one of them, and the chemistry check reads the siblings of a case, so the
+test also depended on which real cases happened to be there. The scratch cases are now built in the
+temporary folder that already holds the synthetic export, beside it: the cases of one test are
+siblings of each other and of nothing else. The suite passes (38 of 38) and `data/` is the same
+before and after it.
+
 ---
 
 ## 4. Code quality notes

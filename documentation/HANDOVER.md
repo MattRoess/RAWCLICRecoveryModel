@@ -2609,3 +2609,59 @@ the battery modules' random draws.
 
 **5. The machine had restarted** before this work began, which wipes the session's scratch folder. Nothing
 in either repository was affected.
+
+## 2026-10-09 (later) — what the changes left behind is removed here, and his 04_04 rerun is going
+
+**His instruction:** *"There are old data and also old figures left after the last modification of the code.
+All this has to be cleaned up. I do NOT want dead code, dead data and dead figures!!"* I listed what was dead,
+item by item with the evidence, and he said yes to all of it and to fixing the two causes (FAILURES 32).
+
+**1. Removed from this repository, by exact name, counts checked before and after (193 files, 33 GB):**
+
+- `data/bev_electronics_boards/output_data/monte_carlo_f_l6n1uc.f8` and `monte_carlo_myz5ye03.f8`, 16.6 GB
+  each: the memory-mapped result of two runs stopped on 09-04 and 09-07. Nothing read them (DEFECTS 3.29).
+- `data/pv_chem_test/`, empty, left by a test (DEFECTS 3.30).
+- `figures/tractionmotor/EH`, `SH`, `UH` and `mix`, 128 figures of the four-grade layout of 09-25 to 09-28.
+  The case is one run since 09-29 (`scenario_alias = *=mix`; no scenarios are available) and its
+  `output_data/` has no grade folders.
+- 13 figures at the top of `figures/bev_electronics_wiring` and 48 at the top of
+  `figures/bev_electronics_boards`: the files no `_written.txt` claims, written 09-02 to 09-17: the layout before `detail/`, older names
+  (`account.png`, `losses.png`, `trapped.png`, `routes.png`) and thirteen resources the 09-30 run no longer
+  draws. What the 09-30 run drew is untouched.
+- `documentation/tractionmotor_cases_overview.png` and `tools/draw_tractionmotor_cases_overview.py`: the picture
+  is titled "The four traction-motor recovery cases" and names `tractionmotor_shortloop`, `_split` and
+  `_shredder`, which do not exist.
+- Three functions nothing called (`units.convert`, `element_row` in `tools/build_battery_cases.py`,
+  `recovered_names` in `tools/compare_scenarios.py`), a second, identical call to `plan` in `solve_draws`, and
+  eight imports nothing used. A scan of every name in the 55 Python files of the repository (loaded
+  names, attributes, keywords, strings) finds nothing unused now.
+
+**2. The two causes, fixed, red then green:** a Monte Carlo that is stopped or fails no longer leaves its
+memory-mapped result in the case's output folder (DEFECTS 3.29), and the tests build their scratch cases in a
+temporary folder and not in `data/` (3.30). A process killed outright can still leave a scratch file; it sits
+beside the case's output. Tests: all seven suites pass, **162** (160, and one each in `test_monte_carlo.py` and
+`test_stages.py`).
+
+**3. Not removed, because something still reads it or it is his:**
+
+- `data/processed/battery_recovery_draws/` upstream (2.8 GB), `data/battery` and `figures/battery`:
+  `data/battery` reads that export and is still in `combine.cases`, so none of the three is dead until the five
+  cases take its place there (`BATTERY_ROUTES.md` §13). Retiring it is one decision.
+- `figures/carcomposition_mockup`, 35 figures of 08-21 to 09-03 with no manifest, and the mock-up case itself.
+- Three tools nothing refers to, in code or in a document: `check_ratios.py`, `compare_scenarios.py`,
+  `draw_traction_coefficients.py`.
+- Upstream, stage 04_03 writes the three grades `EH`, `SH` and `UH` (680 MB) that this model never reads; it
+  reads `mix`.
+- `doc/User guide.docx` (08-24), and upstream `documentation/superseded/`.
+
+**4. Upstream, found and not yet removed** (its handover has the list): the old single-sodium arrays `Na_ion*`
+(36 files, 8.8 GB), the old figure folder `data/processed/figures` (104 figures, identical to `figures/`) and
+17 older `... 2.png` copies, `src/archive/` (three copies of the parameter file), 42 functions nothing calls, 8
+settings nothing reads, 11 names in the artifact registry and 10 unused imports. **They wait for his 04_04
+run**: a six-hour run can still import an upstream module late, and the arrays it writes sit in the same
+folders.
+
+**5. His run.** The 04_04 that ended at about 07:19 was stopped by him, to switch the computer off. He started a new one at **09:04**, with the fixed seeds, the
+tagged streams and the figures going to `figures/`. It rewrote the inflow arrays by 09:17 and takes about six
+hours in all. Until it has ended, `battery_draws/` and the per-chemistry export hold the inflow of one run and
+the outflow and collected arrays of another. **Press Run on `04_batteries.py` after it, not before.**

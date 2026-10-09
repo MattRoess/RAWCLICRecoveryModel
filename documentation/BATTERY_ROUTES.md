@@ -570,10 +570,14 @@ synthetic inputs and compared (90 arrays, worst relative error 2e-7). The upstre
 **Two runs of 04_04 did not give the same draws** (`hash(segment)` seeded the pack size and
 voltage; DEFECTS 3.27), so the new export agrees with the old summed one of 10-07 in its means
 (to four decimals) and not draw by draw. **Fixed in the code on 2026-10-09** (`zlib.crc32`); the
-export on disk is from the unfixed code, and the fix shows with the next run of 04_04, which he
-will do later. Pack size and voltage were also coupled draw by draw, and so were the capacity
-growth and the voltage band; every stream has its own tag now (DEFECTS 3.28, fixed 2026-10-09,
-effective with the same run).
+fix shows with the next run of 04_04. Pack size and voltage were also coupled draw by draw, and so
+were the capacity growth and the voltage band; every stream has its own tag now (DEFECTS 3.28, fixed
+2026-10-09, effective with the same run).
+
+**That run was started on 2026-10-09 at 09:04, by him.** An earlier start, with the old code, was
+stopped at about 07:19 when the computer had to be switched off, after it had rewritten the inflow
+arrays. Until the new run has ended (about six hours) the export holds the inflow of one run and the
+outflow and collected arrays of another, so `04_batteries.py` is pressed after it, not before.
 
 If the export is not there, stage 01 says so:
 

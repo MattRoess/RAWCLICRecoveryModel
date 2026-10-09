@@ -56,7 +56,7 @@ import copy
 
 import numpy as np
 
-from src import case_tables, figure_style, source as source_module, upstream
+from src import figure_style, source as source_module, upstream
 from src.monte_carlo import solve_draws
 from src.params_schema import ParameterError, current
 from src.plot_monte_carlo import account, finest_layer, header
@@ -250,14 +250,6 @@ def draw(case: str, per_scenario: dict, resources: list[str], years, params):
                                   params.figures.enabled(), params.figures.dpi)
     plt.close(figure)
     return written
-
-
-def recovered_names(case: str) -> list[str]:
-    """Every flow the case calls recovered."""
-    processes = case_tables.read(case, 'processes')
-    return sorted({str(row['Output_FlowID']).strip()
-                   for _, row in processes.iterrows()
-                   if str(row.get('role', '')).strip() == 'recovered'})
 
 
 def main(argv=None) -> int:

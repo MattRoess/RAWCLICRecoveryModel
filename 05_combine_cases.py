@@ -68,12 +68,11 @@ import re
 
 import numpy as np
 
-from src.figure_style import PALETTE, chart, write
+from src.figure_style import chart, write
 from src.monte_carlo import solve_draws
 from src.params_schema import Params
-from src.plot_monte_carlo import (_round_step, account, draw_account,
-                                  header, losses, routes)
-from src.rest import LAYERS, REST
+from src.plot_monte_carlo import account, header, losses, routes
+from src.rest import REST
 from src.units import factor, readable
 from src.upstream import (cases_to_run, load as refresh,
                           scenarios_available, scenarios_to_run)
