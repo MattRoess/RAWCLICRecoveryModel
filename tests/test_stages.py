@@ -72,6 +72,13 @@ def _bound(tree: ast.Module) -> set[str]:
                 for one in (args.vararg, args.kwarg):
                     if one:
                         names.add(one.arg)
+        elif isinstance(node, ast.Lambda):
+            args = node.args
+            for group in (args.posonlyargs, args.args, args.kwonlyargs):
+                names.update(a.arg for a in group)
+            for one in (args.vararg, args.kwarg):
+                if one:
+                    names.add(one.arg)
         elif isinstance(node, (ast.Import, ast.ImportFrom)):
             names.update((a.asname or a.name.split('.')[0]) for a in node.names)
         elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
@@ -101,6 +108,37 @@ def test_no_stage_calls_a_name_that_does_not_exist() -> None:
     assert not faults, (
         'these call a name nothing defines, imports or binds -- a run reaches '
         'them and dies:\n  ' + '\n  '.join(faults))
+
+
+def _read(tree: ast.Module) -> set[str]:
+    """Every plain name that is READ, `x` rather than `a.x`."""
+    return {node.id for node in ast.walk(tree)
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)}
+
+
+def test_no_module_reads_a_name_that_does_not_exist() -> None:
+    """
+    The same check for every name that is READ, not only the ones that are called,
+    over the stages, the tools, the stage scripts and `src/`.
+
+    2026-10-09: `tools/compare_engines.py` read `data` where its argument is
+    `data_folder`, left over from a rename (7357043). Nothing was called wrong --
+    `run(...)` exists -- so the check above passed for weeks while the tool died on
+    its first line with a NameError, and five documents told people to run it.
+    """
+    paths = sorted(STAGES + glob.glob(os.path.join(ROOT, 'stages', '*.py'))
+                   + glob.glob(os.path.join(ROOT, 'src', '*.py')))
+    faults = []
+    for path in paths:
+        tree = ast.parse(open(path, encoding='utf-8').read(), filename=path)
+        missing = sorted(_read(tree) - _bound(tree) - {'__file__', '__name__', '__doc__'})
+        if missing:
+            faults.append(f'{os.path.relpath(path, ROOT)}: {", ".join(missing)}')
+
+    assert len(paths) >= 30, f'only {len(paths)} files found; the globs stopped matching'
+    assert not faults, (
+        'these read a name nothing defines, imports or binds -- the first run '
+        'that reaches them dies:\n  ' + '\n  '.join(faults))
 
 
 def test_the_combine_still_has_every_figure_it_draws() -> None:

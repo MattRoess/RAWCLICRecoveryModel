@@ -2639,8 +2639,10 @@ item by item with the evidence, and he said yes to all of it and to fixing the t
 **2. The two causes, fixed, red then green:** a Monte Carlo that is stopped or fails no longer leaves its
 memory-mapped result in the case's output folder (DEFECTS 3.29), and the tests build their scratch cases in a
 temporary folder and not in `data/` (3.30). A process killed outright can still leave a scratch file; it sits
-beside the case's output. Tests: all seven suites pass, **162** (160, and one each in `test_monte_carlo.py` and
-`test_stages.py`).
+beside the case's output. **A third thing the scan turned up:** `tools/compare_engines.py` died on its first
+line, `data` where its argument is `data_folder`, since a rename weeks ago; fixed, and a test now reads every
+name in the stages, the tools and `src/` (DEFECTS 3.31). Tests: all seven suites pass, **163** (160, one in
+`test_monte_carlo.py`, two in `test_stages.py`).
 
 **3. Not removed, because something still reads it or it is his:**
 

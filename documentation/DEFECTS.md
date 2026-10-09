@@ -1443,6 +1443,18 @@ temporary folder that already holds the synthetic export, beside it: the cases o
 siblings of each other and of nothing else. The suite passes (38 of 38) and `data/` is the same
 before and after it.
 
+### 3.31 `tools/compare_engines.py` died on its first line — **FIXED 2026-10-09**
+
+`compare()` handed `data` to both engines where its own argument is `data_folder`: the rename of
+7357043 changed the argument and not the two uses. Every run ended in `NameError: name 'data' is not
+defined`, and five documents (the README, SETUP, MODEL_MECHANICS, DEFECTS and the index) tell people to
+run it. `test_no_stage_calls_a_name_that_does_not_exist` could not see it, because it looks only at names
+that are called, and `run(...)` is fine. Found by a scan for names a module reads and nothing defines.
+
+Fixed, two words; the tool agrees with itself on `data/reference/basic_test` to 4.6e-13. New, red then
+green: `test_no_module_reads_a_name_that_does_not_exist` in `tests/test_stages.py`, over the stages, the
+tools, `stages/` and `src/` (its name table now also knows lambda arguments).
+
 ---
 
 ## 4. Code quality notes

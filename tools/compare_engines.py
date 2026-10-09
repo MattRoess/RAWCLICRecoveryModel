@@ -53,8 +53,8 @@ def run(model_class, data_folder: str) -> pd.DataFrame:
 
 def compare(data_folder: str) -> pd.DataFrame:
     """Outer-join both engines' solutions so that disagreements are visible."""
-    optimized = run(RecoveryModelOptimized, data)
-    linear_algebra = run(RecoveryModelLA, data)
+    optimized = run(RecoveryModelOptimized, data_folder)
+    linear_algebra = run(RecoveryModelLA, data_folder)
 
     merged = optimized.merge(
         linear_algebra, on=KEYS, how='outer', suffixes=('_optimized', '_LA')
