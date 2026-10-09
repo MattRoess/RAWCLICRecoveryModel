@@ -567,10 +567,12 @@ folder-flow pairs. Before the run, the old and the new export code had been run 
 synthetic inputs and compared (90 arrays, worst relative error 2e-7). The upstream
 `documentation/HANDOVER.md` of 2026-10-08 has the details.
 
-**Two runs of 04_04 do not give the same draws** (`hash(segment)` seeds the pack size and
+**Two runs of 04_04 did not give the same draws** (`hash(segment)` seeded the pack size and
 voltage; DEFECTS 3.27), so the new export agrees with the old summed one of 10-07 in its means
-(to four decimals) and not draw by draw. Re-running 04_04 will move the draws a little until
-that is fixed, which is his decision.
+(to four decimals) and not draw by draw. **Fixed in the code on 2026-10-09** (`zlib.crc32`); the
+export on disk is from the unfixed code, and the fix shows with the next run of 04_04, which he
+will do later. Pack size and voltage are also coupled draw by draw, and so are the capacity
+growth and the voltage band (DEFECTS 3.28): not fixed, his decision, best made before that run.
 
 If the export is not there, stage 01 says so:
 

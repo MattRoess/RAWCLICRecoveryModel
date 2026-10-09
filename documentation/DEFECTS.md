@@ -1345,7 +1345,7 @@ thing, a mismatch between two things that should agree, and is now an
 `UpstreamError` that says so. Two tests in `tests/test_generality.py`; the first
 reproduced the real traceback before the fix.
 
-### 3.27 04_04 draws a different pack-size world on every run — **OPEN, upstream**
+### 3.27 04_04 draws a different pack-size world on every run — **FIXED UPSTREAM 2026-10-09**, re-run pending
 
 Found 2026-10-08 comparing the per-chemistry export with the old summed one. The
 means agree to four decimals (new/old = 1.0000 on every array looked at), the
@@ -1370,9 +1370,36 @@ in everything the run wrote. What is lost is that two runs of 04_04 differ, so a
 export cannot be reproduced, and this model's results shift a little with each
 re-run.
 
-**The fix, not made:** `zlib.crc32(segment.encode())` in both places. It changes
-the draws once and for good, so it takes effect only with the next run of 04_04,
-which is six hours.
+**FIXED 2026-10-09:** `zlib.crc32(segment.encode())` in both places. Checked as a
+failing test and then a passing one: the pack size, the voltage, every chemistry
+share and a composition call, in four processes (two pinned hash salts, two random),
+differ in 25 of 34 digests before and in none after. It changes the draws once and
+for good, so it takes effect with the next run of 04_04 (six hours, his to run); the
+export on disk is from the unfixed code.
+
+### 3.28 Pack size and voltage are coupled, and so are other draws — **OPEN, upstream**
+
+Found 2026-10-09 while fixing 3.27. `capacity_draws` and `voltage_draws` are called
+with the same `seed=404` and both seed their stream with `[seed, segment]`, so they
+are the same stream: the uniform that picks a segment's pack size is the one that
+places the car in the 800 V adoption order. A small `u` is the smallest pack **and**
+800 V. Segment A in 2050: the 25 kWh pack is 800 V in 100 % of its draws, the 30 kWh
+pack in 63 %, the 35 kWh pack in 0.6 %; rank correlation between pack size and 800 V
+-0.56 in A, -0.15 in C and JC, -0.09 in JF. Nothing in the design note relates them.
+
+Three further streams are seeded with the bare `seed` and so share their uniforms:
+the capacity growth rate and plateau year (`battery_capacity.py:65`), the voltage band
+position (`battery_voltage.py:115`) and the composition's extrapolation factor
+(`battery_composition.py:211`). Measured: growth rate against voltage band position,
+rank correlation **+1.0000**.
+
+Size, measured for the pack size and voltage only, on LFP per pack at 200,000 draws
+against the same voltages shuffled across draws: mean cable copper up to +0.5 % and
+terminal copper up to +1.0 % higher as drawn (segment A, 2050), within 0.5 % in C and
+JC. The effect on the spread, and of the other couplings, was not measured.
+
+**Not fixed, his decision:** give every stream its own tag in the seed list. It
+changes the draws, so the time to do it is the same run of 04_04 as the 3.27 fix.
 
 ---
 

@@ -2532,15 +2532,14 @@ so), with two tests, the first of which reproduced the real traceback. DEFECTS 3
 02 and 03 then ran on solid-state in a sandbox, figures and workbook included; the zero years draw as
 zero.
 
-**4. Found upstream, not fixed: 04_04 draws a different pack-size world on every run.**
+**4. Found upstream: 04_04 draws a different pack-size world on every run** (fixed the next morning, see the entry of 2026-10-09).
 `RAWCLICStockAndFlow/src/battery_capacity.py:81` and `src/battery_voltage.py:107` seed each segment with
 `abs(hash(segment))`, and Python salts the hash of a string per process. Shown directly: the same call with
 the same seed gives `[33.7, 35.8, 34.1, ...]` kWh in one process and `[33.7, 29.9, 34.1, ...]` in the next,
 and the same numbers in both with `PYTHONHASHSEED=0`. Within a run nothing is wrong -- one draw is one world
 in everything the run wrote -- but two runs of 04_04 differ, so an export cannot be reproduced. The fix is
 `zlib.crc32(segment.encode())` in both places, as `battery_chemistry.py` already does; it changes the
-draws once and takes effect with the next run of 04_04, six hours. **Not made: it is his decision.**
-DEFECTS 3.27.
+draws once and takes effect with the next run of 04_04, six hours. DEFECTS 3.27.
 
 **5. Git on this Mac was fixed**, on his word (the entry above has the details): two stray refs moved, not
 deleted; 204 commits of old local history kept on `local-history-2026-09-25` and `local-history-2026-09-24`;
@@ -2552,7 +2551,7 @@ to him in chat (FAILURES 31). The pushed document has none of them.
 
 ### OPEN — HIS
 
-- **The `hash(segment)` fix** (point 4), and whether to re-run 04_04 after it.
+- **Re-running 04_04**, which he will do later: the `hash(segment)` fix of 2026-10-09 takes effect then. Decide the pack size / voltage coupling first (the entry of 2026-10-09 below), so that one six-hour run serves both.
 - Put the five cases into `combine.cases` in place of `data/battery`? A case without the scenario stops 05:
   S1 has three of them, S2 four, S3 five (`BATTERY_ROUTES.md` §13).
 - Add Fe, P, Mn, Na, C and Al to `figures.resources` of the batteries study; it draws Cu, Ni, Co and Li.
@@ -2572,3 +2571,31 @@ to him in chat (FAILURES 31). The pushed document has none of them.
 - The index of `documentation/README.md` lists `BATTERY_ROUTES.md`.
 - Scratch from today is outside the repositories: about 100 MB of stand-in data in the system temp folder,
   and the check scripts in the session's scratchpad. None of it is needed.
+
+## 2026-10-09 — the hash seeds are fixed, and what else the same two lines showed
+
+**Both repositories pushed, trees clean.** On his word, "fix the hash, but I will rerun later":
+
+**1. Fixed, upstream:** `src/battery_capacity.py` and `src/battery_voltage.py` seed each segment with
+`zlib.crc32(segment.encode())` and not `abs(hash(segment))` (DEFECTS 3.27, the evening entry above). Checked
+as a failing test and then a passing one: the pack size, the voltage, every chemistry share of every scenario
+and group and one composition call, computed in four separate processes, differ in 25 of 34 digests before
+and in none after. **Not re-run.** The export on disk is from the unfixed code, one coherent world that
+cannot be reproduced; the fix shows with the next run of 04_04, and after that run `04_batteries.py` has to
+be pressed again, because its draws will have moved. Nothing in this repository changed for it.
+
+**2. Found in the same lines, NOT changed (DEFECTS 3.28):** the pack size and the voltage of a segment are
+the same stream, so a small pack is almost always 800 V and a large one almost never (segment A, 2050: 100 %,
+63 %, 0.6 % for 25, 30 and 35 kWh; rank correlation -0.56). Three more streams are seeded with the bare 404,
+and the capacity growth rate and the voltage band position have rank correlation +1.0000. Measured effect of
+the first only: up to +0.5 % on the mean cable copper and +1.0 % on the terminal copper per pack (LFP,
+segment A, 2050); the effect on the spread and the other couplings were not measured. **His decision, and
+the moment to take it is the next run of 04_04:** give every stream its own tag in the seed list, which
+changes the draws and costs nothing extra if it goes into the same run as the hash fix.
+
+**3. Not added, to ask:** a test that stays. The check above is a scratch script, outside the repository. A
+permanent one would be a new file in RAWCLICStockAndFlow (`code/test_battery_seeds.py`: the same draws in two
+processes with different `PYTHONHASHSEED`), as the repository has one per stage. Say if he wants it.
+
+**4. The machine had restarted** before this work began, which wipes the session's scratch folder. Nothing
+in either repository was affected.
