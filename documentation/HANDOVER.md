@@ -2656,14 +2656,21 @@ name in the stages, the tools and `src/` (DEFECTS 3.31). Tests: all seven suites
   reads `mix`.
 - `doc/User guide.docx` (08-24), and upstream `documentation/superseded/`.
 
-**4. Upstream, found and not yet removed** (its handover has the list): the old single-sodium arrays `Na_ion*`
-(36 files, 8.8 GB), the old figure folder `data/processed/figures` (104 figures, identical to `figures/`) and
-17 older `... 2.png` copies, `src/archive/` (three copies of the parameter file), 42 functions nothing calls, 8
-settings nothing reads, 11 names in the artifact registry and 10 unused imports. **They wait for his 04_04
-run**: a six-hour run can still import an upstream module late, and the arrays it writes sit in the same
-folders.
+**4. Upstream, removed the same day** (RAWCLICStockAndFlow commit `8019df9`; its handover has the list):
+`src/archive/` (three copies of the parameter file), 51 functions, classes and methods nothing called, 14
+settings nothing read, 11 names in the artifact registry and the unused imports. And the data, once his 04_04
+had stopped: the old single-sodium arrays `Na_ion*` (36 files, 8.8 GB), the old figure folder
+`data/processed/figures` (104 figures, identical to `figures/`) and 17 older `... 2.png` copies. The four upstream
+checks pass on the working tree after the pull.
 
-**5. His run.** The 04_04 that ended at about 07:19 was stopped by him, to switch the computer off. He started a new one at **09:04**, with the fixed seeds, the
-tagged streams and the figures going to `figures/`. It rewrote the inflow arrays by 09:17 and takes about six
-hours in all. Until it has ended, `battery_draws/` and the per-chemistry export hold the inflow of one run and
-the outflow and collected arrays of another. **Press Run on `04_batteries.py` after it, not before.**
+**5. His 04_04 runs, and where the export stands.** The one that ended at about 07:19 was stopped by him, to
+switch the computer off. He started a new one at **09:04**, with the fixed seeds, the tagged streams and the
+figures going to `figures/`, and **stopped it at 10:22**: he had meant to press Run on `04_batteries.py` ("I did
+not want to rerun 04_04 but recovery 04"). It stopped between two writes and left nothing half-written; all
+1,143 arrays of the export were checked, every one (200000, 11), float32 and complete. **The export is a
+mixture:** the inflow arrays of the 09:04 run (fixed seeds), the outflow and collected arrays of the 10-08 run
+(the old code). `04_batteries.py` takes recovered, lost and handed-on mass and the recovery rates from
+`collected`, which is entirely 10-08's, so those are as checked; the figures that set inflow against outflow draw
+by draw (the net fleet, the share of inflow recovered) mix two runs, with right means and wrong bands. Whatever
+is run on it now is provisional. **The full rerun of 04_04 with the fixed code is still open** (about six
+hours), and `04_batteries.py` has to be pressed again after it.

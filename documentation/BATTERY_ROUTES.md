@@ -574,10 +574,13 @@ fix shows with the next run of 04_04. Pack size and voltage were also coupled dr
 were the capacity growth and the voltage band; every stream has its own tag now (DEFECTS 3.28, fixed
 2026-10-09, effective with the same run).
 
-**That run was started on 2026-10-09 at 09:04, by him.** An earlier start, with the old code, was
-stopped at about 07:19 when the computer had to be switched off, after it had rewritten the inflow
-arrays. Until the new run has ended (about six hours) the export holds the inflow of one run and the
-outflow and collected arrays of another, so `04_batteries.py` is pressed after it, not before.
+**That run was started on 2026-10-09 at 09:04 and stopped by him at 10:22**, because he had meant to start
+`04_batteries.py`. An earlier start, with the old code, had been stopped at about 07:19 when the computer had
+to be switched off. Neither got as far as the export's outflow or collected arrays, so the export holds the
+inflow arrays of the second and the outflow and collected arrays of the 10-08 run. `04_batteries.py` takes
+recovered, lost and handed-on mass and the recovery rates from `collected` (10-08's, as checked); the figures
+that set inflow against outflow draw by draw (the net fleet, the share of inflow recovered) mix two runs. The
+full rerun with the fixed code is still open, and `04_batteries.py` is pressed again after it.
 
 If the export is not there, stage 01 says so:
 
