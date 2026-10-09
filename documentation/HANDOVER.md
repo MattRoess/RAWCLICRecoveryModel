@@ -2600,10 +2600,12 @@ which is six hours and his, later. The export on disk is from the old code, one 
 reproduced. After that run, `04_batteries.py` has to be pressed again, because its draws will have moved.
 Nothing in this repository changed for it.
 
-**4. Not added, to ask:** a test that stays. The checks above are scratch scripts, outside the repository. A
-permanent one would be a new file in RAWCLICStockAndFlow, `code/test_battery_seeds.py` (the same draws in two
-processes with different `PYTHONHASHSEED`, every stream tagged, no two sharing one), as the repository has one
-per stage. Say if he wants it.
+**4. The test that stays, added on his word, "yes, add the test":** `code/test_battery_seeds.py` in
+RAWCLICStockAndFlow. Nine checks, about two seconds, only the code: every stream tagged, no two purposes
+sharing a tag, the replayed uniforms uncorrelated, pack size and 800 V independent through the real
+functions, and the draws byte-identical in three processes with different hash salts. Run against the code as
+it was, it fails 5 of 9 before the hash fix and 4 of 9 before the tags; now 9 of 9. Run it after any change to
+the battery modules' random draws.
 
 **5. The machine had restarted** before this work began, which wipes the session's scratch folder. Nothing
 in either repository was affected.

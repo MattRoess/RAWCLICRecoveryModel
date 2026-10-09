@@ -1407,7 +1407,9 @@ correlation +1.0000 between four pairs, -0.563 between pack size and 800 V; afte
 every stream tagged, none shared, the worst correlation between any two streams'
 200,000 uniforms 0.0024, pack size against 800 V +0.001, and the copper difference
 above +0.00 % in every segment and year. What is shared on purpose is still shared.
-Like 3.27 it takes effect with the next run of 04_04.
+Like 3.27 it takes effect with the next run of 04_04. **`code/test_battery_seeds.py`** in
+RAWCLICStockAndFlow keeps 3.27 and 3.28 fixed: nine checks, seconds, only the code; it fails 5 of 9
+on the code before the hash fix and 4 of 9 before the tags.
 
 ---
 
