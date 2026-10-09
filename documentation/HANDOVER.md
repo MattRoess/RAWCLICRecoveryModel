@@ -2709,3 +2709,33 @@ cases per metal instead of four, so it takes longer than before.
 of the sum is the band of coefficients that move together; and the export still holds the inflow of the stopped 04_04
 with the outflow and collected arrays of the 10-08 run, so the figures that set inflow against outflow have right means
 and wrong bands until the fixed rerun.
+
+## 2026-10-09 (afternoon) — his 05 ran, and the stream figures draw one line per battery case
+
+**His run.** 05 ran through at about 11:48 to 11:59: S1, S2 and S3, eight metals each, four figures each, 96 files in
+`figures/combined/<scenario>/own_mechanical/`. Opened and compared with the S3 copper figures of 09-30: the same shape,
+the 2070 totals about 5 to 10 % lower by eye (recovered about 795 kt/year, was about 850), and the band of the fleet
+total as wide as before (plus and minus 24 % at 2055, 23 % then), so the mixed export is not visible in the copper
+total.
+
+**Three defects in the figures, not in the numbers,** found by opening them: the subtitle of `*_combined.png` ran off
+the right edge and cut the sentence about the bands; the first battery case to use a component name kept it bare
+(LFP's cathode was labelled "cathode active material", the biggest line in the lithium figure, and read as the whole
+battery); and `copper_with_the_bev` had sixteen lines in ten colours, purple twice, with its legend clipped.
+
+**What he chose, and what was done** (DECISIONS 54), tests red then green, **168 pass**:
+
+1. **One line per battery case**, summed over its components (`upstream.names_chemistries` decides: a case that names
+   its chemistries). Four battery lines at most, and the electronics as before: nine lines.
+2. **The subtitle wraps** when it is wider than the figure: `header(..., wrap=True)` in `src/plot_monte_carlo.py`, used by
+   `figure_combined` only. A subtitle that fits is unchanged in text and in the room it takes (a test compares the layout),
+   so the frozen `copper_combined.png` is the same figure. Drawn once on synthetic numbers with seven stream names to look
+   at it: two lines, nothing overlapped.
+3. **The old-battery combined figures are kept** in `figures/combined/S1` to `S3` until the fixed 04_04 rerun and the next
+   05; the frozen copper ones are among them.
+
+**Also removed:** `reasons_of`, and the `reasons` and `per_stream_reasons` that `combine_one` collected for every stream of
+every case: no figure read them.
+
+**What he has to do:** press Run on 05 again; it overwrites the 96 figures of `own_mechanical` with the new lines. Nothing
+else changed in the numbers.

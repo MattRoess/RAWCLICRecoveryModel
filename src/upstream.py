@@ -209,6 +209,23 @@ def offers_scenario(params, folder: str) -> bool:
     return not available or scenario in available
 
 
+def names_chemistries(params, folder: str) -> bool:
+    """
+    Whether this case is fed from upstream CHEMISTRIES: its source table names them
+    (`chemistries`). The five battery cases do; the electronics do not.
+
+    Added 2026-10-09 for `05_combine_cases.py`, which draws such a case as ONE line,
+    summed over its components. Five cases share the names of their components
+    (`batteryPackCables`, `cathodeActiveMaterial` ...), so a line per component made
+    the first case's lines read as the whole battery -- LFP's cathode was labelled
+    "cathode active material" -- and sixteen lines repeated the ten colours.
+    """
+    if not is_upstream_case(params, folder):
+        return False
+    from src import source as source_module
+    return bool(source_module.read(folder, params)['chemistries'])
+
+
 def cases_to_run(params) -> list[str]:
     """
     Which cases a stage covers. Every numbered stage asks this.

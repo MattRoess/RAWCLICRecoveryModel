@@ -615,6 +615,19 @@ them (§11). The old case is untouched and no longer combined.
   `figures/combined/S1/own_mechanical/` for `tc_set=own; sodium_route=mechanical`. The
   figures of the old battery case, in `figures/combined/S1` to `S3`, are not replaced and
   not removed -- the frozen `copper_combined.png` and `copper_streams.png` among them.
+* **The stream figures draw one line per battery case** (`with_the_bev`, `lost`,
+  `recovered`): `battery lfp`, `battery lmfp`, `battery nmc high` and `battery sodium`,
+  each summed over its components, beside the electronics' lines (wiring, pcb, sensors,
+  motors, the traction motor) -- nine lines at most, ten colours. Solid-state carries none of
+  the eight metals and has no line. The first run of 05 drew one line per component: sixteen
+  lines, colours repeated, and the first case to use a component name kept it bare, so LFP's
+  cathode read as "cathode active material", as if it were the whole battery. The rule is
+  `upstream.names_chemistries`: a case that names its chemistries is one line.
+* **The subtitle of `*_combined.png` wraps when it is wider than the figure**, because it
+  lists every stream and six ran off the edge, cutting the sentence that says what the
+  bands are. A subtitle that fits is unchanged, character for character and in the room it
+  takes, so the four-stream figure and the frozen `copper_combined.png` are the same figure
+  (`header(..., wrap=True)`; a test checks it).
 * **The chemistry cases are fully correlated where they share a coefficient name** (§5),
   so the band of the sum is the band of coefficients that move together.
 * **The inflow, outflow and collected arrays of the export come from two runs** until

@@ -529,3 +529,13 @@ decided and in whose words.
     done, and said: the cases are fully correlated where a coefficient has the same
     name (a `stream` key per case would end that), and the first case listed with
     scenarios decides the passes.
+
+54. **The stream figures draw one line per battery case, and a long subtitle wraps.**
+    The first full run of 05 drew sixteen lines for the copper of S3, with ten colours
+    and the first case's component names bare. Asked 2026-10-09; he chose *one line per
+    case*, summed over its components, and *wrap the frozen figure's subtitle only when it
+    is too long*, and to keep the old-battery combined figures for now. A case that names
+    its `chemistries` is one line (`upstream.names_chemistries`); `header(..., wrap=True)`
+    fits a subtitle to the figure and leaves one that fits exactly as it was. The
+    `reasons` the stage computed for every stream and no figure drew are gone with their
+    function.

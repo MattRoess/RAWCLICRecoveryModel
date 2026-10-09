@@ -71,11 +71,11 @@ import numpy as np
 from src.figure_style import chart, write
 from src.monte_carlo import solve_draws
 from src.params_schema import Params
-from src.plot_monte_carlo import account, header, losses, routes
+from src.plot_monte_carlo import account, header, routes
 from src.rest import REST
 from src.units import factor, readable
-from src.upstream import (cases_to_run, load as refresh, offers_scenario,
-                          scenarios_available, scenarios_to_run)
+from src.upstream import (cases_to_run, load as refresh, names_chemistries,
+                          offers_scenario, scenarios_available, scenarios_to_run)
 
 LAYER_NAMES = ['product', 'component', 'material', 'element']
 
@@ -414,11 +414,15 @@ def figure_combined(whole: dict, roads: dict, years, theme: str, unit: str,
     panel.tick_params(labelsize=18)
     panel.grid(True, axis='y', color=colours['rule'], linewidth=0.7, zorder=0)
 
+    # WRAPPED WHEN IT IS WIDER THAN THE FIGURE (2026-10-09). It lists every
+    # stream, and with six the line ran off the edge and cut the sentence that
+    # says what the bands are. One that fits is untouched, so the frozen
+    # copper_combined.png is the same figure.
     header(figure, f'{title}: {label}, every stream added', colours,
            f'{years[0]}-{years[-1]}, means, added per draw.  '
            f'{" + ".join(streams)}.  DASHED: lost -- never collected, and lost '
            f'inside recycling.  solid: everything else.  each band is 95% of '
-           f"that line's own draws")
+           f"that line's own draws", wrap=True)
     figure.subplots_adjust(bottom=0.155)
     handles, labels = panel.get_legend_handles_labels()
     extra = rate_axis.get_legend_handles_labels()
@@ -647,34 +651,6 @@ def figure_lost(per_stream: dict, years, theme: str, unit: str,
 
 
 
-def reasons_of(run, resource: str, domain: str, years) -> dict:
-    """Why this ONE stream's metal did not come back, per year per draw."""
-    from src.rest import flow_roles
-    keys = run.keys
-    layer = _resource_of(run)          # every depth, not just the deepest
-    process_of = dict(zip(run.tcs['Output_FlowID'], run.tcs['process']))
-    out = {}
-    for flow, role in flow_roles(run.case).items():
-        if role != 'loss':
-            continue
-        name = f'lost in {str(process_of.get(flow, flow)).replace("_", " ")}'
-        columns = []
-        for year in years:
-            rows = np.flatnonzero(
-                (keys['Stock/Flow ID'] == flow).to_numpy()
-                & (keys[layer] == resource).to_numpy()
-                & (keys['Layer 2'] == domain).to_numpy()
-                & (keys['Year'].astype(str) == str(year)).to_numpy())
-            columns.append(run.values[rows].sum(axis=0) if rows.size
-                           else np.zeros(run.draws))
-        block = np.column_stack(columns)
-        if block.mean(axis=0).max() > 0:
-            out[name] = out.get(name, 0) + block
-    return out
-
-
-
-
 def _shared_prefix(names: list[str]) -> int:
     """
     How much of every case's folder name is the same, to the last underscore.
@@ -708,7 +684,7 @@ def combine_one(params, wanted, label: str) -> int:
     """
     wanted = tuple(wanted)
     parts, streams, roads, years = [], [], {}, None
-    per_stream, reasons, per_stream_reasons = {}, {}, {}
+    per_stream = {}
     shorten = _shared_prefix([os.path.basename(c) for c in params.combine.cases])
 
     print(f'Combining : {label} across '
@@ -765,31 +741,39 @@ def combine_one(params, wanted, label: str) -> int:
         streams.append(f'{stream} ({used})')
         for road, draws_of in roads_of(run, used, years).items():
             roads[road] = roads.get(road, 0) + draws_of
-        # For the second figure: each stream apart, and why it was lost.
-        for domain in domains_of(run, used):
-            piece = account(run, used, domain=domain)
-            if piece is None:
-                continue
-            # ⚠️ A STREAM NAMED AFTER THE METAL SAYS NOTHING. The stream label
-            # is the case's Layer 2 -- `Wiring`, `PCB`, `Sensors`,
-            # `batteryPackCables` -- which names the part the metal sits in.
-            # The traction case's components ARE the materials, so its copper
-            # stream is called `copper`, and the copper figure came out with a
-            # line in its legend labelled `copper`: *"what is the copper?"*
-            #
-            # Where the domain is the metal's own name it is replaced by the
-            # case's, which is what actually distinguishes it. A collision
-            # between two cases takes both names.
-            name = domain
-            if name.strip().lower() in {w.lower() for w in wanted} | {label.lower()}:
-                name = stream
-            if name in per_stream:
-                name = f'{stream} · {domain}'
-            per_stream[name] = piece
-            per_stream_reasons[name] = reasons_of(run, used, domain, years)
-        why = losses(run, used)
-        for name, block in (why or {}).get('reasons', {}).items():
-            reasons[name] = reasons.get(name, 0) + block
+        # For the stream figures: each stream apart.
+        #
+        # THE BATTERY IS ONE LINE PER CASE (2026-10-09). A case that names its
+        # upstream chemistries is a whole product line -- LFP, LMFP, NMC_high,
+        # sodium, solid-state -- and five of them share the names of their
+        # components, so a line per component made the first case's lines read
+        # as the whole battery (LFP's cathode was labelled "cathode active
+        # material") and sixteen lines ran out of colours. Its account is
+        # already the sum of its components: that is the line, named after the
+        # case. The electronics keep a line per component.
+        if names_chemistries(params, folder):
+            per_stream[stream] = one
+        else:
+            for domain in domains_of(run, used):
+                piece = account(run, used, domain=domain)
+                if piece is None:
+                    continue
+                # ⚠️ A STREAM NAMED AFTER THE METAL SAYS NOTHING. The stream
+                # label is the case's Layer 2 -- `Wiring`, `PCB`, `Sensors` --
+                # which names the part the metal sits in. The traction case's
+                # components ARE the materials, so its copper stream is called
+                # `copper`, and the copper figure came out with a line in its
+                # legend labelled `copper`: *"what is the copper?"*
+                #
+                # Where the domain is the metal's own name it is replaced by
+                # the case's, which is what actually distinguishes it. A
+                # collision between two cases takes both names.
+                name = domain
+                if name.strip().lower() in {w.lower() for w in wanted} | {label.lower()}:
+                    name = stream
+                if name in per_stream:
+                    name = f'{stream} · {domain}'
+                per_stream[name] = piece
         print(f'    {used}: '
               f'{readable(float(np.nanmean(one["recovered"][:, -1])), params.run.working_unit)} '
               f'recovered in {years[-1]}')

@@ -1678,6 +1678,72 @@ def test_a_component_with_no_elements_leaves_at_the_split_not_in_a_road() -> Non
                 f'{case.folder}: {component} is labelled {set(leaving["process"])}, not as unresolved material'
 
 
+def test_a_subtitle_wraps_to_the_figure_only_when_asked_and_only_when_too_long() -> None:
+    """
+    05's combined figure lists its streams in the subtitle, and with six of them the
+    line ran off the right edge of the figure and cut the sentence that says what
+    the bands are (2026-10-09).
+
+    `header(..., wrap=True)` fits the subtitle to the figure. Asked for nothing it
+    behaves as it always did, so no other figure moves; and a subtitle that already
+    fits is left alone, character for character and in the space it reserves, so the
+    figure that fits -- the frozen copper_combined.png -- is the same figure.
+    """
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+
+    from src.figure_style import THEMES
+    from src.plot_monte_carlo import header
+
+    colours = THEMES['light']
+    short = ('2020-2070, means, added per draw.  wiring + boards + battery.  '
+             "each band is 95% of that line's own draws")
+    long = ('2020-2070, means, added per draw.  '
+            + ' + '.join(f'bev electronics case number {n} (Cu)' for n in range(12))
+            + ".  each band is 95% of that line's own draws")
+
+    def drawn(subtitle, **kwargs):
+        figure = plt.figure(figsize=(10, 6), dpi=100)
+        panel = figure.add_subplot(111)
+        header(figure, 'a title', colours, subtitle, **kwargs)
+        figure.canvas.draw()
+        # the subtitle is the 8.5-point text; the title is 13
+        text = next(t for t in figure.texts if abs(t.get_fontsize() - 8.5) < 1e-6)
+        return figure, panel, text
+
+    def width(figure, text):
+        return text.get_window_extent(figure.canvas.get_renderer()).width
+
+    # the premise: unasked, a long subtitle is wider than the figure
+    figure, panel, text = drawn(long)
+    assert width(figure, text) > figure.get_figwidth() * figure.dpi, 'the long subtitle already fits'
+    plain_top = panel.get_position().y1
+    plt.close(figure)
+
+    # asked, it wraps, every line fits, and the room it takes is reserved
+    figure, panel, text = drawn(long, wrap=True)
+    lines = text.get_text().split('\n')
+    assert len(lines) > 1, 'the long subtitle was not wrapped'
+    assert ' '.join(lines) == long, 'wrapping changed the words'
+    for line in lines:
+        piece = figure.text(0, 0, line, fontsize=text.get_fontsize())
+        assert piece.get_window_extent(figure.canvas.get_renderer()).width \
+            <= figure.get_figwidth() * figure.dpi, f'a wrapped line is still too wide: {line!r}'
+        piece.remove()
+    assert panel.get_position().y1 < plain_top, 'the extra lines took no room from the panel'
+    plt.close(figure)
+
+    # a subtitle that fits is left exactly as it was
+    figure_a, panel_a, text_a = drawn(short)
+    figure_b, panel_b, text_b = drawn(short, wrap=True)
+    assert text_b.get_text() == short, 'a subtitle that fits was changed'
+    assert panel_a.get_position().bounds == panel_b.get_position().bounds, \
+        'a subtitle that fits moved the panel'
+    plt.close(figure_a)
+    plt.close(figure_b)
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items())
              if name.startswith('test_') and callable(value)]

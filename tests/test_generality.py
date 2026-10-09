@@ -1985,6 +1985,35 @@ def test_scenarios_and_missing_chemistries_are_told_apart() -> None:
             shutil.rmtree(case, ignore_errors=True)
 
 
+def test_a_case_fed_from_several_chemistries_is_told_apart_from_one_that_is_not() -> None:
+    """
+    05 draws a case that names its upstream `chemistries` -- the five battery cases --
+    as ONE line, summed over its components. Five cases share the names of their
+    components, so one line per component made the first case's lines read as the
+    whole battery and repeated the colours (2026-10-09). The electronics name no
+    chemistries and keep a line per component.
+    """
+    from src.upstream import names_chemistries
+
+    root, export = _chemistry_export(['A_x', 'B_x'])
+    plain = tempfile.mkdtemp(prefix='no-source-')
+    try:
+        several, params = _chemistry_case('pv_chem_ab_test', 'A_x; B_x', export)
+        one, _ = _chemistry_case('pv_chem_a_test', 'A_x', export)
+        assert names_chemistries(params, several)
+        assert names_chemistries(params, one), 'naming a single chemistry is still naming one'
+
+        # fed from upstream, but names none: the electronics
+        unnamed = os.path.join(root, 'pv_unnamed_test')
+        write_case(unnamed)
+        assert not names_chemistries(params, unnamed)
+        # not fed from upstream at all
+        assert not names_chemistries(params, plain)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(plain, ignore_errors=True)
+
+
 def test_a_case_that_lacks_the_scenario_is_told_apart_from_one_that_has_none() -> None:
     """
     THE COMBINE STOPPED AT THE FIRST CASE WITHOUT THE SCENARIO, 2026-10-09.

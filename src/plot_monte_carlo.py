@@ -66,7 +66,37 @@ EVERYTHING = 'every resource'
 DASHES = ['-', (0, (5, 2)), (0, (1, 1.6)), (0, (7, 2, 1.5, 2))]
 
 
-def header(figure, title: str, colours, subtitle: str = '') -> None:
+def _fitted(figure, text: str, fontsize: float) -> tuple[str, int]:
+    """
+    `text` broken at spaces so that no line is wider than the figure, and how many
+    lines that makes. Text that fits is returned as it came, character for character.
+
+    Measured with the figure's own renderer, in the font it will be drawn in: a count
+    of characters would be wrong for every string that is not average.
+    """
+    renderer = figure.canvas.get_renderer()
+    limit = 0.98 * figure.get_figwidth() * figure.dpi        # the text starts at 0.01
+
+    def width(line: str) -> float:
+        probe = figure.text(0, 0, line, fontsize=fontsize)
+        pixels = probe.get_window_extent(renderer).width
+        probe.remove()
+        return pixels
+
+    lines, line = [], ''
+    for word in text.split(' '):
+        trial = f'{line} {word}' if line else word
+        if line and width(trial) > limit:
+            lines.append(line)
+            line = word
+        else:
+            line = trial
+    lines.append(line)
+    return '\n'.join(lines), len(lines)
+
+
+def header(figure, title: str, colours, subtitle: str = '',
+           wrap: bool = False) -> None:
     """
     A title, and an optional line under it, that do not collide.
 
@@ -79,8 +109,18 @@ def header(figure, title: str, colours, subtitle: str = '') -> None:
     THIS figure's height keeps the spacing the same whatever the shape.
 
     Also reserves the space it used, so tight_layout does not put a panel there.
+
+    `wrap=True` breaks a subtitle that is wider than the figure at its spaces and
+    reserves the room the extra lines take. Asked for nothing it does nothing, so no
+    other figure moves; and a subtitle that already fits is left exactly as it was, in
+    the space it reserved before. 05's combined figure asks: it lists its streams in
+    its subtitle, and with six of them the line ran off the edge and cut the sentence
+    that says what the bands are (2026-10-09).
     """
     inches = figure.get_figheight()
+    lines = 1
+    if subtitle and wrap:
+        subtitle, lines = _fitted(figure, subtitle, 8.5)
 
     def fraction(points: float) -> float:
         return 1.0 - (points / 72.0) / inches
@@ -90,7 +130,9 @@ def header(figure, title: str, colours, subtitle: str = '') -> None:
     if subtitle:
         figure.text(0.01, fraction(34), subtitle, color=colours['meta'],
                     fontsize=8.5, ha='left', va='top')
-    figure.tight_layout(rect=[0, 0, 1, fraction(46 if subtitle else 28)])
+    # a second line of 8.5-point text takes about 11 points more
+    figure.tight_layout(rect=[0, 0, 1,
+                              fraction((46 if subtitle else 28) + 11 * (lines - 1))])
 
 
 def years_covered(run) -> str:

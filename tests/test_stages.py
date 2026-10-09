@@ -164,6 +164,27 @@ def test_the_combine_leaves_out_a_case_that_lacks_the_scenario() -> None:
         'combine_one solves a case before it has asked whether the case has the scenario'
 
 
+def test_the_combine_draws_a_battery_case_as_one_line_and_computes_nothing_it_does_not_draw() -> None:
+    """
+    `combine_one` asks `names_chemistries`, so the five battery cases are five lines and
+    not sixteen. And `reasons_of`, `reasons` and `per_stream_reasons` are gone: they were
+    computed for every stream of every case and read by no figure.
+    """
+    path = os.path.join(ROOT, '05_combine_cases.py')
+    tree = ast.parse(open(path, encoding='utf-8').read(), filename=path)
+    defined = {node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
+    combine_one = next(node for node in ast.walk(tree)
+                       if isinstance(node, ast.FunctionDef) and node.name == 'combine_one')
+    called = {node.func.id for node in ast.walk(combine_one)
+              if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)}
+    assert 'names_chemistries' in called, 'combine_one no longer draws a battery case as one line'
+    assert 'reasons_of' not in defined, 'reasons_of is back: nothing reads what it computes'
+    stored = {node.id for node in ast.walk(combine_one)
+              if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)}
+    assert not stored & {'reasons', 'per_stream_reasons'}, \
+        'combine_one collects reasons again, and no figure draws them'
+
+
 def test_the_combine_still_has_every_figure_it_draws() -> None:
     """
     Named outright, because this is the one that was lost.
